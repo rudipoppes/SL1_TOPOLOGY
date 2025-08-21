@@ -40,6 +40,21 @@ This project is being built using an **iterative, incremental approach**:
 - **Location**: `/Users/rudipoppes/Documents/VSC/SL1_TOPOLOGY`
 - **Status**: Initialized Git repository
 - **Ignored Folders**: `TEST/`, `Sample JSON Maps/`
+- **Remote**: Not yet configured (see GitHub Setup below)
+
+### GitHub Setup
+```bash
+# First, create a new repository on GitHub (without README)
+# Then add remote:
+git remote add origin https://github.com/YOUR_USERNAME/SL1_TOPOLOGY.git
+
+# Push existing code
+git branch -M main
+git push -u origin main
+
+# Verify remote
+git remote -v
+```
 
 ### Git Workflow
 
