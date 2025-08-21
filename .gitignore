@@ -53,6 +53,7 @@ coverage/
 # Project specific folders
 TEST/
 Sample JSON Maps/
+SL1 DOCS/
 
 # Temporary files
 *.tmp

@@ -202,6 +202,47 @@ npm install cytoscape tailwindcss @headlessui/react framer-motion
 3. **`searchDevices`**: Real-time device search functionality
 4. **`cacheManager`**: Handle data caching and invalidation
 
+## SL1 Integration Details
+
+### GraphQL Endpoints
+- **Endpoint**: `<sl1-instance>/gql`
+- **Authentication**: Basic Auth (username/password)
+- **API Endpoint**: `<sl1-instance>/api` (if needed)
+
+### Known GraphQL Queries
+```graphql
+# Device Query Structure
+query FindDevices {
+  devices(search: {name: {contains: "search_term"}}) {
+    edges {
+      node {
+        id
+        name
+        # Additional fields to explore: ip, status, type, etc.
+      }
+    }
+  }
+}
+
+# Relationship Query Structure  
+query DeviceRelationships {
+  deviceRelationships(first: 500, order: {direction: asc, field: ID}) {
+    edges {
+      node {
+        id
+        parentDevice { id name }
+        childDevice { id name }
+      }
+    }
+  }
+}
+```
+
+### Data Structure
+- **Devices**: id, name (expandable with more fields)
+- **Relationships**: Parent-child hierarchical structure
+- **Pagination**: Uses Relay-style cursor pagination
+
 ## Lambda Functions Architecture
 
 ### Data Caching Strategy
