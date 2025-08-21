@@ -1,0 +1,122 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: SL1 Topology Backend - Lambda Functions
+
+Globals:
+  Function:
+    Runtime: nodejs18.x
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        SL1_URL: !Ref SL1Url
+        SL1_USER: !Ref SL1User
+        SL1_PASS: !Ref SL1Pass
+        CORS_ORIGIN: !Ref CorsOrigin
+        CACHE_TABLE: !Ref CacheTable
+
+Parameters:
+  SL1Url:
+    Type: String
+    Description: SL1 GraphQL endpoint URL
+    Default: https://your-sl1-instance/gql
+  
+  SL1User:
+    Type: String
+    Description: SL1 username
+    NoEcho: true
+  
+  SL1Pass:
+    Type: String
+    Description: SL1 password
+    NoEcho: true
+  
+  CorsOrigin:
+    Type: String
+    Description: Allowed CORS origin
+    Default: http://localhost:5173
+
+Resources:
+  # API Gateway
+  TopologyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: prod
+      Cors:
+        AllowMethods: "'GET, POST, OPTIONS'"
+        AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key'"
+        AllowOrigin: "'*'"
+
+  # DynamoDB Cache Table
+  CacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: sl1-topology-cache
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cacheKey
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cacheKey
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  # Lambda Functions
+  GetDevicesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda-functions/getDevices/
+      Handler: index.handler
+      Events:
+        GetDevices:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TopologyApi
+            Path: /devices
+            Method: get
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CacheTable
+
+  GetTopologyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda-functions/getTopology/
+      Handler: index.handler
+      Events:
+        GetTopology:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TopologyApi
+            Path: /topology
+            Method: post
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CacheTable
+
+  SearchDevicesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambda-functions/searchDevices/
+      Handler: index.handler
+      Events:
+        SearchDevices:
+          Type: Api
+          Properties:
+            RestApiId: !Ref TopologyApi
+            Path: /search
+            Method: get
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CacheTable
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${TopologyApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
+  
+  CacheTableName:
+    Description: DynamoDB cache table name
+    Value: !Ref CacheTable

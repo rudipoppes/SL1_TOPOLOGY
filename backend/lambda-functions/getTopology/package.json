@@ -1,0 +1,9 @@
+{
+  "name": "get-topology-function",
+  "version": "1.0.0",
+  "description": "Lambda function to fetch device topology from SL1",
+  "main": "index.js",
+  "dependencies": {
+    "aws-sdk": "^2.1400.0"
+  }
+}
