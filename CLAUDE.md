@@ -42,6 +42,18 @@ This project is being built using an **iterative, incremental approach**:
 - **Ignored Folders**: `TEST/`, `Sample JSON Maps/`
 
 ### Git Workflow
+
+#### Branch Strategy
+- **main**: Production-ready code only
+- **develop**: Integration branch for features
+- **feature/***: Individual feature branches
+- **fix/***: Bug fix branches
+
+#### Commit Guidelines
+- Use clear, descriptive commit messages
+- Follow conventional commits format: `type(scope): description`
+- Types: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`
+
 ```bash
 # Check current status
 git status
@@ -50,11 +62,18 @@ git status
 git add .
 
 # Commit with descriptive message
-git commit -m "Phase X: Description of changes"
+git commit -m "feat(frontend): add topology visualization component"
 
 # View project history
-git log --oneline
+git log --oneline --graph --all
 ```
+
+#### Best Practices
+- ✅ Commit early and often (atomic commits)
+- ✅ Write meaningful commit messages
+- ✅ Never commit sensitive data (API keys, passwords)
+- ✅ Review changes before committing (`git diff`)
+- ✅ Keep commits focused on single changes
 
 ---
 
