@@ -81,47 +81,49 @@ export const apiService = {
     limit?: number;
     offset?: number;
   }): Promise<DevicesResponse> {
-    // TEMPORARY: Return mock data instead of calling API
-    console.log('Using MOCK data until Lambda is fixed');
-    
-    let filtered = [...MOCK_DEVICES];
-    
-    // Apply search filter
-    if (params.search) {
-      const search = params.search.toLowerCase();
-      filtered = filtered.filter(d => 
-        d.name.toLowerCase().includes(search) || 
-        d.ip.toLowerCase().includes(search)
-      );
-    }
-    
-    // Apply type filter
-    if (params.type) {
-      filtered = filtered.filter(d => d.type === params.type);
-    }
-    
-    // Apply status filter  
-    if (params.status) {
-      filtered = filtered.filter(d => d.status === params.status);
-    }
-    
-    return Promise.resolve({
-      devices: filtered.slice(params.offset || 0, (params.offset || 0) + (params.limit || 50)),
-      pagination: {
-        total: filtered.length,
-        limit: params.limit || 50,
-        offset: params.offset || 0,
-        hasMore: false
-      },
-      filters: {
-        availableTypes: ['Database', 'Compute', 'VMware', 'Monitoring', 'Web Server', 'Network'],
-        availableStatuses: ['online', 'offline', 'warning', 'unknown']
+    try {
+      console.log('🚀 Calling Lambda API:', apiConfig.baseUrl);
+      const response = await api.get<DevicesResponse>('/devices', { params });
+      return response.data;
+    } catch (error) {
+      console.error('❌ API call failed, falling back to mock data:', error);
+      
+      // Fallback to mock data if API fails
+      let filtered = [...MOCK_DEVICES];
+      
+      // Apply search filter
+      if (params.search) {
+        const search = params.search.toLowerCase();
+        filtered = filtered.filter(d => 
+          d.name.toLowerCase().includes(search) || 
+          d.ip.toLowerCase().includes(search)
+        );
       }
-    });
-    
-    // REAL API CALL (commented out temporarily)
-    // const response = await api.get<DevicesResponse>('/devices', { params });
-    // return response.data;
+      
+      // Apply type filter
+      if (params.type) {
+        filtered = filtered.filter(d => d.type === params.type);
+      }
+      
+      // Apply status filter  
+      if (params.status) {
+        filtered = filtered.filter(d => d.status === params.status);
+      }
+      
+      return {
+        devices: filtered.slice(params.offset || 0, (params.offset || 0) + (params.limit || 50)),
+        pagination: {
+          total: filtered.length,
+          limit: params.limit || 50,
+          offset: params.offset || 0,
+          hasMore: false
+        },
+        filters: {
+          availableTypes: ['Database', 'Compute', 'VMware', 'Monitoring', 'Web Server', 'Network'],
+          availableStatuses: ['online', 'offline', 'warning', 'unknown']
+        }
+      };
+    }
   },
 
   // Search devices
