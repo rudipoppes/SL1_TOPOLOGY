@@ -48,20 +48,17 @@ exports.handler = async (event) => {
     // Query SL1
     const sl1Client = new SL1Client();
     
-    // Build search parameter if search term provided
-    let searchParam = null;
+    // Build query variables - only include search if provided
+    const variables = { limit };
     if (search && search.trim()) {
-      searchParam = {
+      variables.search = {
         name: {
           contains: search.trim()
         }
       };
     }
     
-    const data = await sl1Client.query(QUERIES.GET_DEVICES, {
-      limit,
-      search: searchParam
-    });
+    const data = await sl1Client.query(QUERIES.GET_DEVICES, variables);
     
     // Process and filter results
     let devices = data.devices.edges.map(edge => ({
