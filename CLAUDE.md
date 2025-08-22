@@ -23,29 +23,16 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 1 - COMPLETE ✅**
-- ✅ Git repository initialized
-- ✅ Basic project structure defined  
-- ✅ .gitignore configured (excludes TEST/, Sample JSON Maps/, SL1 DOCS/)
-- ✅ GitHub repository connected (https://github.com/rudipoppes/SL1_TOPOLOGY)
-- ✅ SAM template for Lambda deployment created
-- ✅ SL1 GraphQL client implemented and tested with Python
-- ✅ getDevices and getTopology Lambda functions implemented
-- ✅ React app initialized with TypeScript
-- ✅ Device inventory components created (search, filter, virtual scrolling)
-- ✅ EC2 development environment with VSCode Remote SSH
-- ✅ **DEPLOYMENT WORKING**: Lambda functions deployed with Parameter Store integration
-- ✅ **API FUNCTIONAL**: REST API returns SL1 device data successfully
-- ✅ **SECURITY**: Enterprise-grade credential management with AWS Parameter Store
-- 🔄 **Next**: Phase 3 - SL1 Relationship Mapping and Advanced Features
-
-### Current Status: **Phase 2 - COMPLETE ✅** 
-- ✅ **Frontend-Backend Integration**: React app connected to Lambda API
+### Current Status: **Phase 2 - Production Ready ✅**
+- ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
+- ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with virtual scrolling  
 - ✅ **Topology Visualization**: Interactive Cytoscape.js canvas with drag & drop
-- ✅ **Real-time Device Data**: Loading live SL1 devices via secure Parameter Store
-- ✅ **Modern UI/UX**: Tailwind CSS responsive design with status indicators
+- ✅ **Real-time Device Data**: Loading live SL1 devices with proper device class names
+- ✅ **Modern UI/UX**: Tailwind CSS responsive design with enhanced selection visibility
 - ✅ **Performance Optimized**: Virtual scrolling, caching, efficient rendering
+- ✅ **Configuration Management**: Proper handling of environment-specific configs
+- 🔄 **Next**: Phase 3 - SL1 Relationship Mapping and Advanced Features
 
 ### Important Note for Claude
 **Always check the "Current Status" section above and the Git log to understand what has been completed and what needs to be done next. This project builds incrementally - don't skip phases or create advanced features before the foundation is complete.**
@@ -74,10 +61,102 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Performance**: Virtual scrolling for large device lists
 - ✅ **Resilience**: Fallback to mock data if API unavailable
 
-### **Live Demo Available**
+### **Live Production System**
 - **API Endpoint**: `https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices`
-- **Frontend Dev Server**: `http://localhost:5173/` (when running)
-- **Real SL1 Data**: Authenticated with `rpoppes_gql` user
+- **Frontend URL**: `http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/`
+- **Real SL1 Data**: Authenticated with `admin` user on selab.sciencelogic.com
+- **Status**: Fully operational with real device data and proper UI
+
+---
+
+## 🚨 Critical Lambda Deployment Information
+
+### **Existing Stack Name**
+- **IMPORTANT**: Always use existing stack name: `sl1-topology-backend-development`
+- **Never create new stacks** - this causes DynamoDB table conflicts
+
+### **Correct Deployment Commands (From EC2)**
+```bash
+cd ~/SL1_TOPOLOGY/backend
+sam build
+sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
+```
+
+### **GraphQL Schema Lessons Learned**
+- **Device Class Field**: Use `deviceClass.class` NOT `deviceClass.name`
+- **Organization Field**: Use `organization.id` NOT `organization.name`
+- **Always check SL1 GraphQL schema before adding fields**
+- **Never hardcode device class mappings** - use actual SL1 data
+
+### **Configuration Management Critical Rules**
+
+#### **Environment Variable Priority (Frontend)**
+1. `VITE_API_URL` in `.env.local` (highest priority)
+2. `baseUrl` in `config/frontend-config.json`
+3. `fallbackUrl` as last resort
+
+#### **Git Sync Issues Prevention**
+- **`.env.local` is in `.gitignore`** - can cause local/EC2 differences
+- **Always use config files for shared settings**
+- **Use environment variables only for deployment-specific overrides**
+
+#### **Config File Troubleshooting**
+```bash
+# Check EC2 config
+cat ~/SL1_TOPOLOGY/config/frontend-config.json | grep baseUrl
+
+# Check for hidden .env.local files
+ls -la ~/SL1_TOPOLOGY/frontend/.env*
+
+# Remove problematic .env.local if needed
+rm ~/SL1_TOPOLOGY/frontend/.env.local
+```
+
+## 🔧 Common Issues & Solutions
+
+### **Lambda 500 Errors**
+```bash
+# Check Lambda logs
+aws logs tail /aws/lambda/sl1-topology-backend-developmen-GetDevicesFunction-[ID] --region us-east-1 --since 5m
+
+# Common causes:
+# 1. GraphQL field doesn't exist (check SL1 schema)
+# 2. SL1 credentials expired (check Parameter Store)
+# 3. Network connectivity issues
+```
+
+### **Frontend Shows Mock Data**
+```bash
+# Check browser console for API errors
+# Common causes:
+# 1. Wrong API URL in config/frontend-config.json
+# 2. .env.local overriding with old URL
+# 3. Lambda function returning 500 errors
+# 4. CORS issues
+
+# Solution:
+curl "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices?limit=1"
+# Should return real device data, not error
+```
+
+### **CloudFormation Stack Conflicts**
+```bash
+# NEVER create new stacks - always update existing
+# Error: "sl1-topology-cache-v2 already exists"
+# Solution: Use correct stack name
+sam deploy --stack-name sl1-topology-backend-development ...
+```
+
+### **EC2 SSH Connection Issues**
+```bash
+# If pkill -f serve kills SSH session:
+# Use specific process killing:
+ps aux | grep "serve -s dist"
+kill [specific-PID]
+
+# Or use more specific pattern:
+pkill -f "node.*serve -s dist"
+```
 
 ---
 
@@ -323,43 +402,56 @@ aws --version
 sam --version
 ```
 
-### Development Workflow
+## 🚀 Complete Deployment Process
 
-**Daily Development Process:**
-1. **Connect**: Open VSCode → Remote-SSH → Connect to EC2
-2. **Code**: Edit files directly on EC2 instance
-3. **Test Backend**: Deploy Lambda functions from EC2 (no credential issues)
-4. **Test Frontend**: Run React dev server on EC2
-5. **Git**: Use normal Git workflow for version control
-
-**Backend Development:**
+### **Frontend Deployment (Production)**
 ```bash
-# On EC2 via VSCode terminal
-# Path depends on your AMI:
-# Ubuntu: /home/ubuntu/SL1_TOPOLOGY/backend
-# Amazon Linux: /home/ec2-user/SL1_TOPOLOGY/backend
+# On EC2 - Complete frontend deployment process
+cd ~/SL1_TOPOLOGY
 
-cd ~/SL1_TOPOLOGY/backend
+# 1. Pull latest changes
+git pull origin main
 
-# Build and deploy Lambda functions
+# 2. Build frontend for production
+cd frontend
+rm -rf dist
+npm run build
+
+# 3. Stop existing serve process (be specific to avoid killing SSH)
+ps aux | grep "serve -s dist"
+kill [PID]  # Use specific PID, NOT pkill -f serve
+
+# 4. Start production server
+serve -s dist -l 3000
+
+# 5. Verify deployment
+curl http://localhost:3000
+# Frontend accessible at: http://ec2-ip:3000
+```
+
+### **Backend Deployment (Lambda)**
+```bash
+# On EC2 - Lambda function deployment
+cd ~/SL1_TOPOLOGY
+
+# 1. Pull latest changes  
+git pull origin main
+
+# 2. Deploy Lambda functions
+cd backend
 sam build
-sam deploy --guided  # First time only
-# OR: sam deploy  # Subsequent deployments
+sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
 
-# Test Lambda functions
-curl https://your-api-gateway-url/devices
+# 3. Test API endpoint
+curl "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices?limit=1"
 ```
 
-**Frontend Development:**
-```bash
-# On EC2 via VSCode terminal  
-cd ~/SL1_TOPOLOGY/frontend
-
-# Start development server
-npm run dev -- --host 0.0.0.0
-
-# Access via: http://your-ec2-ip:5173
-```
+### **Development Workflow**
+1. **Connect**: VSCode → Remote-SSH → EC2
+2. **Code**: Edit files directly on EC2 instance
+3. **Test**: Deploy backend, rebuild frontend
+4. **Git**: Commit and push changes
+5. **Deploy**: Follow deployment processes above
 
 ### Environment Configuration
 
