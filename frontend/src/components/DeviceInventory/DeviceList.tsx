@@ -98,7 +98,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     if (!device) return null;
     
     return (
-      <div style={style} className="px-3 py-2">
+      <div style={style}>
         <DeviceItem
           device={device}
           onDragStart={onDeviceDrag}
@@ -110,11 +110,24 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold mb-4">Device Inventory</h2>
-        
-        <div className="space-y-3">
+    <div className="flex flex-col h-full bg-gradient-to-b from-white to-gray-50">
+      {/* Modern header with gradient */}
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold mb-1">Device Inventory</h2>
+            <p className="text-blue-100 text-sm">Drag devices to build topology</p>
+          </div>
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+            <div className="text-2xl font-bold">{devices.length}</div>
+            <div className="text-xs text-blue-100">devices</div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Search and filters with modern styling */}
+      <div className="p-4 bg-white border-b border-gray-100 shadow-sm">
+        <div className="space-y-4">
           <DeviceSearch onSearch={setSearchTerm} />
           <DeviceFilters
             types={availableTypes}
@@ -126,9 +139,16 @@ export const DeviceList: React.FC<DeviceListProps> = ({
           />
         </div>
         
-        <div className="mt-3 text-sm text-gray-600">
-          Showing {devices.length} of {total} devices
-          {selectedDevices.size > 0 && ` (${selectedDevices.size} selected)`}
+        {/* Status bar */}
+        <div className="mt-4 flex items-center justify-between text-sm">
+          <div className="text-gray-600">
+            Showing <span className="font-semibold text-gray-900">{devices.length}</span> of <span className="font-semibold text-gray-900">{total}</span> devices
+          </div>
+          {selectedDevices.size > 0 && (
+            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
+              {selectedDevices.size} selected
+            </div>
+          )}
         </div>
       </div>
 
@@ -146,24 +166,26 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             <div className="text-gray-500">No devices found</div>
           </div>
         ) : (
-          <List
-            height={window.innerHeight - 300}
-            itemCount={devices.length}
-            itemSize={100}
-            width="100%"
-          >
-            {Row}
-          </List>
+          <div className="bg-gray-50/30">
+            <List
+              height={window.innerHeight - 320}
+              itemCount={devices.length}
+              itemSize={120}
+              width="100%"
+            >
+              {Row}
+            </List>
+          </div>
         )}
       </div>
 
       {hasMore && !loading && (
-        <div className="p-4 border-t border-gray-200">
+        <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200">
           <button
             onClick={() => fetchDevices(false)}
-            className="w-full py-2 text-blue-600 hover:text-blue-700 transition-colors"
+            className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 transform hover:scale-105"
           >
-            Load More...
+            Load More Devices...
           </button>
         </div>
       )}

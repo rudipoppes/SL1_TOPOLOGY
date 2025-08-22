@@ -42,9 +42,12 @@ function App() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Left Panel - Device Inventory */}
-      <div className="w-96 p-4">
+    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      {/* Resizable Left Panel - Device Inventory */}
+      <div 
+        className="min-w-80 max-w-2xl bg-white shadow-xl border-r border-gray-200"
+        style={{ width: '480px' }}
+      >
         <DeviceList
           onDeviceSelect={handleDeviceSelect}
           onDeviceDrag={handleDeviceDrag}
@@ -53,7 +56,7 @@ function App() {
 
       {/* Right Panel - Topology Canvas */}
       <div 
-        className="flex-1 p-4"
+        className="flex-1 p-6"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
