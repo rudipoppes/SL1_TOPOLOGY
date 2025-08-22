@@ -56,7 +56,7 @@ exports.handler = async (event) => {
       id: edge.node.id,
       name: edge.node.name,
       ip: edge.node.ip || 'N/A',
-      type: mapDeviceClassToType(edge.node.deviceClass?.id) || 'Unknown',
+      type: edge.node.deviceClass?.class || 'Unknown',
       status: normalizeStatus(edge.node.state),
       organization: edge.node.organization?.id || '0'
     }));
@@ -106,12 +106,6 @@ exports.handler = async (event) => {
 };
 
 // Helper functions
-function mapDeviceClassToType(deviceClassId) {
-  // TODO: Query SL1 for device class names instead of hardcoding
-  // For now, show truncated ID until proper lookup is implemented
-  return deviceClassId ? `${deviceClassId.substring(0, 8)}...` : 'Unknown';
-}
-
 function normalizeStatus(status) {
   if (!status) return 'unknown';
   
