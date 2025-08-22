@@ -1,9 +1,9 @@
 {
   "api": {
-    "baseUrl": "PLACEHOLDER_LAMBDA_API_URL",
+    "baseUrl": "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod",
     "timeout": 10000,
     "fallbackUrl": "http://localhost:3000",
-    "note": "baseUrl will be automatically set to AWS API Gateway URL after Lambda deployment"
+    "note": "Connected to working Lambda API Gateway deployment"
   },
   "topology": {
     "canvas": {
