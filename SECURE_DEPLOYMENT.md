@@ -22,6 +22,9 @@ SL1 System Access
 
 ## 📋 Secure Setup Process
 
+### **Step 0: Setup IAM Permissions (One-time)**
+See "IAM Permissions Setup" section above - must be done via AWS Console first!
+
 ### **Step 1: Setup on EC2**
 ```bash
 # Connect to EC2 via VSCode Remote SSH
@@ -30,7 +33,7 @@ git pull origin main
 
 # Run secure credential setup
 cd scripts
-./setup-credentials.sh development
+./setup-credentials.sh -e development
 ```
 
 ### **Step 2: Enter Credentials Securely**
@@ -40,11 +43,24 @@ SL1 Username: rpoppes_gql
 SL1 Password: [hidden]
 ```
 
+You should see:
+```
+✅ Credentials stored securely in AWS Parameter Store
+✅ Created sl1-config.json (credentials loaded from AWS Parameter Store)
+✅ Created deploy-config.json (credentials loaded from AWS Parameter Store)
+```
+
 ### **Step 3: Deploy with Secure Credentials**
 ```bash
 cd ../backend
 ./deploy.sh -e development
 ```
+
+The deployment will:
+- Build Lambda functions with secure credential loading
+- Deploy using CloudFormation/SAM
+- Auto-update frontend config with API Gateway URL
+- Create DynamoDB caching table
 
 ## 🔍 What Happens Behind the Scenes
 
@@ -86,9 +102,15 @@ config/
 - `config/deploy-config.json` (blocked by .gitignore)
 - Any files with real credentials
 
-## 🔧 IAM Permissions Required
+## 🔧 IAM Permissions Setup (Required First)
 
-Your EC2 instance needs these permissions:
+### **Manual Setup via AWS Console:**
+
+1. **Go to AWS Console** → **IAM** → **Roles**
+2. **Find your EC2 role** (e.g., `EC2_Lambda_services`)
+3. **Click** "Add permissions" → "Create inline policy"
+4. **Switch to JSON tab** and paste:
+
 ```json
 {
   "Version": "2012-10-17",
@@ -98,13 +120,27 @@ Your EC2 instance needs these permissions:
       "Action": [
         "ssm:GetParameter",
         "ssm:GetParameters",
-        "ssm:PutParameter"
+        "ssm:PutParameter",
+        "ssm:DeleteParameter"
       ],
       "Resource": "arn:aws:ssm:*:*:parameter/sl1-topology/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*"
     }
   ]
 }
 ```
+
+5. **Name the policy**: `SL1TopologyParameterStore`
+6. **Click** "Create policy"
+
+**Note:** EC2 instances cannot modify their own IAM roles for security reasons, so this must be done via the AWS Console.
 
 ## 🚀 Lambda Deployment Process
 
