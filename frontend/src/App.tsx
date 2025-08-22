@@ -11,6 +11,7 @@ function App() {
 
   const handleDeviceSelect = (devices: Device[]) => {
     setSelectedDevices(devices);
+    // Future: Could be used for batch operations
   };
 
   const handleDeviceDrag = (device: Device) => {

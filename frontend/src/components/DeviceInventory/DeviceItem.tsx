@@ -8,13 +8,6 @@ interface DeviceItemProps {
   onSelect?: (device: Device) => void;
 }
 
-const statusColors = {
-  online: 'bg-green-500',
-  offline: 'bg-red-500',
-  warning: 'bg-yellow-500',
-  unknown: 'bg-gray-400',
-};
-
 const statusIcons = {
   online: '🟢',
   offline: '🔴',

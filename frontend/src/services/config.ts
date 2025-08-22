@@ -52,12 +52,12 @@ class ConfigService {
     const baseConfig = frontendConfig as AppConfig;
 
     // Override with environment variables if available
-    const envApiUrl = import.meta.env.VITE_API_URL;
+    const envApiUrl = (import.meta as any).env?.VITE_API_URL;
     if (envApiUrl) {
       baseConfig.api.baseUrl = envApiUrl;
     }
 
-    const envTheme = import.meta.env.VITE_THEME;
+    const envTheme = (import.meta as any).env?.VITE_THEME;
     if (envTheme) {
       baseConfig.ui.theme = envTheme;
     }

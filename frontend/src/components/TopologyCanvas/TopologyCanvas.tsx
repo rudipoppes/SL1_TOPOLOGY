@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import cytoscape, { Core, NodeSingular, EdgeSingular } from 'cytoscape';
+import cytoscape, { Core } from 'cytoscape';
 import { Device } from '../../services/api';
 import { configService } from '../../services/config';
 
@@ -83,7 +83,6 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
           style: {
             'border-width': 4,
             'border-color': '#8B5CF6',
-            'box-shadow': '0 0 20px rgba(139, 92, 246, 0.5)',
           },
         },
         // Edge styles
@@ -109,8 +108,6 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       
       layout: {
         name: topologyConfig.canvas.defaultLayout,
-        animate: topologyConfig.canvas.animationDuration > 0,
-        animationDuration: topologyConfig.canvas.animationDuration,
         fit: true,
         padding: 30,
       },
@@ -176,8 +173,6 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     // Run layout
     cyRef.current.layout({
       name: topologyConfig.canvas.defaultLayout,
-      animate: topologyConfig.canvas.animationDuration > 0,
-      animationDuration: topologyConfig.canvas.animationDuration,
       fit: true,
       padding: 30,
     }).run();
@@ -202,8 +197,6 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     if (cyRef.current) {
       cyRef.current.layout({
         name: layoutName,
-        animate: topologyConfig.canvas.animationDuration > 0,
-        animationDuration: topologyConfig.canvas.animationDuration,
         fit: true,
         padding: 30,
       }).run();
