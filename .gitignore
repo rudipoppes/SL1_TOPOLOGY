@@ -55,6 +55,10 @@ TEST/
 Sample JSON Maps/
 SL1 DOCS/
 
+# Configuration files with credentials
+backend/deploy-config.json
+**/deploy-config.json
+
 # Temporary files
 *.tmp
 *.temp
