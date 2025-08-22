@@ -87,13 +87,18 @@ echo "🚀 Deploying to AWS..."
 
 # For first deployment, use --guided mode
 if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME-$ENVIRONMENT" --region "$REGION" &>/dev/null; then
-  echo "📦 First deployment detected. Using guided mode..."
-  sam deploy --guided \
+  echo "📦 First deployment detected. Creating S3 bucket and config..."
+  
+  # Create deployment with managed S3 bucket
+  sam deploy \
     --stack-name "$STACK_NAME-$ENVIRONMENT" \
     --region "$REGION" \
     --capabilities CAPABILITY_IAM \
     --parameter-overrides \
-      Environment="$ENVIRONMENT"
+      Environment="$ENVIRONMENT" \
+    --resolve-s3 \
+    --no-confirm-changeset \
+    --no-fail-on-empty-changeset
 else
   # Subsequent deployments use existing S3 bucket
   echo "📦 Using existing deployment configuration..."
