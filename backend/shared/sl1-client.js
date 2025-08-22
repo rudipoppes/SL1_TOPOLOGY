@@ -3,20 +3,44 @@ const configLoader = require('./config-loader');
 
 class SL1Client {
   constructor() {
-    // Load configuration from config files with environment variable override
-    const sl1Config = configLoader.getSL1Config();
-    
-    this.baseUrl = sl1Config.url;
-    this.username = sl1Config.username;
-    this.password = sl1Config.password;
-    this.timeout = sl1Config.timeout || 30000;
-    this.retryAttempts = sl1Config.retryAttempts || 3;
-    
-    // Validate configuration
-    configLoader.validateConfig();
+    this.configLoaded = false;
+    this.baseUrl = null;
+    this.username = null;
+    this.password = null;
+    this.timeout = 30000;
+    this.retryAttempts = 3;
+  }
+
+  async loadConfig() {
+    if (this.configLoaded) {
+      return;
+    }
+
+    try {
+      // Load configuration from secure sources
+      const sl1Config = await configLoader.getSL1Config();
+      
+      this.baseUrl = sl1Config.url;
+      this.username = sl1Config.username;
+      this.password = sl1Config.password;
+      this.timeout = sl1Config.timeout || 30000;
+      this.retryAttempts = sl1Config.retryAttempts || 3;
+      
+      // Validate configuration
+      await configLoader.validateConfig();
+      
+      this.configLoaded = true;
+      console.log('🔐 SL1Client configured securely');
+    } catch (error) {
+      console.error('❌ Failed to load SL1 configuration:', error.message);
+      throw error;
+    }
   }
 
   async query(graphqlQuery, variables = {}) {
+    // Ensure configuration is loaded
+    await this.loadConfig();
+    
     const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
     
     const requestBody = JSON.stringify({

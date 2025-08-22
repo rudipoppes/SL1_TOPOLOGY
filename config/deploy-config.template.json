@@ -2,8 +2,8 @@
   "development": {
     "sl1": {
       "url": "https://52.3.210.190/gql",
-      "username": "rpoppes_gql",
-      "password": "T3stSL!pwd"
+      "username": "YOUR_SL1_USERNAME",
+      "password": "YOUR_SL1_PASSWORD"
     },
     "cors": {
       "allowedOrigins": [
@@ -18,8 +18,8 @@
   "staging": {
     "sl1": {
       "url": "https://52.3.210.190/gql",
-      "username": "rpoppes_gql",
-      "password": "T3stSL!pwd"
+      "username": "YOUR_SL1_USERNAME",
+      "password": "YOUR_SL1_PASSWORD"
     },
     "cors": {
       "allowedOrigins": [
@@ -34,8 +34,8 @@
   "production": {
     "sl1": {
       "url": "https://52.3.210.190/gql",
-      "username": "rpoppes_gql",
-      "password": "T3stSL!pwd"
+      "username": "YOUR_SL1_USERNAME",
+      "password": "YOUR_SL1_PASSWORD"
     },
     "cors": {
       "allowedOrigins": [

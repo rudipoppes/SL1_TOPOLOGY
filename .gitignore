@@ -56,8 +56,13 @@ TEST/
 Sample JSON Maps/
 SL1 DOCS/
 
-# Configuration files with credentials (moved to config/ folder)
-# Note: config/ folder files are now tracked in git
+# Configuration files with credentials - NEVER commit these
+config/sl1-config.json
+config/deploy-config.json
+config/*-credentials.json
+.env*
+backend/.env*
+frontend/.env*
 
 # Temporary files
 *.tmp

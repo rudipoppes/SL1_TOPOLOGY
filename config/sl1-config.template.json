@@ -1,8 +1,8 @@
 {
   "sl1": {
     "url": "https://52.3.210.190/gql",
-    "username": "rpoppes_gql",
-    "password": "T3stSL!pwd",
+    "username": "YOUR_SL1_USERNAME",
+    "password": "YOUR_SL1_PASSWORD",
     "timeout": 30000,
     "retryAttempts": 3
   },
