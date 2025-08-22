@@ -16,8 +16,22 @@ fi
 
 echo "✅ AWS CLI configured"
 
-# Get environment parameter
-ENVIRONMENT=${1:-development}
+# Parse command line arguments
+ENVIRONMENT="development"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -e|--environment)
+      ENVIRONMENT="$2"
+      shift 2
+      ;;
+    *)
+      ENVIRONMENT="$1"
+      shift
+      ;;
+  esac
+done
+
 echo "📋 Setting up credentials for environment: $ENVIRONMENT"
 
 # Get SL1 credentials from user
