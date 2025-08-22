@@ -38,7 +38,8 @@ echo "📋 Setting up credentials for environment: $ENVIRONMENT"
 echo ""
 echo "🔑 Please enter your SL1 credentials:"
 read -p "SL1 Username: " SL1_USERNAME
-read -s -p "SL1 Password: " SL1_PASSWORD
+echo -n "SL1 Password: "
+read -s SL1_PASSWORD
 echo ""
 
 # Store credentials in AWS Systems Manager Parameter Store
@@ -53,7 +54,7 @@ aws ssm put-parameter \
 
 aws ssm put-parameter \
     --name "/sl1-topology/$ENVIRONMENT/sl1-password" \
-    --value "$SL1_PASSWORD" \
+    --value "${SL1_PASSWORD}" \
     --type "SecureString" \
     --overwrite \
     --description "SL1 password for topology application"
