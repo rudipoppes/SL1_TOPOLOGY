@@ -338,11 +338,57 @@ curl -k -u "username:password" https://52.3.210.190/gql
 - Environment-specific configurations
 - Team collaboration without credential sharing
 
+## 🔧 Important Fix: Lambda Function Update
+
+**If you encounter "Missing SL1 configuration" errors after deployment:**
+
+The Lambda functions have been updated to use Parameter Store instead of environment variables. You must redeploy after setting up credentials:
+
+```bash
+# 1. Setup credentials in Parameter Store
+cd scripts
+./setup-credentials.sh -e development
+
+# 2. Rebuild and redeploy Lambda functions
+cd ../backend
+sam build
+sam deploy --stack-name sl1-topology-backend-development --region us-east-1 \
+  --capabilities CAPABILITY_IAM --parameter-overrides Environment=development \
+  --resolve-s3 --no-confirm-changeset
+```
+
+**What Changed:**
+- Lambda functions now load credentials from Parameter Store at runtime
+- No more environment variable dependencies
+- Enhanced error messages for troubleshooting
+
 ## 📞 Next Steps
 
 1. **Setup credentials** using the secure script
 2. **Deploy Lambda functions** with secure credential loading
 3. **Test SL1 integration** with real encrypted credentials
 4. **Monitor access** via CloudTrail logs
+
+## ✅ Testing Your Deployment
+
+After deployment, test the API endpoint:
+
+```bash
+# Get the API Gateway URL from deployment output
+API_URL="https://your-api-gateway-url.execute-api.us-east-1.amazonaws.com/prod"
+
+# Test the devices endpoint
+curl $API_URL/devices
+
+# Expected success response:
+{
+  "devices": [...],
+  "pagination": {...},
+  "filters": {...}
+}
+
+# If you see an error, check CloudWatch logs:
+aws logs tail /aws/lambda/sl1-topology-backend-development-GetDevicesFunction --follow
+```
 
 This approach follows AWS security best practices and enterprise-grade credential management!

@@ -1,25 +1,33 @@
 const https = require('https');
+const configLoader = require('../../shared/config-loader');
 
 class SL1Client {
   constructor() {
-    this.baseUrl = process.env.SL1_URL;
-    this.username = process.env.SL1_USER;
-    this.password = process.env.SL1_PASS;
-    
-    if (!this.baseUrl || !this.username || !this.password) {
-      throw new Error('Missing SL1 configuration. Please set SL1_URL, SL1_USER, and SL1_PASS environment variables.');
+    this.config = null;
+  }
+
+  async initialize() {
+    if (!this.config) {
+      this.config = await configLoader.getSL1Config();
+      
+      if (!this.config.url || !this.config.username || !this.config.password) {
+        throw new Error('Missing SL1 configuration. Please ensure Parameter Store contains sl1-url, sl1-username, and sl1-password.');
+      }
     }
+    return this.config;
   }
 
   async query(graphqlQuery, variables = {}) {
-    const auth = Buffer.from(`${this.username}:${this.password}`).toString('base64');
+    const config = await this.initialize();
+    
+    const auth = Buffer.from(`${config.username}:${config.password}`).toString('base64');
     
     const requestBody = JSON.stringify({
       query: graphqlQuery,
       variables
     });
 
-    const url = new URL(this.baseUrl);
+    const url = new URL(config.url);
     
     return new Promise((resolve, reject) => {
       const options = {
@@ -47,8 +55,8 @@ class SL1Client {
             const result = JSON.parse(data);
             
             if (result.errors) {
-              console.error('GraphQL Errors:', result.errors);
-              reject(new Error('GraphQL query failed'));
+              console.error('GraphQL Errors:', JSON.stringify(result.errors, null, 2));
+              reject(new Error('GraphQL query failed: ' + JSON.stringify(result.errors)));
             } else {
               resolve(result.data);
             }
@@ -73,9 +81,7 @@ class SL1Client {
 const QUERIES = {
   GET_DEVICES: `
     query GetDevices($limit: Int!) {
-      devices(
-        first: $limit
-      ) {
+      devices(first: $limit) {
         edges {
           node {
             id
@@ -83,12 +89,11 @@ const QUERIES = {
             ip
             state
             deviceClass {
-              name
+              id
             }
             organization {
-              name
+              id
             }
-            hostname
           }
         }
         pageInfo {
