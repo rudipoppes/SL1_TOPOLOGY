@@ -56,9 +56,9 @@ exports.handler = async (event) => {
       id: edge.node.id,
       name: edge.node.name,
       ip: edge.node.ip || 'N/A',
-      type: edge.node.deviceClass?.id || 'Unknown', // We'll use deviceClass ID for now
+      type: edge.node.deviceClass?.name || edge.node.deviceClass?.id || 'Unknown',
       status: normalizeStatus(edge.node.state),
-      organization: edge.node.organization?.id || '0'
+      organization: edge.node.organization?.name || edge.node.organization?.id || 'Unknown'
     }));
     
     // Apply additional filters if provided

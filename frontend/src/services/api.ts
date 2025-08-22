@@ -84,26 +84,6 @@ export const apiService = {
     try {
       console.log('🚀 Calling Lambda API:', apiConfig.baseUrl);
       const response = await api.get<DevicesResponse>('/devices', { params });
-      
-      // Map device class IDs to readable types
-      const typeMapping: Record<string, string> = {
-        'BCF7991D22A509B38A4DEE48FD46DC7F': 'Database',
-        'E463330153028A130AC29F7B8BA40746': 'Compute',
-        '6D3E2C084E7A973DC5A9ABD1651F2EF7': 'VMware',
-        'ADFC94C6A2FF8FAC5A383E90F979AFBD': 'Network',
-        // Add more mappings as needed
-        'N/A': 'Unknown'
-      };
-      
-      // Process devices to have readable types
-      if (response.data.devices) {
-        response.data.devices = response.data.devices.map(device => ({
-          ...device,
-          type: typeMapping[device.type] || device.type.substring(0, 8) + '...',
-          status: device.status || 'unknown'
-        }));
-      }
-      
       return response.data;
     } catch (error) {
       console.error('❌ API call failed, falling back to mock data:', error);
