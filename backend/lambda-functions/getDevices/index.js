@@ -107,17 +107,9 @@ exports.handler = async (event) => {
 
 // Helper functions
 function mapDeviceClassToType(deviceClassId) {
-  // Common device class mappings - update based on your SL1 system
-  const typeMap = {
-    'BCF7991D22A509B38A4DEE48FD46DC7F': 'Database',
-    'E463330153028A130AC29F7B8BA40746': 'Compute', 
-    '6D3E2C084E7A973DC5A9ABD1651F2EF7': 'VMware',
-    'ADFC94C6A2FF8FAC5A383E90F979AFBD': 'Network',
-    '0338422617429SC44': 'Storage',
-    'DF788702000H': 'Windows Server'
-  };
-  
-  return typeMap[deviceClassId] || (deviceClassId ? deviceClassId.substring(0, 12) + '...' : 'Unknown');
+  // TODO: Query SL1 for device class names instead of hardcoding
+  // For now, show truncated ID until proper lookup is implemented
+  return deviceClassId ? `${deviceClassId.substring(0, 8)}...` : 'Unknown';
 }
 
 function normalizeStatus(status) {
