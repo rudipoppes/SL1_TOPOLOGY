@@ -85,14 +85,26 @@ echo ""
 # Deploy the application
 echo "🚀 Deploying to AWS..."
 
-# Deploy with environment parameter
-sam deploy \
-  --stack-name "$STACK_NAME-$ENVIRONMENT" \
-  --region "$REGION" \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    Environment="$ENVIRONMENT" \
-  --no-fail-on-empty-changeset
+# For first deployment, use --guided mode
+if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME-$ENVIRONMENT" --region "$REGION" &>/dev/null; then
+  echo "📦 First deployment detected. Using guided mode..."
+  sam deploy --guided \
+    --stack-name "$STACK_NAME-$ENVIRONMENT" \
+    --region "$REGION" \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      Environment="$ENVIRONMENT"
+else
+  # Subsequent deployments use existing S3 bucket
+  echo "📦 Using existing deployment configuration..."
+  sam deploy \
+    --stack-name "$STACK_NAME-$ENVIRONMENT" \
+    --region "$REGION" \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      Environment="$ENVIRONMENT" \
+    --no-fail-on-empty-changeset
+fi
 
 if [[ $? -ne 0 ]]; then
   echo "❌ Deployment failed"
