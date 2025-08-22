@@ -1,0 +1,30 @@
+{
+  "sl1": {
+    "url": "https://52.3.210.190/gql",
+    "username": "rpoppes_gql",
+    "password": "T3stSL!pwd",
+    "timeout": 30000,
+    "retryAttempts": 3
+  },
+  "api": {
+    "cors": {
+      "allowedOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ]
+    },
+    "rateLimit": {
+      "requestsPerMinute": 100
+    }
+  },
+  "cache": {
+    "ttlSeconds": 900,
+    "tableName": "sl1-topology-cache-v2"
+  },
+  "topology": {
+    "defaultDepth": 2,
+    "maxDepth": 5,
+    "defaultDirection": "children",
+    "maxNodesPerQuery": 500
+  }
+}

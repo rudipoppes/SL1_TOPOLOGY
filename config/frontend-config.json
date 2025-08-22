@@ -1,0 +1,36 @@
+{
+  "api": {
+    "baseUrl": "https://your-api-gateway-url/prod",
+    "timeout": 10000
+  },
+  "topology": {
+    "canvas": {
+      "defaultLayout": "force-directed",
+      "layouts": [
+        "force-directed",
+        "hierarchical",
+        "circular",
+        "grid"
+      ],
+      "maxNodes": 1000,
+      "animationDuration": 300
+    },
+    "controls": {
+      "defaultDepth": 2,
+      "maxDepth": 5,
+      "defaultDirection": "children",
+      "directions": ["children", "parents", "both"]
+    }
+  },
+  "ui": {
+    "theme": "light",
+    "animations": true,
+    "autoRefresh": false,
+    "refreshInterval": 300000
+  },
+  "devices": {
+    "itemsPerPage": 50,
+    "maxItemsPerPage": 200,
+    "virtualScrolling": true
+  }
+}

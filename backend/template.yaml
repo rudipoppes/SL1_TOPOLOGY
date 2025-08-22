@@ -9,32 +9,41 @@ Globals:
     MemorySize: 512
     Environment:
       Variables:
-        SL1_URL: !Ref SL1Url
-        SL1_USER: !Ref SL1User
-        SL1_PASS: !Ref SL1Pass
-        CORS_ORIGIN: !Ref CorsOrigin
+        NODE_ENV: !Ref Environment
         CACHE_TABLE: !Ref CacheTable
+        # Optional overrides (only set if parameters are provided)
+        SL1_URL: !If [HasSL1UrlOverride, !Ref SL1UrlOverride, !Ref "AWS::NoValue"]
+        CORS_ORIGIN: !If [HasCorsOriginOverride, !Ref CorsOriginOverride, !Ref "AWS::NoValue"]
 
 Parameters:
-  SL1Url:
+  Environment:
     Type: String
-    Description: SL1 GraphQL endpoint URL
-    Default: https://your-sl1-instance/gql
+    Description: Deployment environment (development, staging, production)
+    Default: development
+    AllowedValues:
+      - development
+      - staging
+      - production
   
-  SL1User:
+  ConfigBucket:
     Type: String
-    Description: SL1 username
-    NoEcho: true
+    Description: S3 bucket for configuration files (optional - uses local config if not provided)
+    Default: ""
   
-  SL1Pass:
+  # Optional parameter overrides (use only if needed to override config files)
+  SL1UrlOverride:
     Type: String
-    Description: SL1 password
-    NoEcho: true
+    Description: Override SL1 GraphQL endpoint URL (optional)
+    Default: ""
   
-  CorsOrigin:
+  CorsOriginOverride:
     Type: String
-    Description: Allowed CORS origin
-    Default: http://localhost:5173
+    Description: Override CORS origin (optional)
+    Default: ""
+
+Conditions:
+  HasSL1UrlOverride: !Not [!Equals [!Ref SL1UrlOverride, ""]]
+  HasCorsOriginOverride: !Not [!Equals [!Ref CorsOriginOverride, ""]]
 
 Resources:
   # API Gateway

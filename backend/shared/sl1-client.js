@@ -1,14 +1,19 @@
 const https = require('https');
+const configLoader = require('./config-loader');
 
 class SL1Client {
   constructor() {
-    this.baseUrl = process.env.SL1_URL;
-    this.username = process.env.SL1_USER;
-    this.password = process.env.SL1_PASS;
+    // Load configuration from config files with environment variable override
+    const sl1Config = configLoader.getSL1Config();
     
-    if (!this.baseUrl || !this.username || !this.password) {
-      throw new Error('Missing SL1 configuration. Please set SL1_URL, SL1_USER, and SL1_PASS environment variables.');
-    }
+    this.baseUrl = sl1Config.url;
+    this.username = sl1Config.username;
+    this.password = sl1Config.password;
+    this.timeout = sl1Config.timeout || 30000;
+    this.retryAttempts = sl1Config.retryAttempts || 3;
+    
+    // Validate configuration
+    configLoader.validateConfig();
   }
 
   async query(graphqlQuery, variables = {}) {

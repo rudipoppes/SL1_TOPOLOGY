@@ -1,10 +1,12 @@
 import axios from 'axios';
+import { configService } from './config';
 
-// Configure API base URL (will be updated with actual Lambda endpoint)
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Get API configuration from config service
+const apiConfig = configService.getApiConfig();
 
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: apiConfig.baseUrl,
+  timeout: apiConfig.timeout,
   headers: {
     'Content-Type': 'application/json',
   },

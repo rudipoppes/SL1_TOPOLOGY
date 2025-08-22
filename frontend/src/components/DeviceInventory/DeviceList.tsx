@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { Device, apiService } from '../../services/api';
+import { configService } from '../../services/config';
 import { DeviceItem } from './DeviceItem';
 import { DeviceSearch } from './DeviceSearch';
 import { DeviceFilters } from './DeviceFilters';
@@ -25,11 +26,12 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   
-  // Pagination
+  // Pagination - use config
+  const devicesConfig = configService.getDevicesConfig();
   const [hasMore, setHasMore] = useState(true);
   const [offset, setOffset] = useState(0);
   const [total, setTotal] = useState(0);
-  const limit = 50;
+  const limit = devicesConfig.itemsPerPage;
 
   // Fetch devices
   const fetchDevices = useCallback(async (reset = false) => {
