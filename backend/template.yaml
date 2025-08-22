@@ -88,6 +88,16 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CacheTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/sl1-topology/*'
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: '*'
 
   GetTopologyFunction:
     Type: AWS::Serverless::Function
@@ -104,6 +114,16 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CacheTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/sl1-topology/*'
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: '*'
 
   SearchDevicesFunction:
     Type: AWS::Serverless::Function
@@ -120,6 +140,16 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CacheTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - ssm:GetParameter
+              - ssm:GetParameters
+            Resource: !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/sl1-topology/*'
+          - Effect: Allow
+            Action:
+              - kms:Decrypt
+            Resource: '*'
 
 Outputs:
   ApiUrl:
