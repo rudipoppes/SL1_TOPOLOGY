@@ -38,24 +38,37 @@ class ConfigLoader {
   }
 
   /**
-   * Load base configuration from files
+   * Load base configuration - Lambda version (no config files needed)
    */
   async loadBaseConfig() {
-    // Try to load from config file, fall back to template
-    const configPath = path.join(__dirname, '../../config/sl1-config.json');
-    const templatePath = path.join(__dirname, '../../config/sl1-config.template.json');
-    
-    let configFile = configPath;
-    if (!fs.existsSync(configPath) && fs.existsSync(templatePath)) {
-      configFile = templatePath;
-      console.log('📄 Using template config file');
-    }
-    
-    if (!fs.existsSync(configFile)) {
-      throw new Error('No configuration file found. Please run setup-credentials.sh');
-    }
-    
-    return JSON.parse(fs.readFileSync(configFile, 'utf8'));
+    // Lambda environment - return minimal base config
+    return {
+      "sl1": {
+        "url": "https://52.3.210.190/gql",
+        "username": "PLACEHOLDER",
+        "password": "PLACEHOLDER",
+        "timeout": 30000,
+        "retryAttempts": 3
+      },
+      "api": {
+        "cors": {
+          "allowedOrigins": ["*"]
+        },
+        "rateLimit": {
+          "requestsPerMinute": 100
+        }
+      },
+      "cache": {
+        "ttlSeconds": 900,
+        "tableName": process.env.CACHE_TABLE || "sl1-topology-cache-v2"
+      },
+      "topology": {
+        "defaultDepth": 2,
+        "maxDepth": 5,
+        "defaultDirection": "children",
+        "maxNodesPerQuery": 500
+      }
+    };
   }
 
   /**
