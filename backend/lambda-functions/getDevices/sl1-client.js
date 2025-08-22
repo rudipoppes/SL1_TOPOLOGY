@@ -90,11 +90,9 @@ const QUERIES = {
             state
             deviceClass {
               id
-              name
             }
             organization {
               id
-              name
             }
           }
         }

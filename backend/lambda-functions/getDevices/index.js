@@ -56,9 +56,9 @@ exports.handler = async (event) => {
       id: edge.node.id,
       name: edge.node.name,
       ip: edge.node.ip || 'N/A',
-      type: edge.node.deviceClass?.name || edge.node.deviceClass?.id || 'Unknown',
+      type: mapDeviceClassToType(edge.node.deviceClass?.id) || 'Unknown',
       status: normalizeStatus(edge.node.state),
-      organization: edge.node.organization?.name || edge.node.organization?.id || 'Unknown'
+      organization: edge.node.organization?.id || '0'
     }));
     
     // Apply additional filters if provided
@@ -106,6 +106,20 @@ exports.handler = async (event) => {
 };
 
 // Helper functions
+function mapDeviceClassToType(deviceClassId) {
+  // Common device class mappings - update based on your SL1 system
+  const typeMap = {
+    'BCF7991D22A509B38A4DEE48FD46DC7F': 'Database',
+    'E463330153028A130AC29F7B8BA40746': 'Compute', 
+    '6D3E2C084E7A973DC5A9ABD1651F2EF7': 'VMware',
+    'ADFC94C6A2FF8FAC5A383E90F979AFBD': 'Network',
+    '0338422617429SC44': 'Storage',
+    'DF788702000H': 'Windows Server'
+  };
+  
+  return typeMap[deviceClassId] || (deviceClassId ? deviceClassId.substring(0, 12) + '...' : 'Unknown');
+}
+
 function normalizeStatus(status) {
   if (!status) return 'unknown';
   
