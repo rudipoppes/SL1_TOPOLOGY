@@ -2,23 +2,40 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "LambdaDeploymentPermissions",
       "Effect": "Allow",
       "Action": [
         "lambda:*",
         "apigateway:*",
         "dynamodb:*",
         "cloudformation:*",
-        "s3:*",
-        "iam:PassRole",
-        "iam:CreateRole",
-        "iam:AttachRolePolicy",
-        "iam:PutRolePolicy",
-        "iam:GetRole",
-        "iam:ListRoles"
+        "s3:*"
       ],
       "Resource": "*"
     },
     {
+      "Sid": "IAMRoleManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRole",
+        "iam:GetRolePolicy",
+        "iam:ListRoles",
+        "iam:ListRolePolicies",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:PassRole"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ParameterStoreAccess",
       "Effect": "Allow",
       "Action": [
         "ssm:GetParameter",
@@ -27,19 +44,41 @@
         "ssm:DeleteParameter",
         "ssm:DescribeParameters"
       ],
-      "Resource": [
-        "arn:aws:ssm:*:*:parameter/sl1-topology/*"
-      ]
+      "Resource": "arn:aws:ssm:*:*:parameter/sl1-topology/*"
     },
     {
+      "Sid": "KMSDecryption",
       "Effect": "Allow",
       "Action": [
         "kms:Decrypt",
         "kms:DescribeKey"
       ],
-      "Resource": [
-        "arn:aws:kms:*:*:key/*"
-      ]
+      "Resource": "*"
+    },
+    {
+      "Sid": "CloudWatchLogsAccess",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents",
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:DescribeLogStreams",
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2ReadAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeInstances",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeSubnets"
+      ],
+      "Resource": "*"
     }
   ]
 }

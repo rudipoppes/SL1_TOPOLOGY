@@ -106,6 +106,9 @@ config/
 
 ### **Manual Setup via AWS Console:**
 
+Your EC2 instance needs **THREE** inline policies. Add each one separately:
+
+#### **Policy 1: Parameter Store Access**
 1. **Go to AWS Console** → **IAM** → **Roles**
 2. **Find your EC2 role** (e.g., `EC2_Lambda_services`)
 3. **Click** "Add permissions" → "Create inline policy"
@@ -139,6 +142,61 @@ config/
 
 5. **Name the policy**: `SL1TopologyParameterStore`
 6. **Click** "Create policy"
+
+#### **Policy 2: Lambda Deployment Permissions**
+Repeat steps 1-3, then paste:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateRole",
+        "iam:DeleteRole",
+        "iam:AttachRolePolicy",
+        "iam:DetachRolePolicy",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy",
+        "iam:GetRole",
+        "iam:TagRole",
+        "iam:UntagRole",
+        "iam:ListRoleTags",
+        "iam:PassRole"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**Name**: `LambdaDeploymentPermissions`
+
+#### **Policy 3: CloudWatch Logs Access**
+Repeat steps 1-3, then paste:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "logs:FilterLogEvents",
+        "logs:GetLogEvents",
+        "logs:DescribeLogStreams",
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**Name**: `CloudWatchLogsAccess`
 
 **Note:** EC2 instances cannot modify their own IAM roles for security reasons, so this must be done via the AWS Console.
 
