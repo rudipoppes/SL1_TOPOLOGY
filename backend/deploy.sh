@@ -85,11 +85,19 @@ echo ""
 # Deploy the application
 echo "🚀 Deploying to AWS..."
 
-# For first deployment, use --guided mode
-if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME-$ENVIRONMENT" --region "$REGION" &>/dev/null; then
-  echo "📦 First deployment detected. Creating S3 bucket and config..."
-  
-  # Create deployment with managed S3 bucket
+# Check if samconfig.toml exists with S3 bucket info
+if [[ -f "samconfig.toml" ]] && grep -q "s3_bucket" samconfig.toml; then
+  echo "📦 Using existing SAM configuration..."
+  sam deploy \
+    --stack-name "$STACK_NAME-$ENVIRONMENT" \
+    --region "$REGION" \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      Environment="$ENVIRONMENT" \
+    --no-fail-on-empty-changeset
+else
+  echo "📦 No S3 bucket configured. Creating managed S3 bucket..."
+  # Use --resolve-s3 to auto-create S3 bucket and save config
   sam deploy \
     --stack-name "$STACK_NAME-$ENVIRONMENT" \
     --region "$REGION" \
@@ -98,16 +106,6 @@ if ! aws cloudformation describe-stacks --stack-name "$STACK_NAME-$ENVIRONMENT" 
       Environment="$ENVIRONMENT" \
     --resolve-s3 \
     --no-confirm-changeset \
-    --no-fail-on-empty-changeset
-else
-  # Subsequent deployments use existing S3 bucket
-  echo "📦 Using existing deployment configuration..."
-  sam deploy \
-    --stack-name "$STACK_NAME-$ENVIRONMENT" \
-    --region "$REGION" \
-    --capabilities CAPABILITY_IAM \
-    --parameter-overrides \
-      Environment="$ENVIRONMENT" \
     --no-fail-on-empty-changeset
 fi
 
