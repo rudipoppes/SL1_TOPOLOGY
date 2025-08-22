@@ -35,13 +35,13 @@ exports.handler = async (event) => {
     const cacheKey = `devices:${search}:${type}:${status}:${limit}:${offset}`;
     
     // Check cache
-    const cacheResult = await checkCache(cacheKey);
-    if (cacheResult) {
+    const cachedData = await checkCache(cacheKey);
+    if (cachedData) {
       console.log('Returning cached result');
       return {
         statusCode: 200,
         headers,
-        body: JSON.stringify(cacheResult)
+        body: JSON.stringify(cachedData)
       };
     }
     

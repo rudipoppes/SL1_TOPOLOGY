@@ -1,11 +1,16 @@
 const { SL1Client, QUERIES } = require('./sl1-client');
+const AWS = require('aws-sdk');
+
+const dynamodb = new AWS.DynamoDB.DocumentClient();
+const CACHE_TABLE = process.env.CACHE_TABLE || 'sl1-topology-cache';
+const CACHE_TTL = 900; // 15 minutes
 
 exports.handler = async (event) => {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'OPTIONS,POST'
+    'Access-Control-Allow-Methods': 'OPTIONS,GET'
   };
 
   // Handle OPTIONS request for CORS
@@ -18,141 +23,89 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Parse request body
-    const body = JSON.parse(event.body || '{}');
-    const { deviceIds, depth = 1, direction = 'children' } = body;
+    // Parse query parameters
+    const params = event.queryStringParameters || {};
+    const search = params.search || '';
+    const type = params.type || null;
+    const status = params.status || null;
+    const limit = parseInt(params.limit) || 50;
+    const offset = parseInt(params.offset) || 0;
     
-    if (!deviceIds || !Array.isArray(deviceIds) || deviceIds.length === 0) {
+    // Create cache key
+    const cacheKey = `devices:${search}:${type}:${status}:${limit}:${offset}`;
+    
+    // Check cache
+    const cachedData = await checkCache(cacheKey);
+    if (cachedData) {
+      console.log('Returning cached result');
       return {
-        statusCode: 400,
+        statusCode: 200,
         headers,
-        body: JSON.stringify({
-          error: 'deviceIds array is required'
-        })
+        body: JSON.stringify(cachedData)
       };
     }
     
-    // Query SL1 for relationships
+    // Query SL1
     const sl1Client = new SL1Client();
-    const data = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, {
-      deviceIds
+    const data = await sl1Client.query(QUERIES.GET_DEVICES, {
+      limit
     });
     
-    // Build topology structure
-    const topology = buildTopology(data.deviceRelationships.edges, deviceIds, depth, direction);
+    // Process and filter results
+    let devices = data.devices.edges.map(edge => ({
+      id: edge.node.id,
+      name: edge.node.name,
+      ip: edge.node.ip || 'N/A',
+      type: edge.node.deviceClass?.id || 'Unknown', // We'll use deviceClass ID for now
+      status: normalizeStatus(edge.node.state),
+      organization: edge.node.organization?.id || '0'
+    }));
+    
+    // Apply additional filters if provided
+    if (type) {
+      devices = devices.filter(d => d.type.toLowerCase() === type.toLowerCase());
+    }
+    if (status) {
+      devices = devices.filter(d => d.status.toLowerCase() === status.toLowerCase());
+    }
+    
+    const response = {
+      devices,
+      pagination: {
+        total: devices.length, // SL1 doesn't provide totalCount
+        limit,
+        offset,
+        hasMore: data.devices.pageInfo?.hasNextPage || false
+      },
+      filters: {
+        availableTypes: getUniqueTypes(devices),
+        availableStatuses: ['online', 'offline', 'warning', 'unknown']
+      }
+    };
+    
+    // Cache the result
+    await cacheResult(cacheKey, response);
     
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        topology,
-        stats: {
-          totalDevices: topology.nodes.length,
-          totalRelationships: topology.edges.length,
-          depth,
-          direction
-        }
-      })
+      body: JSON.stringify(response)
     };
     
   } catch (error) {
-    console.error('Error fetching topology:', error);
+    console.error('Error fetching devices:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to fetch topology',
+        error: 'Failed to fetch devices',
         message: error.message
       })
     };
   }
 };
 
-function buildTopology(relationships, startDeviceIds, maxDepth, direction) {
-  const nodes = new Map();
-  const edges = [];
-  const visitedRelationships = new Set();
-  
-  // Helper to add a device node
-  function addNode(device) {
-    if (!nodes.has(device.id)) {
-      nodes.set(device.id, {
-        id: device.id,
-        label: device.name,
-        type: device.type || 'Unknown',
-        status: normalizeStatus(device.status)
-      });
-    }
-  }
-  
-  // Process relationships recursively
-  function processRelationships(currentDeviceIds, currentDepth) {
-    if (currentDepth > maxDepth) return;
-    
-    const nextLevelDeviceIds = new Set();
-    
-    relationships.forEach(edge => {
-      const rel = edge.node;
-      const relationshipKey = `${rel.parentDevice.id}-${rel.childDevice.id}`;
-      
-      if (visitedRelationships.has(relationshipKey)) return;
-      
-      // Check if this relationship involves our current devices
-      const parentInCurrent = currentDeviceIds.includes(rel.parentDevice.id);
-      const childInCurrent = currentDeviceIds.includes(rel.childDevice.id);
-      
-      if (direction === 'children' && parentInCurrent) {
-        // Add child device and edge
-        addNode(rel.parentDevice);
-        addNode(rel.childDevice);
-        edges.push({
-          source: rel.parentDevice.id,
-          target: rel.childDevice.id
-        });
-        visitedRelationships.add(relationshipKey);
-        nextLevelDeviceIds.add(rel.childDevice.id);
-        
-      } else if (direction === 'parents' && childInCurrent) {
-        // Add parent device and edge
-        addNode(rel.parentDevice);
-        addNode(rel.childDevice);
-        edges.push({
-          source: rel.parentDevice.id,
-          target: rel.childDevice.id
-        });
-        visitedRelationships.add(relationshipKey);
-        nextLevelDeviceIds.add(rel.parentDevice.id);
-        
-      } else if (direction === 'both' && (parentInCurrent || childInCurrent)) {
-        // Add both devices and edge
-        addNode(rel.parentDevice);
-        addNode(rel.childDevice);
-        edges.push({
-          source: rel.parentDevice.id,
-          target: rel.childDevice.id
-        });
-        visitedRelationships.add(relationshipKey);
-        
-        if (parentInCurrent) nextLevelDeviceIds.add(rel.childDevice.id);
-        if (childInCurrent) nextLevelDeviceIds.add(rel.parentDevice.id);
-      }
-    });
-    
-    // Recursively process next level
-    if (nextLevelDeviceIds.size > 0 && currentDepth < maxDepth) {
-      processRelationships(Array.from(nextLevelDeviceIds), currentDepth + 1);
-    }
-  }
-  
-  // Start processing from initial devices
-  processRelationships(startDeviceIds, 1);
-  
-  return {
-    nodes: Array.from(nodes.values()),
-    edges
-  };
-}
-
+// Helper functions
 function normalizeStatus(status) {
   if (!status) return 'unknown';
   
@@ -165,4 +118,40 @@ function normalizeStatus(status) {
     return 'warning';
   }
   return 'unknown';
+}
+
+function getUniqueTypes(devices) {
+  const types = [...new Set(devices.map(d => d.type))];
+  return types.filter(t => t !== 'Unknown').sort();
+}
+
+async function checkCache(key) {
+  try {
+    const result = await dynamodb.get({
+      TableName: CACHE_TABLE,
+      Key: { cacheKey: key }
+    }).promise();
+    
+    if (result.Item && result.Item.ttl > Math.floor(Date.now() / 1000)) {
+      return result.Item.data;
+    }
+  } catch (error) {
+    console.error('Cache check error:', error);
+  }
+  return null;
+}
+
+async function cacheResult(key, data) {
+  try {
+    await dynamodb.put({
+      TableName: CACHE_TABLE,
+      Item: {
+        cacheKey: key,
+        data,
+        ttl: Math.floor(Date.now() / 1000) + CACHE_TTL
+      }
+    }).promise();
+  } catch (error) {
+    console.error('Cache write error:', error);
+  }
 }
