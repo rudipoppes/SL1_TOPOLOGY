@@ -1,5 +1,5 @@
 const https = require('https');
-const configLoader = require('../../shared/config-loader');
+const configLoader = require('./config-loader');
 
 class SL1Client {
   constructor() {
