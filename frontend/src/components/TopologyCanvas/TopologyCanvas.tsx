@@ -108,9 +108,8 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       
       layout: {
         name: topologyConfig.canvas.defaultLayout,
-        fit: true,
         padding: 30,
-      },
+      } as any,
       
       // Interaction options
       minZoom: 0.1,
@@ -175,7 +174,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       name: topologyConfig.canvas.defaultLayout,
       fit: true,
       padding: 30,
-    }).run();
+    } as any).run();
 
   }, [devices, isInitialized, topologyConfig]);
 
@@ -199,7 +198,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
         name: layoutName,
         fit: true,
         padding: 30,
-      }).run();
+      } as any).run();
     }
   };
 
