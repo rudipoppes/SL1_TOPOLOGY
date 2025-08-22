@@ -118,14 +118,30 @@ if [[ -n "$API_URL" ]]; then
     echo "📝 Updating frontend config with API URL..."
     # Use jq if available, otherwise show manual instruction
     if command -v jq &> /dev/null; then
+      # Create backup
+      cp "$FRONTEND_CONFIG" "${FRONTEND_CONFIG}.backup"
+      
+      # Update baseUrl with actual API Gateway URL
       jq --arg url "$API_URL" '.api.baseUrl = $url' "$FRONTEND_CONFIG" > "${FRONTEND_CONFIG}.tmp" && mv "${FRONTEND_CONFIG}.tmp" "$FRONTEND_CONFIG"
-      echo "✅ Frontend config updated"
+      
+      echo "✅ Frontend config updated with API URL: $API_URL"
+      echo "📄 Backup saved: ${FRONTEND_CONFIG}.backup"
     else
-      echo "⚠️  Manual step: Update frontend config with API URL: $API_URL"
+      echo "⚠️  jq not installed. Manual step required:"
+      echo "   Update $FRONTEND_CONFIG"
+      echo "   Change: \"baseUrl\": \"PLACEHOLDER_LAMBDA_API_URL\""
+      echo "   To:     \"baseUrl\": \"$API_URL\""
     fi
   fi
+  
+  # Also create environment file for frontend development
+  FRONTEND_ENV="../frontend/.env.local"
+  echo "VITE_API_URL=$API_URL" > "$FRONTEND_ENV"
+  echo "📄 Created frontend environment file: $FRONTEND_ENV"
+  
 else
   echo "⚠️  Could not retrieve API Gateway URL"
+  echo "❌ Frontend will continue using fallback URL until deployment succeeds"
 fi
 
 echo ""

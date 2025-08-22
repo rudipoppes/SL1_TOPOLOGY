@@ -1,7 +1,9 @@
 {
   "api": {
-    "baseUrl": "https://your-api-gateway-url/prod",
-    "timeout": 10000
+    "baseUrl": "PLACEHOLDER_LAMBDA_API_URL",
+    "timeout": 10000,
+    "fallbackUrl": "http://localhost:3000",
+    "note": "baseUrl will be automatically set to AWS API Gateway URL after Lambda deployment"
   },
   "topology": {
     "canvas": {

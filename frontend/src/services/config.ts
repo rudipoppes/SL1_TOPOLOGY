@@ -62,11 +62,15 @@ class ConfigService {
       baseConfig.ui.theme = envTheme;
     }
 
-    // Validate required configuration
-    if (!baseConfig.api.baseUrl) {
-      console.warn('API base URL not configured. Using localhost fallback.');
-      baseConfig.api.baseUrl = 'http://localhost:3000';
+    // Handle placeholder API URL (before Lambda deployment)
+    if (!baseConfig.api.baseUrl || baseConfig.api.baseUrl === 'PLACEHOLDER_LAMBDA_API_URL') {
+      console.warn('⚠️  Lambda API not deployed yet. Using fallback URL for development.');
+      console.log('📝 To deploy Lambda: run ./backend/deploy.sh -e development');
+      baseConfig.api.baseUrl = (baseConfig.api as any).fallbackUrl || 'http://localhost:3000';
     }
+
+    // Load user preferences from localStorage
+    this.loadUserPreferences();
 
     return baseConfig;
   }
@@ -123,7 +127,7 @@ class ConfigService {
     }
   }
 
-  // Load user preferences from localStorage
+  // Load user preferences from localStorage  
   private loadUserPreferences(): void {
     const savedTheme = localStorage.getItem('app-theme');
     if (savedTheme) {
