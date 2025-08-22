@@ -1,4 +1,4 @@
-const { SL1Client, QUERIES } = require('../../shared/sl1-client');
+const { SL1Client, QUERIES } = require('./sl1-client');
 
 exports.handler = async (event) => {
   const headers = {

@@ -1,4 +1,4 @@
-const { SL1Client, QUERIES } = require('../../shared/sl1-client');
+const { SL1Client, QUERIES } = require('./sl1-client');
 const AWS = require('aws-sdk');
 
 const dynamodb = new AWS.DynamoDB.DocumentClient();
@@ -48,9 +48,7 @@ exports.handler = async (event) => {
     // Query SL1
     const sl1Client = new SL1Client();
     const data = await sl1Client.query(QUERIES.GET_DEVICES, {
-      search,
-      limit,
-      offset
+      limit
     });
     
     // Process and filter results
@@ -58,8 +56,9 @@ exports.handler = async (event) => {
       id: edge.node.id,
       name: edge.node.name,
       ip: edge.node.ip || 'N/A',
-      type: edge.node.type || 'Unknown',
-      status: normalizeStatus(edge.node.status)
+      type: edge.node.deviceClass?.id || 'Unknown', // We'll use deviceClass ID for now
+      status: normalizeStatus(edge.node.state),
+      organization: edge.node.organization?.id || '0'
     }));
     
     // Apply additional filters if provided
@@ -73,7 +72,7 @@ exports.handler = async (event) => {
     const response = {
       devices,
       pagination: {
-        total: data.devices.totalCount || devices.length,
+        total: devices.length, // SL1 doesn't provide totalCount
         limit,
         offset,
         hasMore: data.devices.pageInfo?.hasNextPage || false
