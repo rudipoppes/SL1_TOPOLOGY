@@ -333,10 +333,14 @@ After adding permissions, verify everything works:
    ./setup-credentials.sh -e development
    ```
 
-2. **Test deployment**:
+2. **Pull latest code and deploy**:
    ```bash
+   git pull origin main
    cd backend
-   ./deploy.sh -e development
+   sam build
+   sam deploy --stack-name sl1-topology-backend-development --region us-east-1 \
+     --capabilities CAPABILITY_IAM --parameter-overrides Environment=development \
+     --resolve-s3 --no-confirm-changeset
    ```
 
 3. **Test API**:
@@ -344,10 +348,12 @@ After adding permissions, verify everything works:
    curl https://your-api-url/prod/devices
    ```
 
-4. **Check logs**:
+4. **Check logs if needed**:
    ```bash
-   aws logs tail /aws/lambda/your-function-name --follow
+   aws logs tail /aws/lambda/sl1-topology-backend-development-GetDevicesFunction --follow
    ```
+
+**Important**: The Lambda functions were recently updated to use Parameter Store. You must pull the latest code and redeploy after setting up credentials for the first time.
 
 ## 📝 Notes
 
