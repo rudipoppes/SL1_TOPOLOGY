@@ -98,7 +98,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     if (!device) return null;
     
     return (
-      <div style={style} className="px-4 py-2">
+      <div style={style} className="px-3 py-2">
         <DeviceItem
           device={device}
           onDragStart={onDeviceDrag}
@@ -147,9 +147,9 @@ export const DeviceList: React.FC<DeviceListProps> = ({
           </div>
         ) : (
           <List
-            height={600}
+            height={window.innerHeight - 300}
             itemCount={devices.length}
-            itemSize={80}
+            itemSize={100}
             width="100%"
           >
             {Row}

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface DeviceSearchProps {
   onSearch: (searchTerm: string) => void;
@@ -11,24 +11,21 @@ export const DeviceSearch: React.FC<DeviceSearchProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleSearch = useCallback(
-    (value: string) => {
-      setSearchTerm(value);
-      // Debounce search
-      const timeoutId = setTimeout(() => {
-        onSearch(value);
-      }, 300);
-      return () => clearTimeout(timeoutId);
-    },
-    [onSearch]
-  );
+  // Debounced search effect
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      onSearch(searchTerm);
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchTerm, onSearch]);
 
   return (
     <div className="relative">
       <input
         type="text"
         value={searchTerm}
-        onChange={(e) => handleSearch(e.target.value)}
+        onChange={(e) => setSearchTerm(e.target.value)}
         placeholder={placeholder}
         className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
       />

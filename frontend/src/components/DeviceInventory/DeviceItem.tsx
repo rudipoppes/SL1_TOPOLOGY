@@ -27,19 +27,22 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       onDragStart={() => onDragStart(device)}
       onClick={() => onSelect?.(device)}
       className={`
-        flex items-center justify-between p-3 border rounded-lg cursor-move
-        hover:bg-gray-50 transition-colors
-        ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200'}
+        flex items-center justify-between p-4 border-2 rounded-lg cursor-move
+        hover:bg-gray-50 hover:shadow-md transition-all duration-200
+        ${isSelected 
+          ? 'border-blue-600 bg-blue-100 shadow-lg ring-2 ring-blue-200' 
+          : 'border-gray-200 hover:border-gray-300'
+        }
       `}
     >
-      <div className="flex items-center space-x-3">
-        <span className="text-xl">{statusIcons[device.status]}</span>
-        <div>
-          <div className="font-medium text-gray-900">{device.name}</div>
-          <div className="text-sm text-gray-500">{device.ip}</div>
+      <div className="flex items-center space-x-4">
+        <span className="text-2xl">{statusIcons[device.status]}</span>
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold text-gray-900 text-base truncate">{device.name}</div>
+          <div className="text-sm text-gray-600 font-mono">{device.ip}</div>
         </div>
       </div>
-      <div className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded">
+      <div className="text-sm font-medium text-gray-700 bg-gray-200 px-3 py-1.5 rounded-full whitespace-nowrap">
         {device.type}
       </div>
     </div>
