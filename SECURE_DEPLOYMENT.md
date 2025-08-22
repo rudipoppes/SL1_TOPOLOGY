@@ -106,7 +106,7 @@ config/
 
 ### **Manual Setup via AWS Console:**
 
-Your EC2 instance needs **THREE** inline policies. Add each one separately:
+Your EC2 instance needs **FIVE** inline policies. Add each one separately:
 
 #### **Policy 1: Parameter Store Access**
 1. **Go to AWS Console** → **IAM** → **Roles**
@@ -197,6 +197,60 @@ Repeat steps 1-3, then paste:
 ```
 
 **Name**: `CloudWatchLogsAccess`
+
+#### **Policy 4: CloudFormation Access**
+Repeat steps 1-3, then paste:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+
+**Name**: `CloudFormationAccess`
+
+#### **Policy 5: S3 SAM Bucket Access**
+Repeat steps 1-3, then paste:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:GetObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:CreateBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::aws-sam-cli-managed-default-*",
+        "arn:aws:s3:::aws-sam-cli-managed-default-*/*"
+      ]
+    }
+  ]
+}
+```
+
+**Name**: `S3SAMBucketAccess`
 
 **Note:** EC2 instances cannot modify their own IAM roles for security reasons, so this must be done via the AWS Console.
 

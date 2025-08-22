@@ -7,11 +7,45 @@
       "Action": [
         "lambda:*",
         "apigateway:*",
-        "dynamodb:*",
-        "cloudformation:*",
-        "s3:*"
+        "dynamodb:*"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CloudFormationAccess",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:ListStacks"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3SAMBucketAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::aws-sam-cli-managed-default-*",
+        "arn:aws:s3:::aws-sam-cli-managed-default-*/*"
+      ]
     },
     {
       "Sid": "IAMRoleManagement",

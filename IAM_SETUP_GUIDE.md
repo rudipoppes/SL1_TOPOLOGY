@@ -4,7 +4,7 @@ This guide contains ALL the IAM permissions needed for the SL1_TOPOLOGY project 
 
 ## 📋 Required IAM Policies for EC2 Instance
 
-Your EC2 instance IAM role needs **THREE** inline policies to deploy and manage the SL1 Topology system.
+Your EC2 instance IAM role needs **SIX** inline policies to deploy and manage the SL1 Topology system.
 
 ### Option 1: Single Combined Policy (Easier)
 
@@ -20,11 +20,45 @@ You can create ONE policy with all permissions. Go to **AWS Console** → **IAM*
       "Action": [
         "lambda:*",
         "apigateway:*",
-        "dynamodb:*",
-        "cloudformation:*",
-        "s3:*"
+        "dynamodb:*"
       ],
       "Resource": "*"
+    },
+    {
+      "Sid": "CloudFormationAccess",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:ListStacks"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3SAMBucketAccess",
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::aws-sam-cli-managed-default-*",
+        "arn:aws:s3:::aws-sam-cli-managed-default-*/*"
+      ]
     },
     {
       "Sid": "IAMRoleManagement",
@@ -88,9 +122,9 @@ You can create ONE policy with all permissions. Go to **AWS Console** → **IAM*
 
 **Policy Name**: `SL1TopologyCompleteAccess`
 
-### Option 2: Three Separate Policies (More Granular)
+### Option 2: Six Separate Policies (More Granular)
 
-If you prefer to separate concerns, create three policies:
+If you prefer to separate concerns, create six policies:
 
 #### Policy 1: Parameter Store & Credentials
 ```json
@@ -120,7 +154,7 @@ If you prefer to separate concerns, create three policies:
 ```
 **Name**: `SL1TopologyParameterStore`
 
-#### Policy 2: Lambda Deployment
+#### Policy 2: Lambda & API Gateway
 ```json
 {
   "Version": "2012-10-17",
@@ -130,12 +164,74 @@ If you prefer to separate concerns, create three policies:
       "Action": [
         "lambda:*",
         "apigateway:*",
-        "dynamodb:*",
-        "cloudformation:*",
-        "s3:*"
+        "dynamodb:*"
       ],
       "Resource": "*"
-    },
+    }
+  ]
+}
+```
+**Name**: `LambdaDeploymentPermissions`
+
+#### Policy 3: CloudFormation
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:GetTemplate",
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:ListStacks"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+```
+**Name**: `CloudFormationAccess`
+
+#### Policy 4: S3 SAM Buckets
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:CreateBucket",
+        "s3:ListBucket",
+        "s3:GetBucketLocation",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::aws-sam-cli-managed-default-*",
+        "arn:aws:s3:::aws-sam-cli-managed-default-*/*"
+      ]
+    }
+  ]
+}
+```
+**Name**: `S3SAMBucketAccess`
+
+#### Policy 5: IAM Role Management
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
     {
       "Effect": "Allow",
       "Action": [
@@ -156,9 +252,9 @@ If you prefer to separate concerns, create three policies:
   ]
 }
 ```
-**Name**: `LambdaDeploymentPermissions`
+**Name**: `IAMRoleManagement`
 
-#### Policy 3: CloudWatch Logs
+#### Policy 6: CloudWatch Logs
 ```json
 {
   "Version": "2012-10-17",
@@ -224,6 +320,8 @@ If you prefer to separate concerns, create three policies:
 | `not authorized to perform: logs:FilterLogEvents` | CloudWatch Logs | Add logs permissions |
 | `not authorized to perform: iam:DeleteRolePolicy` | IAM DeleteRolePolicy | Add full IAM role permissions |
 | `S3 Bucket not specified` | S3 permissions | Add S3 permissions for SAM |
+| `not authorized to perform: s3:PutObject` | S3 PutObject | Add S3 SAM bucket permissions |
+| `not authorized to perform: cloudformation:CreateChangeSet` | CloudFormation | Add CloudFormation permissions |
 
 ## ✅ Verification Steps
 
