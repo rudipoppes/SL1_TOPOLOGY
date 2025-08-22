@@ -51,7 +51,7 @@ Resources:
   CacheTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: sl1-topology-cache
+      TableName: sl1-topology-cache-v2
       BillingMode: PAY_PER_REQUEST
       AttributeDefinitions:
         - AttributeName: cacheKey
