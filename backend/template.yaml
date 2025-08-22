@@ -11,6 +11,7 @@ Globals:
       Variables:
         NODE_ENV: !Ref Environment
         CACHE_TABLE: !Ref CacheTable
+        DEPLOYMENT_VERSION: "v2.0-parameter-store"
         # Optional overrides (only set if parameters are provided)
         SL1_URL: !If [HasSL1UrlOverride, !Ref SL1UrlOverride, !Ref "AWS::NoValue"]
         CORS_ORIGIN: !If [HasCorsOriginOverride, !Ref CorsOriginOverride, !Ref "AWS::NoValue"]
