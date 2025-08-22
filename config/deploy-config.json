@@ -1,0 +1,49 @@
+{
+  "development": {
+    "sl1": {
+      "url": "https://52.3.210.190/gql",
+      "username": "rpoppes_gql",
+      "password": "T3stSL!pwd"
+    },
+    "cors": {
+      "allowedOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ]
+    },
+    "cache": {
+      "ttlSeconds": 300
+    }
+  },
+  "staging": {
+    "sl1": {
+      "url": "https://52.3.210.190/gql",
+      "username": "rpoppes_gql",
+      "password": "T3stSL!pwd"
+    },
+    "cors": {
+      "allowedOrigins": [
+        "https://staging.your-domain.com",
+        "http://localhost:5173"
+      ]
+    },
+    "cache": {
+      "ttlSeconds": 600
+    }
+  },
+  "production": {
+    "sl1": {
+      "url": "https://52.3.210.190/gql",
+      "username": "rpoppes_gql",
+      "password": "T3stSL!pwd"
+    },
+    "cors": {
+      "allowedOrigins": [
+        "https://topology.your-domain.com"
+      ]
+    },
+    "cache": {
+      "ttlSeconds": 900
+    }
+  }
+}
