@@ -212,7 +212,9 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     
     // Ensure elements are visible after layout
     setTimeout(() => {
-      cyRef.current.fit(undefined, 30);
+      if (cyRef.current) {
+        cyRef.current.fit(undefined, 30);
+      }
     }, 100);
 
   }, [devices, topologyData, isInitialized, topologyConfig]);
