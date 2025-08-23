@@ -6,7 +6,6 @@ import {
   Background,
   Node,
   Edge,
-  ConnectionMode,
   BackgroundVariant,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -148,10 +147,6 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
   onDeviceClick,
   className = '',
 }) => {
-  // Define custom node types
-  const nodeTypes = React.useMemo(() => ({
-    customDevice: CustomDeviceNode,
-  }), []);
 
   // Convert topology data to React Flow format
   const nodes: Node[] = React.useMemo(() => {
@@ -191,7 +186,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.edges) {
       console.log('EDGE DATA:', topologyData.edges);
       console.log('NODE IDS:', topologyData.nodes.map(n => n.id));
-      return topologyData.edges.map((edge, index) => ({
+      return topologyData.edges.map((edge) => ({
         id: `e${edge.source}-${edge.target}`,
         source: String(edge.source),
         target: String(edge.target),
@@ -201,21 +196,6 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     return [];
   }, [topologyData]);
 
-  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    if (onDeviceClick && topologyData) {
-      const nodeData = topologyData.nodes.find(n => String(n.id) === node.id);
-      if (nodeData) {
-        const device: Device = {
-          id: nodeData.id,
-          name: nodeData.label,
-          ip: nodeData.ip,
-          type: nodeData.type,
-          status: nodeData.status,
-        };
-        onDeviceClick(device);
-      }
-    }
-  }, [onDeviceClick, topologyData]);
 
   return (
     <div className={`w-full h-full ${className}`}>
