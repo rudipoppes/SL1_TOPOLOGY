@@ -141,7 +141,7 @@ npm run dev -- --host 0.0.0.0
 ## Next Steps After Setup
 1. Update frontend API URL to use deployed Lambda endpoint
 2. Test device loading with real SL1 data
-3. Implement Cytoscape.js topology visualization
+3. Implement React Flow topology visualization
 4. Add drag-and-drop functionality
 
 ## Troubleshooting

@@ -273,7 +273,7 @@ Globals:
 ## 🎯 Next Steps After Deployment
 
 1. **Verify Integration:** Confirm real SL1 data appears in frontend
-2. **Add Topology Canvas:** Implement Cytoscape.js visualization
+2. **Add Topology Canvas:** Implement React Flow visualization
 3. **Test Relationships:** Implement device relationship queries
 4. **Production Deployment:** Deploy to staging/production environments
 5. **Monitoring:** Set up CloudWatch alarms and logging

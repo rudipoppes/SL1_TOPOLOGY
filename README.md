@@ -5,7 +5,7 @@
 [![AWS Lambda](https://img.shields.io/badge/AWS-Lambda-orange)](https://aws.amazon.com/lambda/)
 [![React](https://img.shields.io/badge/React-18-blue)](https://reactjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)](https://www.typescriptlang.org/)
-[![Cytoscape.js](https://img.shields.io/badge/Cytoscape.js-Visualization-green)](https://cytoscape.org/)
+[![React Flow](https://img.shields.io/badge/React%20Flow-Visualization-green)](https://reactflow.dev/)
 
 ## 🚀 Live System
 
@@ -18,7 +18,7 @@
 ### Current Capabilities
 - 🔍 **Device Search & Filtering** - Real-time search through SL1 device inventory
 - 🎯 **Drag & Drop Interface** - Intuitive device selection and topology building
-- 📊 **Interactive Visualization** - Cytoscape.js powered topology canvas
+- 📊 **Interactive Visualization** - React Flow powered topology canvas
 - 🔄 **Live SL1 Integration** - Direct connection to ScienceLogic GraphQL API
 - ⚡ **Performance Optimized** - Virtual scrolling, caching, responsive design
 - 🛡️ **Secure Authentication** - AWS Parameter Store credential management
@@ -90,7 +90,7 @@ SL1_TOPOLOGY/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── DeviceInventory/ # Device list, search, filters
-│   │   │   └── TopologyCanvas/  # Cytoscape.js visualization
+│   │   │   └── TopologyCanvas/  # React Flow visualization
 │   │   └── services/
 │   │       ├── api.ts          # Lambda API client
 │   │       └── config.ts       # Configuration management

@@ -27,12 +27,19 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with virtual scrolling  
-- ✅ **Topology Visualization**: Interactive Cytoscape.js canvas with drag & drop
+- ✅ **Topology Visualization**: Interactive React Flow canvas with drag & drop
 - ✅ **Real-time Device Data**: Loading live SL1 devices with proper device class names
 - ✅ **Modern UI/UX**: Tailwind CSS responsive design with enhanced selection visibility
 - ✅ **Performance Optimized**: Virtual scrolling, caching, efficient rendering
 - ✅ **Configuration Management**: Proper handling of environment-specific configs
+- ✅ **React Flow Migration**: Replaced problematic Cytoscape.js with React Flow (Aug 2024)
 - 🔄 **Next**: Phase 3 - SL1 Relationship Mapping and Advanced Features
+
+### **IMPORTANT: React Flow Migration (August 2024)**
+- **Issue**: Cytoscape.js was causing infinite rendering loops and browser performance issues
+- **Solution**: Migrated to React Flow (@xyflow/react) for better React integration
+- **Benefits**: Native React hooks, TypeScript support, better performance, no infinite loops
+- **Status**: ✅ Complete - TopologyFlow component replaces TopologyCanvas
 
 ### Important Note for Claude
 **Always check the "Current Status" section above and the Git log to understand what has been completed and what needs to be done next. This project builds incrementally - don't skip phases or create advanced features before the foundation is complete.**
@@ -57,7 +64,7 @@ This project is being built using an **iterative, incremental approach**:
 
 ### **Frontend (React + TypeScript)**
 - ✅ **Device Inventory**: Search, filter, pagination with virtual scrolling
-- ✅ **Interactive Topology**: Cytoscape.js visualization with drag & drop
+- ✅ **Interactive Topology**: React Flow visualization with drag & drop
 - ✅ **Real-time Data**: Connected to live Lambda API
 - ✅ **Modern UI**: Tailwind CSS responsive design
 - ✅ **Topology Controls**: Layout switching, zoom, center view
@@ -245,7 +252,7 @@ SL1_TOPOLOGY is a system that is capable of dynamically map components from SL1 
 
 ### Architecture
 
-**Recommended: Lambda + React + Cytoscape.js**
+**Recommended: Lambda + React + React Flow**
 
 ```
 Frontend (React) ←→ AWS Lambda ←→ SL1 GraphQL/API
@@ -258,7 +265,7 @@ CloudFront          DynamoDB
 - **Frontend**: React + TypeScript hosted on existing AWS server
 - **API Layer**: AWS Lambda functions + API Gateway
 - **Data Layer**: DynamoDB for caching, direct SL1 integration
-- **Visualization**: Cytoscape.js for topology rendering
+- **Visualization**: React Flow for topology rendering
 ---
 
 ## Development Environment Setup
@@ -524,11 +531,11 @@ serve -s dist -l 3000
 - **TypeScript**: Type safety for complex device/relationship data
 - **Vite**: Fast development server and optimized builds
 
-### Topology Visualization: Cytoscape.js
-- **Performance**: Handles thousands of nodes/edges smoothly
-- **Layouts**: Force-directed, hierarchical, circular options
-- **Interactions**: Built-in pan, zoom, selection, drag-drop
-- **Extensible**: Rich plugin ecosystem for advanced features
+### Topology Visualization: React Flow
+- **Performance**: Handles thousands of nodes/edges smoothly with viewport rendering
+- **Layouts**: Grid, hierarchical, force-directed via plugins (Dagre, ELK)
+- **Interactions**: Built-in pan, zoom, selection, drag-drop, minimap
+- **React Native**: Built specifically for React with hooks and TypeScript support
 
 ### UI Framework: Tailwind CSS + Headless UI
 - **Tailwind CSS**: Utility-first styling, highly customizable
@@ -671,7 +678,7 @@ query DeviceRelationships {
 
 ### Phase 1: Core Infrastructure (1-2 weeks)
 - Set up Lambda functions for SL1 integration
-- Basic React app with Cytoscape.js setup
+- Basic React app with React Flow setup
 - Device list display and simple topology rendering
 - Basic drag-and-drop functionality
 
