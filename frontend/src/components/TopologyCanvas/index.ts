@@ -1,2 +1,1 @@
-export { TopologyCanvas } from './TopologyCanvas';
-export type { default as TopologyCanvasProps } from './TopologyCanvas';
+export { TopologyFlow } from './TopologyFlow';

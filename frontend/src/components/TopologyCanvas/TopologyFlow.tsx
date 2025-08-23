@@ -145,7 +145,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     return [];
   }, [topologyData]);
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     if (onDeviceClick && topologyData) {
       const nodeData = topologyData.nodes.find(n => String(n.id) === node.id);
       if (nodeData) {
