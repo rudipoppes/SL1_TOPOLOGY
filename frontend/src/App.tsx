@@ -173,7 +173,7 @@ function App() {
             )}
             <TopologyCanvas 
               devices={topologyDevices}
-              topologyData={topologyData}
+              topologyData={topologyData || undefined}
               onDeviceClick={handleDeviceClick}
               className="h-full"
             />
