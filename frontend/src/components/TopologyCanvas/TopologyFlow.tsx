@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -141,10 +141,15 @@ const CustomDeviceNode = ({ data }: any) => {
   );
 };
 
+// Define custom node types
+const nodeTypes = {
+  customDevice: CustomDeviceNode,
+};
+
 export const TopologyFlow: React.FC<TopologyFlowProps> = ({
   devices = [],
   topologyData,
-  onDeviceClick,
+  onDeviceClick: _onDeviceClick,
   className = '',
 }) => {
 
@@ -202,6 +207,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         fitView
       >
         <Controls />
