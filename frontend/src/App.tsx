@@ -36,11 +36,18 @@ function App() {
       
       setTopologyDevices(updatedDevices);
       
-      // Fetch topology data for all devices on canvas
+      // Fetch topology data for all devices on canvas to get proper relationships
       await fetchTopologyData(updatedDevices);
       
       setDraggedDevice(null);
     }
+  };
+
+  const handleClearAll = () => {
+    console.log('Clearing all topology data');
+    setTopologyDevices([]);
+    setTopologyData(null);
+    setSelectedDevices([]);
   };
 
   const fetchTopologyData = async (devices: Device[]) => {
@@ -185,6 +192,7 @@ function App() {
                   setTopologyData(null);
                 }
               }}
+              onClearAll={handleClearAll}
               className="h-full"
             />
           </div>

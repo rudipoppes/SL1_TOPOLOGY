@@ -28,6 +28,7 @@ interface TopologyFlowProps {
   };
   onDeviceClick?: (device: Device) => void;
   onRemoveDevice?: (deviceId: string) => void;
+  onClearAll?: () => void;
   className?: string;
 }
 
@@ -244,6 +245,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   topologyData,
   onDeviceClick,
   onRemoveDevice,
+  onClearAll,
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
@@ -255,7 +257,14 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     compact: CompactDeviceNode,
   }), []);
 
+  // Clear nodes and edges when topology data is cleared
   useEffect(() => {
+    if (!topologyData && devices.length === 0) {
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
+    
     let flowNodes: Node[] = [];
     let flowEdges: Edge[] = [];
 
@@ -425,8 +434,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             {nodes.length > 0 && (
               <button
                 onClick={() => {
+                  // Clear topology component state
                   setNodes([]);
                   setEdges([]);
+                  // Notify parent to clear its state too
+                  if (onClearAll) {
+                    onClearAll();
+                  }
                 }}
                 className="block w-full text-left px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors"
               >
