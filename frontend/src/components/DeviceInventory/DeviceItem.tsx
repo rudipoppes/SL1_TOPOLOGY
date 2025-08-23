@@ -27,7 +27,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       onDragStart={() => onDragStart(device)}
       onClick={() => onSelect?.(device)}
       className={`
-        group relative flex items-center justify-between p-3 mx-3 my-1.5 rounded-lg cursor-move
+        group relative flex items-center justify-between p-2 mx-3 my-0.5 rounded-lg cursor-move
         transition-all duration-200 ease-out transform hover:scale-[1.01]
         ${isSelected 
           ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-400 shadow-lg ring-2 ring-blue-100' 
@@ -36,10 +36,10 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       `}
     >
       {/* Status indicator and content */}
-      <div className="flex items-center space-x-4 min-w-0 flex-1">
+      <div className="flex items-center space-x-3 min-w-0 flex-1">
         {/* Status with enhanced styling */}
-        <div className="relative">
-          <span className="text-xl drop-shadow-sm">{statusIcons[device.status]}</span>
+        <div className="relative flex-shrink-0">
+          <span className="text-lg drop-shadow-sm">{statusIcons[device.status]}</span>
           {device.status === 'online' && (
             <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
           )}
@@ -51,9 +51,8 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
           <div 
             className="font-semibold text-gray-900 text-sm truncate group-hover:text-blue-700 transition-colors"
             title={device.name}
-            style={{ maxWidth: '280px' }}
           >
-            {device.name.length > 30 ? `${device.name.substring(0, 30)}...` : device.name}
+            {device.name.length > 45 ? `${device.name.substring(0, 45)}...` : device.name}
           </div>
           
           {/* IP address */}
