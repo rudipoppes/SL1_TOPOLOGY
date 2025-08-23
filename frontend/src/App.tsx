@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Device } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { TopologyCanvas } from './components/TopologyCanvas/TopologyCanvas';
@@ -8,6 +8,9 @@ function App() {
   const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
   const [topologyDevices, setTopologyDevices] = useState<Device[]>([]);
   const [draggedDevice, setDraggedDevice] = useState<Device | null>(null);
+  const [leftPanelWidth, setLeftPanelWidth] = useState(480);
+  const [isResizing, setIsResizing] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDeviceSelect = (devices: Device[]) => {
     setSelectedDevices(devices);
@@ -41,18 +44,67 @@ function App() {
     e.preventDefault();
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const newWidth = e.clientX;
+    if (newWidth >= 320 && newWidth <= 800) {
+      setLeftPanelWidth(newWidth);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing]);
+
   return (
-    <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Resizable Left Panel - Device Inventory */}
       <div 
-        className="min-w-80 max-w-2xl bg-white shadow-xl border-r border-gray-200"
-        style={{ width: '480px' }}
+        className="bg-white shadow-xl border-r border-gray-200 flex-shrink-0"
+        style={{ width: `${leftPanelWidth}px` }}
       >
         <DeviceList
           onDeviceSelect={handleDeviceSelect}
           onDeviceDrag={handleDeviceDrag}
         />
       </div>
+
+      {/* Resize Handle */}
+      <div
+        onMouseDown={handleMouseDown}
+        className={`
+          w-1 hover:w-2 bg-gray-300 hover:bg-blue-400 cursor-col-resize transition-all duration-150
+          ${isResizing ? 'w-2 bg-blue-500' : ''}
+        `}
+        style={{
+          backgroundColor: isResizing ? '#3b82f6' : undefined,
+        }}
+      />
 
       {/* Right Panel - Topology Canvas */}
       <div 
