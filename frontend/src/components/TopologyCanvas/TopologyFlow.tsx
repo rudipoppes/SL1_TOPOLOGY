@@ -231,6 +231,12 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     }
   }, [onDeviceClick, topologyData]);
 
+  // Debug React Flow props
+  React.useEffect(() => {
+    console.log('🎯 REACTFLOW DEBUG - nodes:', nodes.length, nodes);
+    console.log('🎯 REACTFLOW DEBUG - edges:', edges.length, edges);
+  }, [nodes, edges]);
+
   return (
     <div className={`w-full h-full ${className}`}>
       <ReactFlow
