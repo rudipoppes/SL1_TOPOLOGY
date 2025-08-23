@@ -127,7 +127,7 @@ const QUERIES = {
 
   GET_DEVICE_RELATIONSHIPS: `
     query GetDeviceRelationships {
-      deviceRelationships(first: 100) {
+      deviceRelationships(first: 1000) {
         edges {
           node {
             id
