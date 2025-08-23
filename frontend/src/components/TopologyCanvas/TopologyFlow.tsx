@@ -193,6 +193,8 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
 
   const edges: Edge[] = React.useMemo(() => {
     if (topologyData && topologyData.edges) {
+      console.log('EDGE DATA:', topologyData.edges);
+      console.log('NODE IDS:', topologyData.nodes.map(n => n.id));
       return topologyData.edges.map((edge, index) => ({
         id: `edge-${index}`,
         source: String(edge.source),
