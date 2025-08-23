@@ -200,18 +200,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     if (elements.length > 0) {
       cyRef.current.elements().remove();
       cyRef.current.add(elements);
-      
-      // Force layout after small delay
-      setTimeout(() => {
-        if (cyRef.current) {
-          const layout = cyRef.current.layout({
-            name: 'grid',
-            fit: true,
-            padding: 30,
-          } as any);
-          layout.run();
-        }
-      }, 100);
+      cyRef.current.layout({ name: 'grid' } as any).run();
     }
 
   }, [devices, topologyData, isInitialized, topologyConfig]);
