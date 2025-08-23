@@ -7,11 +7,11 @@
   },
   "topology": {
     "canvas": {
-      "defaultLayout": "force-directed",
+      "defaultLayout": "cose",
       "layouts": [
-        "force-directed",
-        "hierarchical",
-        "circular",
+        "cose",
+        "breadthfirst",
+        "circle",
         "grid"
       ],
       "maxNodes": 1000,

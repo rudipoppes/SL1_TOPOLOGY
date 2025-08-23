@@ -58,9 +58,7 @@ exports.handler = async (event) => {
     const sl1Client = new SL1Client();
     console.log('Fetching relationships for device IDs:', deviceIds);
     
-    const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, {
-      deviceIds
-    });
+    const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS);
 
     // Also get full device info for the requested devices
     const devicesData = await sl1Client.query(QUERIES.GET_DEVICES_BY_IDS, {
@@ -85,39 +83,45 @@ exports.handler = async (event) => {
       });
     }
 
-    // Process relationships and add connected devices
+    // Process relationships and add connected devices (filter to only include relationships involving our devices)
     if (relationshipData.deviceRelationships) {
       relationshipData.deviceRelationships.edges.forEach(edge => {
         const relationship = edge.node;
         
         if (relationship.parentDevice && relationship.childDevice) {
-          // Add parent device as node
-          if (!nodes.has(relationship.parentDevice.id)) {
-            nodes.set(relationship.parentDevice.id, {
-              id: relationship.parentDevice.id,
-              label: relationship.parentDevice.name,
-              type: relationship.parentDevice.type || 'Unknown',
-              status: relationship.parentDevice.status || 'unknown',
-              ip: relationship.parentDevice.ip || 'N/A'
+          // Only include relationships where one of the devices is in our deviceIds list
+          const isRelated = deviceIds.includes(relationship.parentDevice.id) || 
+                           deviceIds.includes(relationship.childDevice.id);
+          
+          if (isRelated) {
+            // Add parent device as node
+            if (!nodes.has(relationship.parentDevice.id)) {
+              nodes.set(relationship.parentDevice.id, {
+                id: relationship.parentDevice.id,
+                label: relationship.parentDevice.name,
+                type: 'Unknown', // Will be set properly if it's one of our queried devices
+                status: normalizeStatus(relationship.parentDevice.state),
+                ip: relationship.parentDevice.ip || 'N/A'
+              });
+            }
+
+            // Add child device as node
+            if (!nodes.has(relationship.childDevice.id)) {
+              nodes.set(relationship.childDevice.id, {
+                id: relationship.childDevice.id,
+                label: relationship.childDevice.name,
+                type: 'Unknown', // Will be set properly if it's one of our queried devices
+                status: normalizeStatus(relationship.childDevice.state),
+                ip: relationship.childDevice.ip || 'N/A'
+              });
+            }
+
+            // Add edge
+            edges.push({
+              source: relationship.parentDevice.id,
+              target: relationship.childDevice.id
             });
           }
-
-          // Add child device as node
-          if (!nodes.has(relationship.childDevice.id)) {
-            nodes.set(relationship.childDevice.id, {
-              id: relationship.childDevice.id,
-              label: relationship.childDevice.name,
-              type: relationship.childDevice.type || 'Unknown',
-              status: relationship.childDevice.status || 'unknown',
-              ip: relationship.childDevice.ip || 'N/A'
-            });
-          }
-
-          // Add edge
-          edges.push({
-            source: relationship.parentDevice.id,
-            target: relationship.childDevice.id
-          });
         }
       });
     }

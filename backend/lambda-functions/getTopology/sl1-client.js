@@ -126,8 +126,8 @@ const QUERIES = {
   `,
 
   GET_DEVICE_RELATIONSHIPS: `
-    query GetDeviceRelationships($deviceIds: [ID!]!) {
-      deviceRelationships(first: 500) {
+    query GetDeviceRelationships {
+      deviceRelationships(first: 100) {
         edges {
           node {
             id
@@ -136,18 +136,12 @@ const QUERIES = {
               name
               ip
               state
-              deviceClass {
-                class
-              }
             }
             childDevice {
               id
               name
               ip
               state
-              deviceClass {
-                class
-              }
             }
           }
         }
