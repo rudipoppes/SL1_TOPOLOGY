@@ -161,22 +161,28 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
 
     if (topologyData) {
       // Use topology data (nodes + edges)
+      console.log('🔍 TopologyData received:', topologyData);
+      
       const nodeElements = topologyData.nodes.map((node) => ({
         data: {
-          id: node.id,
+          id: String(node.id), // Ensure ID is string
           label: node.label,
           type: node.type,
           status: node.status,
+          ip: node.ip,
         },
       }));
 
       const edgeElements = topologyData.edges.map((edge, index) => ({
         data: {
           id: `edge-${index}`,
-          source: edge.source,
-          target: edge.target,
+          source: String(edge.source), // Ensure source is string
+          target: String(edge.target), // Ensure target is string
         },
       }));
+
+      console.log('🎯 Node elements:', nodeElements);
+      console.log('🔗 Edge elements:', edgeElements);
 
       elements = [...nodeElements, ...edgeElements];
     } else {
@@ -198,24 +204,38 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
 
     console.log('🎨 Rendering elements:', elements);
     
-    cyRef.current.elements().remove();
-    cyRef.current.add(elements);
-    
-    // Run layout
-    const layout = cyRef.current.layout({
-      name: topologyConfig.canvas.defaultLayout,
-      fit: true,
-      padding: 30,
-    } as any);
-    
-    layout.run();
-    
-    // Ensure elements are visible after layout
-    setTimeout(() => {
-      if (cyRef.current) {
-        cyRef.current.fit(undefined, 30);
-      }
-    }, 100);
+    try {
+      cyRef.current.elements().remove();
+      cyRef.current.add(elements);
+      
+      console.log('✅ Elements added to Cytoscape');
+      console.log('🔢 Total elements:', cyRef.current.elements().length);
+      console.log('🔵 Node count:', cyRef.current.nodes().length);
+      console.log('🔗 Edge count:', cyRef.current.edges().length);
+      
+      // Run layout
+      const layout = cyRef.current.layout({
+        name: topologyConfig.canvas.defaultLayout,
+        fit: true,
+        padding: 50,
+        animate: true,
+        animationDuration: 500,
+      } as any);
+      
+      layout.run();
+      
+      // Force redraw and fit after animation
+      setTimeout(() => {
+        if (cyRef.current && cyRef.current.elements().length > 0) {
+          console.log('🎯 Fitting view to elements');
+          cyRef.current.fit(undefined, 50);
+          cyRef.current.center();
+        }
+      }, 600);
+      
+    } catch (error) {
+      console.error('❌ Error rendering topology:', error);
+    }
 
   }, [devices, topologyData, isInitialized, topologyConfig]);
 
