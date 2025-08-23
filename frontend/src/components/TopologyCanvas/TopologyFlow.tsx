@@ -158,17 +158,13 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes) {
       return topologyData.nodes.map((node, index) => ({
         id: String(node.id),
-        type: 'customDevice',
+        type: 'default',
         position: { 
-          x: (index % 3) * 250 + 100, // Wider spacing for larger nodes
+          x: (index % 3) * 250 + 100,
           y: Math.floor(index / 3) * 200 + 100 
         },
         data: { 
           label: node.label,
-          type: node.type,
-          status: node.status,
-          ip: node.ip,
-          deviceName: node.label, // For icon detection
         },
       }));
     }
@@ -196,7 +192,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
       console.log('EDGE DATA:', topologyData.edges);
       console.log('NODE IDS:', topologyData.nodes.map(n => n.id));
       return topologyData.edges.map((edge, index) => ({
-        id: `edge-${index}`,
+        id: `e${edge.source}-${edge.target}`,
         source: String(edge.source),
         target: String(edge.target),
         style: { stroke: '#FF0000', strokeWidth: 5 },
@@ -226,7 +222,6 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         connectionMode={ConnectionMode.Loose}
         fitView
