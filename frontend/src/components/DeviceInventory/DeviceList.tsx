@@ -170,7 +170,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             <List
               height={window.innerHeight - 320}
               itemCount={devices.length}
-              itemSize={120}
+              itemSize={60}
               width="100%"
             >
               {Row}
