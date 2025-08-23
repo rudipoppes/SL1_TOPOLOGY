@@ -15,6 +15,8 @@ import {
   Panel,
   useReactFlow,
   ReactFlowProvider,
+  Handle,
+  Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
@@ -116,6 +118,13 @@ const ModernDeviceNode = ({ data, selected }: { data: any; selected?: boolean })
         </button>
       )}
       
+      {/* Connection handles */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ background: '#3B82F6', width: 8, height: 8 }}
+      />
+      
       {/* Main node container */}
       <div
         style={{
@@ -164,6 +173,13 @@ const ModernDeviceNode = ({ data, selected }: { data: any; selected?: boolean })
           {type || 'Device'} • {status || 'Unknown'}
         </div>
       )}
+      
+      {/* Source handle at bottom */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ background: '#3B82F6', width: 8, height: 8 }}
+      />
     </div>
   );
 };
@@ -269,7 +285,7 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
           id: `edge-${sourceId}-${targetId}`,
           source: sourceId,
           target: targetId,
-          type: 'default',  // Change to default type
+          type: 'straight',  // Use straight edges
           animated: false,
           style: {
             stroke: '#3B82F6',
@@ -281,7 +297,6 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
             height: 15,
             color: '#3B82F6',
           },
-          zIndex: 1000,  // Ensure edges are on top
         };
       });
     } else if (devices.length > 0) {
@@ -370,7 +385,7 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
-          type: 'default',
+          type: 'straight',
           animated: false,
           style: {
             stroke: '#3B82F6',
