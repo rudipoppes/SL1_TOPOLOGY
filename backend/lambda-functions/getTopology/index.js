@@ -58,55 +58,25 @@ exports.handler = async (event) => {
     const sl1Client = new SL1Client();
     console.log('Fetching relationships for device IDs:', deviceIds);
     
-    // Fetch relationships in batches until we find all relevant ones
-    let allRelationships = [];
-    let hasNextPage = true;
-    let cursor = null;
-    let fetchCount = 0;
-    const maxPages = 10; // Limit to prevent infinite loops
+    // Since SL1 doesn't support cursor-based pagination, fetch a large batch
+    // This is a temporary solution until we implement a better approach
+    console.log('Fetching relationships (single large batch)');
     
-    while (hasNextPage && fetchCount < maxPages) {
-      console.log(`Fetching relationships page ${fetchCount + 1}${cursor ? ' after cursor ' + cursor : ''}`);
-      
-      const variables = { first: 1000 };
-      if (cursor) variables.after = cursor;
-      
-      const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, variables);
-      
-      if (relationshipData.deviceRelationships && relationshipData.deviceRelationships.edges) {
-        // Filter to only relationships involving our devices
-        const relevantRelationships = relationshipData.deviceRelationships.edges.filter(edge => {
-          const parentId = edge.node.parentDevice?.id;
-          const childId = edge.node.childDevice?.id;
-          return deviceIds.includes(parentId) || deviceIds.includes(childId);
-        });
-        
-        console.log(`Found ${relevantRelationships.length} relevant relationships in page ${fetchCount + 1}`);
-        allRelationships.push(...relevantRelationships);
-        
-        hasNextPage = relationshipData.deviceRelationships.pageInfo?.hasNextPage || false;
-        cursor = relationshipData.deviceRelationships.pageInfo?.endCursor || null;
-      } else {
-        hasNextPage = false;
-      }
-      
-      fetchCount++;
-      
-      // If we found relationships for all our devices, we can stop early
-      const foundDeviceIds = new Set();
-      allRelationships.forEach(edge => {
-        if (edge.node.parentDevice?.id) foundDeviceIds.add(edge.node.parentDevice.id);
-        if (edge.node.childDevice?.id) foundDeviceIds.add(edge.node.childDevice.id);
+    const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, { first: 5000 });
+    
+    let allRelationships = [];
+    if (relationshipData.deviceRelationships && relationshipData.deviceRelationships.edges) {
+      // Filter to only relationships involving our devices
+      allRelationships = relationshipData.deviceRelationships.edges.filter(edge => {
+        const parentId = edge.node.parentDevice?.id;
+        const childId = edge.node.childDevice?.id;
+        return deviceIds.includes(parentId) || deviceIds.includes(childId);
       });
       
-      const hasAllDevices = deviceIds.every(id => foundDeviceIds.has(id));
-      if (hasAllDevices && allRelationships.length > 0) {
-        console.log('Found relationships for all requested devices, stopping pagination');
-        break;
-      }
+      console.log(`Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
     }
     
-    console.log(`Total relationships found: ${allRelationships.length} across ${fetchCount} pages`);
+    console.log(`Total relationships found: ${allRelationships.length}`);
 
     // Also get full device info for the requested devices
     const devicesData = await sl1Client.query(QUERIES.GET_DEVICES_BY_IDS, {
