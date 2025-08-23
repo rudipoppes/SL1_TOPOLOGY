@@ -1,11 +1,10 @@
-import React from 'react';
 import {
   ReactFlow,
-  Node,
-  Edge,
   Controls,
   Background,
   BackgroundVariant,
+  type Node,
+  type Edge,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 
