@@ -203,7 +203,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       cyRef.current.layout({ name: 'grid' } as any).run();
     }
 
-  }, [devices, topologyData, isInitialized, topologyConfig]);
+  }, [devices, topologyData, isInitialized]);
 
   // Control functions
   const centerView = () => {
