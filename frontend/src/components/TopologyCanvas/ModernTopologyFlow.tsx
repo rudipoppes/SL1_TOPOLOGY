@@ -168,13 +168,7 @@ const ModernDeviceNode = ({ data, selected }: { data: any; selected?: boolean })
   );
 };
 
-// Custom edge styles
-const edgeStyles = {
-  stroke: '#3B82F6',
-  strokeWidth: 3,
-  strokeDasharray: '0',
-  animation: 'none',
-};
+// Edge styles are now defined inline in the edge objects
 
 // Unused for now but kept for future animation features
 // const animatedEdgeStyles = {
