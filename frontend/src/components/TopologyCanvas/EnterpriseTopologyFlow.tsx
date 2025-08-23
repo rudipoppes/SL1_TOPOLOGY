@@ -173,7 +173,7 @@ const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]) => {
   let yPos = 100;
   const levelHeight = 120;
   
-  levelGroups.forEach((levelNodes, level) => {
+  levelGroups.forEach((levelNodes, _level) => {
     const totalWidth = levelNodes.length * 120;
     const startX = Math.max(100, (800 - totalWidth) / 2);
     
@@ -384,7 +384,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         
         <MiniMap 
           nodeColor={(node) => {
-            const status = node.data?.status || 'unknown';
+            const status = String(node.data?.status || 'unknown');
             const colors = getStatusColors(status);
             return colors.bg;
           }}
