@@ -153,57 +153,32 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     };
   }, [isInitialized, onDeviceClick, topologyConfig]);
 
-  // Update elements when devices or topology data changes
+  // Update elements when topology data changes
   useEffect(() => {
-    if (!cyRef.current || !isInitialized) return;
+    if (!cyRef.current || !isInitialized || !topologyData) return;
 
-    let elements: any[] = [];
+    const nodeElements = topologyData.nodes.map((node) => ({
+      data: {
+        id: String(node.id),
+        label: node.label,
+      },
+    }));
 
-    if (topologyData && topologyData.nodes && topologyData.edges) {
-      // Use topology data (nodes + edges)
-      const nodeElements = topologyData.nodes.map((node) => ({
-        data: {
-          id: String(node.id),
-          label: node.label,
-          type: node.type,
-          status: node.status,
-          ip: node.ip,
-        },
-      }));
+    const edgeElements = topologyData.edges.map((edge, index) => ({
+      data: {
+        id: `edge-${index}`,
+        source: String(edge.source),
+        target: String(edge.target),
+      },
+    }));
 
-      const edgeElements = topologyData.edges.map((edge, index) => ({
-        data: {
-          id: `edge-${index}`,
-          source: String(edge.source),
-          target: String(edge.target),
-        },
-      }));
+    const elements = [...nodeElements, ...edgeElements];
+    
+    cyRef.current.elements().remove();
+    cyRef.current.add(elements);
+    cyRef.current.layout({ name: 'grid' }).run();
 
-      elements = [...nodeElements, ...edgeElements];
-    } else {
-      // Fallback to simple device list (no relationships)
-      elements = devices.map((device) => ({
-        data: {
-          id: device.id,
-          label: device.name,
-          ip: device.ip,
-          type: device.type,
-          status: device.status,
-        },
-        position: {
-          x: Math.random() * 400,
-          y: Math.random() * 400,
-        },
-      }));
-    }
-
-    if (elements.length > 0) {
-      cyRef.current.elements().remove();
-      cyRef.current.add(elements);
-      cyRef.current.layout({ name: 'grid' } as any).run();
-    }
-
-  }, [devices, topologyData, isInitialized]);
+  }, [topologyData, isInitialized]);
 
   // Control functions
   const centerView = () => {
