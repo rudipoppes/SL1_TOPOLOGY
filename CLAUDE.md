@@ -37,6 +37,13 @@ This project is being built using an **iterative, incremental approach**:
 ### Important Note for Claude
 **Always check the "Current Status" section above and the Git log to understand what has been completed and what needs to be done next. This project builds incrementally - don't skip phases or create advanced features before the foundation is complete.**
 
+**CRITICAL DEVELOPMENT WORKFLOW:**
+1. Claude works on LOCAL machine (/Users/rudipoppes/Documents/VSC/SL1_TOPOLOGY/)
+2. When Claude makes code changes, Claude MUST commit and push to git immediately
+3. User deploys from EC2 using VSCode Remote SSH
+4. AWS credentials work automatically on EC2 via IAM roles
+5. Local machine has NO AWS credentials - all deployment happens on EC2
+
 ## 🚀 **Current System Capabilities** 
 
 **The SL1_TOPOLOGY system is now fully functional with these working features:**
@@ -438,25 +445,36 @@ curl http://localhost:3000
 ```
 
 ### **Backend Deployment (Lambda)**
+
+**CRITICAL: Development Workflow for Claude**
+
+When Claude makes code changes during development session:
+
+**Step 1: LOCAL MACHINE (Claude MUST do this first):**
 ```bash
-# On EC2 - Lambda function deployment
+# Stage and commit changes made during conversation
+git add .
+git commit -m "descriptive commit message"
+git push origin main
+```
+
+**Step 2: EC2 INSTANCE (User executes via VSCode Remote SSH):**
+```bash
+# Pull changes and deploy
 cd ~/SL1_TOPOLOGY
-
-# 1. Pull latest changes  
 git pull origin main
-
-# 2. Deploy Lambda functions
 cd backend
 sam build
 sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
+```
 
-# 3. Wait for deployment (2-3 minutes)
-# Watch for "Successfully created/updated stack"
-
-# 4. Test API endpoint
+**Step 3: Test deployment:**
+```bash
 curl "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices?limit=1"
 # Should return JSON with device data, not an error
 ```
+
+**MANDATORY RULE**: Claude MUST commit and push changes to git BEFORE providing EC2 deployment instructions to user. Never assume user will handle git operations.
 
 ### **Quick Deployment (Both Frontend & Backend)**
 ```bash
