@@ -235,8 +235,8 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [_selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Convert topology data to React Flow format
