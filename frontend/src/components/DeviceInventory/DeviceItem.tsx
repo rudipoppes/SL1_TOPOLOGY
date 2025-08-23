@@ -27,7 +27,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       onDragStart={() => onDragStart(device)}
       onClick={() => onSelect?.(device)}
       className={`
-        group relative flex items-center justify-between p-2 mx-3 my-0.5 rounded-lg cursor-move
+        group relative flex items-center justify-between p-2 mx-3 mb-1 rounded-lg cursor-move
         transition-all duration-200 ease-out transform hover:scale-[1.01]
         ${isSelected 
           ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-400 shadow-lg ring-2 ring-blue-100' 
