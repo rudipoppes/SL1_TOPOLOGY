@@ -104,8 +104,8 @@ const QUERIES = {
   `,
   
   GET_DEVICES_BY_IDS: `
-    query GetDevicesByIds($deviceIds: [ID!]!) {
-      devices(filter: { id: { in: $deviceIds } }, first: 100) {
+    query GetDevicesByIds($limit: Int!) {
+      devices(first: $limit) {
         edges {
           node {
             id

@@ -62,24 +62,26 @@ exports.handler = async (event) => {
 
     // Also get full device info for the requested devices
     const devicesData = await sl1Client.query(QUERIES.GET_DEVICES_BY_IDS, {
-      deviceIds
+      limit: 100
     });
 
     // Process the results
     const nodes = new Map();
     const edges = [];
 
-    // Add the original devices as nodes
+    // Add the original devices as nodes (filter to only requested deviceIds)
     if (devicesData.devices) {
       devicesData.devices.edges.forEach(edge => {
         const device = edge.node;
-        nodes.set(device.id, {
-          id: device.id,
-          label: device.name,
-          type: device.deviceClass?.class || 'Unknown',
-          status: normalizeStatus(device.state),
-          ip: device.ip || 'N/A'
-        });
+        if (deviceIds.includes(device.id)) {
+          nodes.set(device.id, {
+            id: device.id,
+            label: device.name,
+            type: device.deviceClass?.class || 'Unknown',
+            status: normalizeStatus(device.state),
+            ip: device.ip || 'N/A'
+          });
+        }
       });
     }
 
