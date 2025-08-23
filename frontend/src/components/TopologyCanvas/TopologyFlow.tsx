@@ -195,29 +195,12 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
 
   const edges: Edge[] = React.useMemo(() => {
     if (topologyData && topologyData.edges) {
-      console.log('🔗 EDGE DEBUG - Raw topology edges:', topologyData.edges);
-      console.log('🔗 EDGE DEBUG - Available node IDs:', topologyData.nodes.map(n => n.id));
-      
-      const processedEdges = topologyData.edges.map((edge, index) => ({
+      return topologyData.edges.map((edge, index) => ({
         id: `edge-${index}`,
         source: String(edge.source),
         target: String(edge.target),
-        style: {
-          stroke: '#4F46E5',
-          strokeWidth: 4,
-        },
-        markerEnd: {
-          type: 'arrowclosed' as const,
-          color: '#4F46E5',
-          width: 25,
-          height: 25,
-        },
       }));
-      
-      console.log('🔗 EDGE DEBUG - Processed edges:', processedEdges);
-      return processedEdges;
     }
-    console.log('🔗 EDGE DEBUG - No topology data or edges');
     return [];
   }, [topologyData]);
 
@@ -237,11 +220,6 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     }
   }, [onDeviceClick, topologyData]);
 
-  // Debug React Flow props
-  React.useEffect(() => {
-    console.log('🎯 REACTFLOW DEBUG - nodes:', nodes.length, nodes);
-    console.log('🎯 REACTFLOW DEBUG - edges:', edges.length, edges);
-  }, [nodes, edges]);
 
   return (
     <div className={`w-full h-full ${className}`}>
