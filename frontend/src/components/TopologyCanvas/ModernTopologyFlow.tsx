@@ -246,32 +246,46 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
     if (topologyData && topologyData.nodes.length > 0) {
       // Use topology data if available
+      console.log('📊 Topology nodes:', topologyData.nodes);
+      console.log('🔗 Topology edges:', topologyData.edges);
+      
+      // Use node.label as the ID since that's what appears to be the actual identifier
       flowNodes = topologyData.nodes.map((node) => ({
-        id: String(node.id),
+        id: node.label || String(node.id), // Use label as ID since that's the actual device name
         type: 'modernDevice',
         position: { x: 0, y: 0 }, // Will be calculated by layout
         data: { 
           label: node.label,
           type: node.type,
           status: 'online',
-          onRemove: onRemoveDevice ? () => onRemoveDevice(String(node.id)) : undefined,
+          onRemove: onRemoveDevice ? () => onRemoveDevice(node.label || String(node.id)) : undefined,
         },
       }));
 
-      flowEdges = topologyData.edges.map((edge) => ({
-        id: `edge-${edge.source}-${edge.target}`,
-        source: String(edge.source),
-        target: String(edge.target),
-        type: 'smoothstep',
-        animated: false,
-        style: edgeStyles,
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 20,
-          height: 20,
-          color: '#94A3B8',
-        },
-      }));
+      flowEdges = topologyData.edges.map((edge) => {
+        // Map edge source/target to use labels instead of IDs
+        const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
+        const targetNode = topologyData.nodes.find(n => n.id === edge.target);
+        const sourceId = sourceNode?.label || String(edge.source);
+        const targetId = targetNode?.label || String(edge.target);
+        
+        console.log(`Edge: ${sourceId} -> ${targetId}`);
+        
+        return {
+          id: `edge-${sourceId}-${targetId}`,
+          source: sourceId,
+          target: targetId,
+          type: 'smoothstep',
+          animated: false,
+          style: edgeStyles,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+            color: '#94A3B8',
+          },
+        };
+      });
     } else if (devices.length > 0) {
       // Fallback for simple device list
       flowNodes = devices.map((device) => ({
@@ -291,9 +305,15 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
     // Apply layout
     if (flowNodes.length > 0) {
+      console.log('🎯 Final flowNodes:', flowNodes);
+      console.log('🎯 Final flowEdges:', flowEdges);
+      
       const layouted = getLayoutedElements(flowNodes, flowEdges);
       setNodes(layouted.nodes);
       setEdges(layouted.edges);
+      
+      console.log('✅ Set nodes:', layouted.nodes);
+      console.log('✅ Set edges:', layouted.edges);
       
       // Fit view after a short delay
       setTimeout(() => {
