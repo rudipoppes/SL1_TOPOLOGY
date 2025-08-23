@@ -193,7 +193,10 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
 
   const edges: Edge[] = React.useMemo(() => {
     if (topologyData && topologyData.edges) {
-      return topologyData.edges.map((edge, index) => ({
+      console.log('🔗 EDGE DEBUG - Raw topology edges:', topologyData.edges);
+      console.log('🔗 EDGE DEBUG - Available node IDs:', topologyData.nodes.map(n => n.id));
+      
+      const processedEdges = topologyData.edges.map((edge, index) => ({
         id: `edge-${index}`,
         source: String(edge.source),
         target: String(edge.target),
@@ -207,7 +210,11 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
           color: '#4F46E5',
         },
       }));
+      
+      console.log('🔗 EDGE DEBUG - Processed edges:', processedEdges);
+      return processedEdges;
     }
+    console.log('🔗 EDGE DEBUG - No topology data or edges');
     return [];
   }, [topologyData]);
 
