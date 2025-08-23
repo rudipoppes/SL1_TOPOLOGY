@@ -203,8 +203,14 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
         source: String(edge.source),
         target: String(edge.target),
         style: {
-          stroke: '#FF0000', // Bright red to test visibility
-          strokeWidth: 5, // Thick to test visibility
+          stroke: '#4F46E5',
+          strokeWidth: 4,
+        },
+        markerEnd: {
+          type: 'arrowclosed' as const,
+          color: '#4F46E5',
+          width: 25,
+          height: 25,
         },
       }));
       
