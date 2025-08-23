@@ -54,11 +54,59 @@ exports.handler = async (event) => {
       };
     }
     
-    // Query SL1 for device relationships
+    // Query SL1 for device relationships with pagination
     const sl1Client = new SL1Client();
     console.log('Fetching relationships for device IDs:', deviceIds);
     
-    const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS);
+    // Fetch relationships in batches until we find all relevant ones
+    let allRelationships = [];
+    let hasNextPage = true;
+    let cursor = null;
+    let fetchCount = 0;
+    const maxPages = 10; // Limit to prevent infinite loops
+    
+    while (hasNextPage && fetchCount < maxPages) {
+      console.log(`Fetching relationships page ${fetchCount + 1}${cursor ? ' after cursor ' + cursor : ''}`);
+      
+      const variables = { first: 1000 };
+      if (cursor) variables.after = cursor;
+      
+      const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, variables);
+      
+      if (relationshipData.deviceRelationships && relationshipData.deviceRelationships.edges) {
+        // Filter to only relationships involving our devices
+        const relevantRelationships = relationshipData.deviceRelationships.edges.filter(edge => {
+          const parentId = edge.node.parentDevice?.id;
+          const childId = edge.node.childDevice?.id;
+          return deviceIds.includes(parentId) || deviceIds.includes(childId);
+        });
+        
+        console.log(`Found ${relevantRelationships.length} relevant relationships in page ${fetchCount + 1}`);
+        allRelationships.push(...relevantRelationships);
+        
+        hasNextPage = relationshipData.deviceRelationships.pageInfo?.hasNextPage || false;
+        cursor = relationshipData.deviceRelationships.pageInfo?.endCursor || null;
+      } else {
+        hasNextPage = false;
+      }
+      
+      fetchCount++;
+      
+      // If we found relationships for all our devices, we can stop early
+      const foundDeviceIds = new Set();
+      allRelationships.forEach(edge => {
+        if (edge.node.parentDevice?.id) foundDeviceIds.add(edge.node.parentDevice.id);
+        if (edge.node.childDevice?.id) foundDeviceIds.add(edge.node.childDevice.id);
+      });
+      
+      const hasAllDevices = deviceIds.every(id => foundDeviceIds.has(id));
+      if (hasAllDevices && allRelationships.length > 0) {
+        console.log('Found relationships for all requested devices, stopping pagination');
+        break;
+      }
+    }
+    
+    console.log(`Total relationships found: ${allRelationships.length} across ${fetchCount} pages`);
 
     // Also get full device info for the requested devices
     const devicesData = await sl1Client.query(QUERIES.GET_DEVICES_BY_IDS, {
@@ -85,48 +133,40 @@ exports.handler = async (event) => {
       });
     }
 
-    // Process relationships and add connected devices (filter to only include relationships involving our devices)
-    if (relationshipData.deviceRelationships) {
-      relationshipData.deviceRelationships.edges.forEach(edge => {
-        const relationship = edge.node;
-        
-        if (relationship.parentDevice && relationship.childDevice) {
-          // Only include relationships where one of the devices is in our deviceIds list
-          const isRelated = deviceIds.includes(relationship.parentDevice.id) || 
-                           deviceIds.includes(relationship.childDevice.id);
-          
-          if (isRelated) {
-            // Add parent device as node
-            if (!nodes.has(relationship.parentDevice.id)) {
-              nodes.set(relationship.parentDevice.id, {
-                id: relationship.parentDevice.id,
-                label: relationship.parentDevice.name,
-                type: 'Unknown', // Will be set properly if it's one of our queried devices
-                status: normalizeStatus(relationship.parentDevice.state),
-                ip: relationship.parentDevice.ip || 'N/A'
-              });
-            }
-
-            // Add child device as node
-            if (!nodes.has(relationship.childDevice.id)) {
-              nodes.set(relationship.childDevice.id, {
-                id: relationship.childDevice.id,
-                label: relationship.childDevice.name,
-                type: 'Unknown', // Will be set properly if it's one of our queried devices
-                status: normalizeStatus(relationship.childDevice.state),
-                ip: relationship.childDevice.ip || 'N/A'
-              });
-            }
-
-            // Add edge
-            edges.push({
-              source: relationship.parentDevice.id,
-              target: relationship.childDevice.id
-            });
-          }
+    // Process the filtered relationships and add connected devices
+    allRelationships.forEach(edge => {
+      const relationship = edge.node;
+      
+      if (relationship.parentDevice && relationship.childDevice) {
+        // Add parent device as node
+        if (!nodes.has(relationship.parentDevice.id)) {
+          nodes.set(relationship.parentDevice.id, {
+            id: relationship.parentDevice.id,
+            label: relationship.parentDevice.name,
+            type: 'Unknown', // Will be set properly if it's one of our queried devices
+            status: normalizeStatus(relationship.parentDevice.state),
+            ip: relationship.parentDevice.ip || 'N/A'
+          });
         }
-      });
-    }
+
+        // Add child device as node
+        if (!nodes.has(relationship.childDevice.id)) {
+          nodes.set(relationship.childDevice.id, {
+            id: relationship.childDevice.id,
+            label: relationship.childDevice.name,
+            type: 'Unknown', // Will be set properly if it's one of our queried devices
+            status: normalizeStatus(relationship.childDevice.state),
+            ip: relationship.childDevice.ip || 'N/A'
+          });
+        }
+
+        // Add edge
+        edges.push({
+          source: relationship.parentDevice.id,
+          target: relationship.childDevice.id
+        });
+      }
+    });
 
     const response = {
       topology: {

@@ -126,8 +126,8 @@ const QUERIES = {
   `,
 
   GET_DEVICE_RELATIONSHIPS: `
-    query GetDeviceRelationships {
-      deviceRelationships(first: 1000) {
+    query GetDeviceRelationships($first: Int!, $after: String) {
+      deviceRelationships(first: $first, after: $after) {
         edges {
           node {
             id
@@ -144,6 +144,10 @@ const QUERIES = {
               state
             }
           }
+        }
+        pageInfo {
+          hasNextPage
+          endCursor
         }
       }
     }
