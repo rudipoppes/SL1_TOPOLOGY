@@ -22,49 +22,124 @@ interface TopologyFlowProps {
   className?: string;
 }
 
-// Define custom node styles based on device status
-const getNodeStyle = (status: string) => {
-  const baseStyle = {
-    padding: '10px',
-    borderRadius: '8px',
-    border: '2px solid',
-    background: 'white',
-    fontSize: '12px',
-    fontWeight: 'bold',
-    minWidth: '100px',
-    textAlign: 'center' as const,
-  };
+// Device type icons (simple emoji/symbols for now)
+const getDeviceIcon = (type: string, deviceName: string) => {
+  const name = deviceName.toLowerCase();
+  const typeStr = type.toLowerCase();
+  
+  if (name.includes('cluster') || name.includes('kubernetes')) return '🔷';
+  if (name.includes('worker') || name.includes('node')) return '⚙️';
+  if (name.includes('router') || typeStr.includes('router')) return '📡';
+  if (name.includes('switch') || typeStr.includes('switch')) return '🔀';
+  if (name.includes('server') || typeStr.includes('server')) return '🖥️';
+  if (name.includes('firewall')) return '🛡️';
+  if (name.includes('load') || name.includes('balance')) return '⚖️';
+  return '💻'; // Default computer icon
+};
 
+// Get status colors for modern styling
+const getStatusColors = (status: string) => {
   switch (status) {
     case 'online':
       return {
-        ...baseStyle,
-        borderColor: '#059669',
-        background: '#10B981',
-        color: 'white',
+        border: '#10B981',
+        background: 'linear-gradient(135deg, #ECFDF5 0%, #D1FAE5 100%)',
+        iconColor: '#059669',
+        textColor: '#065F46'
       };
     case 'offline':
       return {
-        ...baseStyle,
-        borderColor: '#DC2626',
-        background: '#EF4444',
-        color: 'white',
+        border: '#EF4444',
+        background: 'linear-gradient(135deg, #FEF2F2 0%, #FECACA 100%)',
+        iconColor: '#DC2626',
+        textColor: '#991B1B'
       };
     case 'warning':
       return {
-        ...baseStyle,
-        borderColor: '#D97706',
-        background: '#F59E0B',
-        color: 'white',
+        border: '#F59E0B',
+        background: 'linear-gradient(135deg, #FFFBEB 0%, #FED7AA 100%)',
+        iconColor: '#D97706',
+        textColor: '#92400E'
       };
     default:
       return {
-        ...baseStyle,
-        borderColor: '#4B5563',
-        background: '#6B7280',
-        color: 'white',
+        border: '#6B7280',
+        background: 'linear-gradient(135deg, #F9FAFB 0%, #E5E7EB 100%)',
+        iconColor: '#4B5563',
+        textColor: '#374151'
       };
   }
+};
+
+// Custom Node Component
+const CustomDeviceNode = ({ data }: any) => {
+  const { label, type, status, ip, deviceName } = data;
+  const colors = getStatusColors(status);
+  const icon = getDeviceIcon(type, deviceName || label);
+  
+  return (
+    <div
+      style={{
+        background: colors.background,
+        border: `3px solid ${colors.border}`,
+        borderRadius: '16px',
+        padding: '16px',
+        minWidth: '160px',
+        maxWidth: '200px',
+        boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+    >
+      <div style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        marginBottom: '8px'
+      }}>
+        <span style={{ 
+          fontSize: '28px', 
+          marginRight: '8px',
+          filter: `hue-rotate(${status === 'online' ? '0deg' : status === 'offline' ? '0deg' : '0deg'})`
+        }}>
+          {icon}
+        </span>
+        <div style={{
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          backgroundColor: colors.iconColor,
+          boxShadow: `0 0 0 2px white, 0 0 8px ${colors.iconColor}40`
+        }} />
+      </div>
+      
+      <div style={{
+        fontSize: '14px',
+        fontWeight: '700',
+        color: colors.textColor,
+        textAlign: 'center',
+        lineHeight: '1.2',
+        marginBottom: '6px',
+        wordWrap: 'break-word'
+      }}>
+        {label}
+      </div>
+      
+      {ip && ip !== 'N/A' && (
+        <div style={{
+          fontSize: '11px',
+          color: colors.textColor + '80',
+          textAlign: 'center',
+          fontFamily: 'monospace',
+          backgroundColor: 'rgba(255,255,255,0.7)',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          marginTop: '4px'
+        }}>
+          {ip}
+        </div>
+      )}
+    </div>
+  );
 };
 
 export const TopologyFlow: React.FC<TopologyFlowProps> = ({
@@ -73,29 +148,27 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
   onDeviceClick,
   className = '',
 }) => {
+  // Define custom node types
+  const nodeTypes = React.useMemo(() => ({
+    customDevice: CustomDeviceNode,
+  }), []);
+
   // Convert topology data to React Flow format
   const nodes: Node[] = React.useMemo(() => {
     if (topologyData && topologyData.nodes) {
       return topologyData.nodes.map((node, index) => ({
         id: String(node.id),
-        type: 'default',
+        type: 'customDevice',
         position: { 
-          x: (index % 3) * 200 + 100, // Simple grid layout 
-          y: Math.floor(index / 3) * 150 + 100 
+          x: (index % 3) * 250 + 100, // Wider spacing for larger nodes
+          y: Math.floor(index / 3) * 200 + 100 
         },
         data: { 
-          label: (
-            <div style={getNodeStyle(node.status)}>
-              <div>{node.label}</div>
-              <div style={{ fontSize: '10px', marginTop: '4px' }}>
-                {node.ip}
-              </div>
-            </div>
-          )
-        },
-        style: {
-          background: 'transparent',
-          border: 'none',
+          label: node.label,
+          type: node.type,
+          status: node.status,
+          ip: node.ip,
+          deviceName: node.label, // For icon detection
         },
       }));
     }
@@ -103,24 +176,17 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
     // Fallback for simple device list
     return devices.map((device, index) => ({
       id: device.id,
-      type: 'default',
+      type: 'customDevice',
       position: { 
-        x: (index % 3) * 200 + 100,
-        y: Math.floor(index / 3) * 150 + 100 
+        x: (index % 3) * 250 + 100,
+        y: Math.floor(index / 3) * 200 + 100 
       },
       data: { 
-        label: (
-          <div style={getNodeStyle(device.status)}>
-            <div>{device.name}</div>
-            <div style={{ fontSize: '10px', marginTop: '4px' }}>
-              {device.ip}
-            </div>
-          </div>
-        )
-      },
-      style: {
-        background: 'transparent',
-        border: 'none',
+        label: device.name,
+        type: device.type,
+        status: device.status,
+        ip: device.ip,
+        deviceName: device.name,
       },
     }));
   }, [topologyData, devices]);
@@ -131,14 +197,18 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
         id: `edge-${index}`,
         source: String(edge.source),
         target: String(edge.target),
-        type: 'default',
+        type: 'smoothstep',
+        animated: true,
         style: {
-          stroke: '#9CA3AF',
-          strokeWidth: 2,
+          stroke: '#4F46E5',
+          strokeWidth: 3,
+          strokeDasharray: '5,5',
         },
         markerEnd: {
           type: 'arrowclosed',
-          color: '#9CA3AF',
+          width: 20,
+          height: 20,
+          color: '#4F46E5',
         },
       }));
     }
@@ -166,6 +236,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodeClick={onNodeClick}
         connectionMode={ConnectionMode.Loose}
         fitView
