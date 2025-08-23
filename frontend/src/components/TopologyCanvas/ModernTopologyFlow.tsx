@@ -176,12 +176,13 @@ const edgeStyles = {
   animation: 'none',
 };
 
-const animatedEdgeStyles = {
-  stroke: '#3B82F6',
-  strokeWidth: 2.5,
-  strokeDasharray: '5 5',
-  animation: 'dashdraw 0.5s linear infinite',
-};
+// Unused for now but kept for future animation features
+// const animatedEdgeStyles = {
+//   stroke: '#3B82F6',
+//   strokeWidth: 2.5,
+//   strokeDasharray: '5 5',
+//   animation: 'dashdraw 0.5s linear infinite',
+// };
 
 // Layout algorithm for better node positioning
 const getLayoutedElements = (nodes: Node[], edges: Edge[]) => {
@@ -234,9 +235,9 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node[]>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge[]>([]);
+  const [_selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   // Convert topology data to React Flow format
   useEffect(() => {
@@ -245,7 +246,7 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
     if (topologyData && topologyData.nodes.length > 0) {
       // Use topology data if available
-      flowNodes = topologyData.nodes.map((node, index) => ({
+      flowNodes = topologyData.nodes.map((node) => ({
         id: String(node.id),
         type: 'modernDevice',
         position: { x: 0, y: 0 }, // Will be calculated by layout
@@ -273,7 +274,7 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
       }));
     } else if (devices.length > 0) {
       // Fallback for simple device list
-      flowNodes = devices.map((device, index) => ({
+      flowNodes = devices.map((device) => ({
         id: device.id,
         type: 'modernDevice',
         position: { x: 0, y: 0 }, // Will be calculated by layout
@@ -306,15 +307,15 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
     [setEdges]
   );
 
-  const onNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+  const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     setSelectedNodeId(node.id);
     if (onDeviceClick) {
       const device: Device = {
         id: node.id,
-        name: node.data.label,
-        type: node.data.type || 'unknown',
-        status: node.data.status || 'unknown',
-        ip: node.data.ip || 'N/A',
+        name: String(node.data.label || 'Unknown'),
+        type: String(node.data.type || 'unknown'),
+        status: (node.data.status || 'unknown') as Device['status'],
+        ip: String(node.data.ip || 'N/A'),
         organization: '0',
       };
       onDeviceClick(device);
@@ -327,7 +328,7 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
   }), []);
 
   // Layout options
-  const onLayout = useCallback((layoutType: string) => {
+  const onLayout = useCallback((_layoutType?: string) => {
     const layoutedElements = getLayoutedElements([...nodes], [...edges]);
     setNodes(layoutedElements.nodes);
     setEdges(layoutedElements.edges);
