@@ -40,6 +40,7 @@ export interface TopologyNode {
   label: string;
   type: string;
   status: 'online' | 'offline' | 'warning' | 'unknown';
+  ip: string;
 }
 
 export interface TopologyEdge {
