@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
-import { TopologyFlow } from './components/TopologyCanvas/TopologyFlow';
+import { ModernTopologyFlow } from './components/TopologyCanvas/ModernTopologyFlow';
 import './App.css';
 
 function App() {
@@ -140,12 +140,12 @@ function App() {
 
       {/* Right Panel - Topology Canvas */}
       <div 
-        className="flex-1 p-6"
+        className="flex-1 p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
       >
         {topologyDevices.length === 0 ? (
-          <div className="h-full bg-white rounded-lg shadow-sm border border-gray-200 flex items-center justify-center">
+          <div className="h-full bg-white/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 flex items-center justify-center">
             <div className="text-center text-gray-500">
               <svg
                 className="w-16 h-16 mx-auto mb-4 text-gray-300"
@@ -171,10 +171,20 @@ function App() {
                 🔄 Loading topology...
               </div>
             )}
-            <TopologyFlow 
+            <ModernTopologyFlow 
               devices={topologyDevices}
               topologyData={topologyData || undefined}
               onDeviceClick={handleDeviceClick}
+              onRemoveDevice={(deviceId) => {
+                setTopologyDevices(prev => prev.filter(d => d.id !== deviceId));
+                // Re-fetch topology for remaining devices
+                const remaining = topologyDevices.filter(d => d.id !== deviceId);
+                if (remaining.length > 0) {
+                  fetchTopologyData(remaining);
+                } else {
+                  setTopologyData(null);
+                }
+              }}
               className="h-full"
             />
           </div>
