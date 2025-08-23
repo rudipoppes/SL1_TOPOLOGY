@@ -197,17 +197,13 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
         id: `edge-${index}`,
         source: String(edge.source),
         target: String(edge.target),
-        type: 'smoothstep',
-        animated: true,
+        type: 'default',
         style: {
           stroke: '#4F46E5',
-          strokeWidth: 3,
-          strokeDasharray: '5,5',
+          strokeWidth: 2,
         },
         markerEnd: {
           type: 'arrowclosed',
-          width: 20,
-          height: 20,
           color: '#4F46E5',
         },
       }));
