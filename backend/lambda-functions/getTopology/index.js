@@ -10,7 +10,7 @@ exports.handler = async (event) => {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'OPTIONS,GET'
+    'Access-Control-Allow-Methods': 'OPTIONS,POST'
   };
 
   // Handle OPTIONS request for CORS
@@ -23,21 +23,30 @@ exports.handler = async (event) => {
   }
 
   try {
-    // Parse query parameters
-    const params = event.queryStringParameters || {};
-    const search = params.search || '';
-    const type = params.type || null;
-    const status = params.status || null;
-    const limit = parseInt(params.limit) || 50;
-    const offset = parseInt(params.offset) || 0;
-    
+    // Parse POST body
+    const body = JSON.parse(event.body || '{}');
+    const deviceIds = body.deviceIds || [];
+    const depth = body.depth || 1;
+    const direction = body.direction || 'both';
+
+    if (!deviceIds.length) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({
+          error: 'Missing deviceIds',
+          message: 'At least one device ID is required'
+        })
+      };
+    }
+
     // Create cache key
-    const cacheKey = `devices:${search}:${type}:${status}:${limit}:${offset}`;
+    const cacheKey = `topology:${deviceIds.join(',')}:${depth}:${direction}`;
     
     // Check cache
     const cachedData = await checkCache(cacheKey);
     if (cachedData) {
-      console.log('Returning cached result');
+      console.log('Returning cached topology result');
       return {
         statusCode: 200,
         headers,
@@ -45,41 +54,84 @@ exports.handler = async (event) => {
       };
     }
     
-    // Query SL1
+    // Query SL1 for device relationships
     const sl1Client = new SL1Client();
-    const data = await sl1Client.query(QUERIES.GET_DEVICES, {
-      limit
+    console.log('Fetching relationships for device IDs:', deviceIds);
+    
+    const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, {
+      deviceIds
     });
-    
-    // Process and filter results
-    let devices = data.devices.edges.map(edge => ({
-      id: edge.node.id,
-      name: edge.node.name,
-      ip: edge.node.ip || 'N/A',
-      type: edge.node.deviceClass?.id || 'Unknown', // We'll use deviceClass ID for now
-      status: normalizeStatus(edge.node.state),
-      organization: edge.node.organization?.id || '0'
-    }));
-    
-    // Apply additional filters if provided
-    if (type) {
-      devices = devices.filter(d => d.type.toLowerCase() === type.toLowerCase());
+
+    // Also get full device info for the requested devices
+    const devicesData = await sl1Client.query(QUERIES.GET_DEVICES_BY_IDS, {
+      deviceIds
+    });
+
+    // Process the results
+    const nodes = new Map();
+    const edges = [];
+
+    // Add the original devices as nodes
+    if (devicesData.devices) {
+      devicesData.devices.edges.forEach(edge => {
+        const device = edge.node;
+        nodes.set(device.id, {
+          id: device.id,
+          label: device.name,
+          type: device.deviceClass?.class || 'Unknown',
+          status: normalizeStatus(device.state),
+          ip: device.ip || 'N/A'
+        });
+      });
     }
-    if (status) {
-      devices = devices.filter(d => d.status.toLowerCase() === status.toLowerCase());
+
+    // Process relationships and add connected devices
+    if (relationshipData.deviceRelationships) {
+      relationshipData.deviceRelationships.edges.forEach(edge => {
+        const relationship = edge.node;
+        
+        if (relationship.parentDevice && relationship.childDevice) {
+          // Add parent device as node
+          if (!nodes.has(relationship.parentDevice.id)) {
+            nodes.set(relationship.parentDevice.id, {
+              id: relationship.parentDevice.id,
+              label: relationship.parentDevice.name,
+              type: relationship.parentDevice.type || 'Unknown',
+              status: relationship.parentDevice.status || 'unknown',
+              ip: relationship.parentDevice.ip || 'N/A'
+            });
+          }
+
+          // Add child device as node
+          if (!nodes.has(relationship.childDevice.id)) {
+            nodes.set(relationship.childDevice.id, {
+              id: relationship.childDevice.id,
+              label: relationship.childDevice.name,
+              type: relationship.childDevice.type || 'Unknown',
+              status: relationship.childDevice.status || 'unknown',
+              ip: relationship.childDevice.ip || 'N/A'
+            });
+          }
+
+          // Add edge
+          edges.push({
+            source: relationship.parentDevice.id,
+            target: relationship.childDevice.id
+          });
+        }
+      });
     }
-    
+
     const response = {
-      devices,
-      pagination: {
-        total: devices.length, // SL1 doesn't provide totalCount
-        limit,
-        offset,
-        hasMore: data.devices.pageInfo?.hasNextPage || false
+      topology: {
+        nodes: Array.from(nodes.values()),
+        edges
       },
-      filters: {
-        availableTypes: getUniqueTypes(devices),
-        availableStatuses: ['online', 'offline', 'warning', 'unknown']
+      stats: {
+        totalDevices: nodes.size,
+        totalRelationships: edges.length,
+        depth,
+        direction
       }
     };
     
@@ -93,12 +145,12 @@ exports.handler = async (event) => {
     };
     
   } catch (error) {
-    console.error('Error fetching devices:', error);
+    console.error('Error fetching topology:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
-        error: 'Failed to fetch devices',
+        error: 'Failed to fetch topology',
         message: error.message
       })
     };

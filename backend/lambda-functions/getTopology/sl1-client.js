@@ -103,31 +103,51 @@ const QUERIES = {
     }
   `,
   
-  GET_DEVICE_RELATIONSHIPS: `
-    query GetDeviceRelationships($deviceIds: [ID!]) {
-      deviceRelationships(
-        filter: { 
-          OR: [
-            { parentDevice: { id: { in: $deviceIds } } },
-            { childDevice: { id: { in: $deviceIds } } }
-          ]
+  GET_DEVICES_BY_IDS: `
+    query GetDevicesByIds($deviceIds: [ID!]!) {
+      devices(filter: { id: { in: $deviceIds } }, first: 100) {
+        edges {
+          node {
+            id
+            name
+            ip
+            state
+            deviceClass {
+              id
+              class
+            }
+            organization {
+              id
+            }
+          }
         }
-        first: 1000
-      ) {
+      }
+    }
+  `,
+
+  GET_DEVICE_RELATIONSHIPS: `
+    query GetDeviceRelationships($deviceIds: [ID!]!) {
+      deviceRelationships(first: 500) {
         edges {
           node {
             id
             parentDevice {
               id
               name
-              type
-              status
+              ip
+              state
+              deviceClass {
+                class
+              }
             }
             childDevice {
               id
               name
-              type
-              status
+              ip
+              state
+              deviceClass {
+                class
+              }
             }
           }
         }

@@ -1,16 +1,21 @@
 import React, { useRef, useEffect, useState } from 'react';
 import cytoscape, { Core } from 'cytoscape';
-import { Device } from '../../services/api';
+import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 import { configService } from '../../services/config';
 
 interface TopologyCanvasProps {
-  devices: Device[];
+  devices?: Device[];
+  topologyData?: {
+    nodes: TopologyNode[];
+    edges: TopologyEdge[];
+  };
   onDeviceClick?: (device: Device) => void;
   className?: string;
 }
 
 export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
-  devices,
+  devices = [],
+  topologyData,
   onDeviceClick,
   className = '',
 }) => {
@@ -148,23 +153,48 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
     };
   }, [isInitialized, onDeviceClick, topologyConfig]);
 
-  // Update elements when devices change
+  // Update elements when devices or topology data changes
   useEffect(() => {
     if (!cyRef.current || !isInitialized) return;
 
-    const elements = devices.map((device) => ({
-      data: {
-        id: device.id,
-        label: device.name,
-        ip: device.ip,
-        type: device.type,
-        status: device.status,
-      },
-      position: {
-        x: Math.random() * 400,
-        y: Math.random() * 400,
-      },
-    }));
+    let elements: any[] = [];
+
+    if (topologyData) {
+      // Use topology data (nodes + edges)
+      const nodeElements = topologyData.nodes.map((node) => ({
+        data: {
+          id: node.id,
+          label: node.label,
+          type: node.type,
+          status: node.status,
+        },
+      }));
+
+      const edgeElements = topologyData.edges.map((edge, index) => ({
+        data: {
+          id: `edge-${index}`,
+          source: edge.source,
+          target: edge.target,
+        },
+      }));
+
+      elements = [...nodeElements, ...edgeElements];
+    } else {
+      // Fallback to simple device list (no relationships)
+      elements = devices.map((device) => ({
+        data: {
+          id: device.id,
+          label: device.name,
+          ip: device.ip,
+          type: device.type,
+          status: device.status,
+        },
+        position: {
+          x: Math.random() * 400,
+          y: Math.random() * 400,
+        },
+      }));
+    }
 
     cyRef.current.elements().remove();
     cyRef.current.add(elements);
@@ -176,7 +206,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       padding: 30,
     } as any).run();
 
-  }, [devices, isInitialized, topologyConfig]);
+  }, [devices, topologyData, isInitialized, topologyConfig]);
 
   // Control functions
   const centerView = () => {
@@ -244,7 +274,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
 
       {/* Device count */}
       <div className="absolute bottom-4 left-4 px-3 py-1 bg-white border border-gray-300 rounded-md shadow-sm text-sm text-gray-600">
-        {devices.length} devices
+        {topologyData ? `${topologyData.nodes.length} nodes, ${topologyData.edges.length} connections` : `${devices.length} devices`}
       </div>
     </div>
   );

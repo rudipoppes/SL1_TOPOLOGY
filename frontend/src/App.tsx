@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Device } from './services/api';
+import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { TopologyCanvas } from './components/TopologyCanvas/TopologyCanvas';
 import './App.css';
@@ -7,9 +7,11 @@ import './App.css';
 function App() {
   const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
   const [topologyDevices, setTopologyDevices] = useState<Device[]>([]);
+  const [topologyData, setTopologyData] = useState<TopologyResponse['topology'] | null>(null);
   const [draggedDevice, setDraggedDevice] = useState<Device | null>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
+  const [loadingTopology, setLoadingTopology] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDeviceSelect = (devices: Device[]) => {
@@ -22,17 +24,47 @@ function App() {
     setDraggedDevice(device);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     if (draggedDevice) {
       console.log('Dropped device:', draggedDevice);
-      // Add device to topology canvas if not already present
-      setTopologyDevices(prev => {
-        const isAlreadyPresent = prev.some(d => d.id === draggedDevice.id);
-        if (isAlreadyPresent) return prev;
-        return [...prev, draggedDevice];
-      });
+      
+      // Add device to topology devices if not already present
+      const updatedDevices = topologyDevices.some(d => d.id === draggedDevice.id) 
+        ? topologyDevices 
+        : [...topologyDevices, draggedDevice];
+      
+      setTopologyDevices(updatedDevices);
+      
+      // Fetch topology data for all devices on canvas
+      await fetchTopologyData(updatedDevices);
+      
       setDraggedDevice(null);
+    }
+  };
+
+  const fetchTopologyData = async (devices: Device[]) => {
+    if (devices.length === 0) {
+      setTopologyData(null);
+      return;
+    }
+
+    setLoadingTopology(true);
+    try {
+      console.log('🔍 Fetching topology for devices:', devices.map(d => d.name));
+      const response = await apiService.getTopology({
+        deviceIds: devices.map(d => d.id),
+        depth: 1,
+        direction: 'both'
+      });
+      
+      console.log('📊 Topology data received:', response.topology);
+      setTopologyData(response.topology);
+    } catch (error) {
+      console.error('❌ Failed to fetch topology:', error);
+      // Keep existing topology data on error
+    } finally {
+      setLoadingTopology(false);
     }
   };
 
@@ -133,11 +165,19 @@ function App() {
             </div>
           </div>
         ) : (
-          <TopologyCanvas 
-            devices={topologyDevices}
-            onDeviceClick={handleDeviceClick}
-            className="h-full"
-          />
+          <div className="relative h-full">
+            {loadingTopology && (
+              <div className="absolute top-4 left-4 z-10 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg shadow-md">
+                🔄 Loading topology...
+              </div>
+            )}
+            <TopologyCanvas 
+              devices={topologyDevices}
+              topologyData={topologyData}
+              onDeviceClick={handleDeviceClick}
+              className="h-full"
+            />
+          </div>
         )}
       </div>
     </div>
