@@ -222,12 +222,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        onNodeClick={onNodeClick}
-        connectionMode={ConnectionMode.Loose}
         fitView
-        fitViewOptions={{
-          padding: 0.2,
-        }}
       >
         <Controls />
         <MiniMap />
