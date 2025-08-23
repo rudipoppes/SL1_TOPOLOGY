@@ -155,14 +155,15 @@ export const apiService = {
           id,
           label: mockDevice?.name || `Device ${id}`,
           type: mockDevice?.type || 'Unknown',
-          status: mockDevice?.status || 'unknown'
+          status: mockDevice?.status || 'unknown',
+          ip: mockDevice?.ip || 'N/A'
         };
       });
 
       // Add some mock related devices
       const mockRelatedNodes: TopologyNode[] = [
-        { id: 'rel-1', label: 'Related Device 1', type: 'Switch', status: 'online' },
-        { id: 'rel-2', label: 'Related Device 2', type: 'Router', status: 'online' }
+        { id: 'rel-1', label: 'Related Device 1', type: 'Switch', status: 'online', ip: '192.168.1.1' },
+        { id: 'rel-2', label: 'Related Device 2', type: 'Router', status: 'online', ip: '192.168.1.2' }
       ];
 
       const mockEdges: TopologyEdge[] = [
