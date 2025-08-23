@@ -48,17 +48,24 @@ exports.handler = async (event) => {
     // Query SL1
     const sl1Client = new SL1Client();
     
-    // Build query variables - only include search if provided
+    // Build query variables and select appropriate query
     const variables = { limit };
+    let queryToUse;
+    
     if (search && search.trim()) {
+      // Use search query when search term is provided
       variables.search = {
         name: {
           contains: search.trim()
         }
       };
+      queryToUse = QUERIES.GET_DEVICES_WITH_SEARCH;
+    } else {
+      // Use regular query without search parameter
+      queryToUse = QUERIES.GET_DEVICES;
     }
     
-    const data = await sl1Client.query(QUERIES.GET_DEVICES, variables);
+    const data = await sl1Client.query(queryToUse, variables);
     
     // Process and filter results
     let devices = data.devices.edges.map(edge => ({

@@ -68,3 +68,6 @@ frontend/.env*
 *.tmp
 *.temp
 .cache/
+
+# Git files
+FETCH_HEAD
