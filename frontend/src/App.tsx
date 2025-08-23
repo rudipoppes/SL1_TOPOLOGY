@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
-import { ModernTopologyFlow } from './components/TopologyCanvas/ModernTopologyFlow';
+import { EnterpriseTopologyFlow } from './components/TopologyCanvas/EnterpriseTopologyFlow';
 import './App.css';
 
 function App() {
@@ -171,7 +171,7 @@ function App() {
                 🔄 Loading topology...
               </div>
             )}
-            <ModernTopologyFlow 
+            <EnterpriseTopologyFlow 
               devices={topologyDevices}
               topologyData={topologyData || undefined}
               onDeviceClick={handleDeviceClick}
