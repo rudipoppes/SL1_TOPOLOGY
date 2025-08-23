@@ -88,6 +88,8 @@ const CustomDeviceNode = ({ data }: any) => {
         maxWidth: '200px',
         boxShadow: '0 8px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
         fontFamily: 'system-ui, -apple-system, sans-serif',
+        position: 'relative',
+        zIndex: 1, // Ensure nodes don't cover edges
       }}
     >
       <div style={{ 
@@ -200,14 +202,9 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
         id: `edge-${index}`,
         source: String(edge.source),
         target: String(edge.target),
-        type: 'default',
         style: {
-          stroke: '#4F46E5',
-          strokeWidth: 2,
-        },
-        markerEnd: {
-          type: 'arrowclosed' as const,
-          color: '#4F46E5',
+          stroke: '#FF0000', // Bright red to test visibility
+          strokeWidth: 5, // Thick to test visibility
         },
       }));
       
