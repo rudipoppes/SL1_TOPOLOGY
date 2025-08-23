@@ -119,7 +119,7 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       // Interaction options
       minZoom: 0.1,
       maxZoom: 3,
-      wheelSensitivity: 0.1,
+      // Remove custom wheel sensitivity to avoid warnings
     });
 
     // Event handlers
@@ -196,15 +196,24 @@ export const TopologyCanvas: React.FC<TopologyCanvasProps> = ({
       }));
     }
 
+    console.log('🎨 Rendering elements:', elements);
+    
     cyRef.current.elements().remove();
     cyRef.current.add(elements);
     
     // Run layout
-    cyRef.current.layout({
+    const layout = cyRef.current.layout({
       name: topologyConfig.canvas.defaultLayout,
       fit: true,
       padding: 30,
-    } as any).run();
+    } as any);
+    
+    layout.run();
+    
+    // Ensure elements are visible after layout
+    setTimeout(() => {
+      cyRef.current.fit(undefined, 30);
+    }, 100);
 
   }, [devices, topologyData, isInitialized, topologyConfig]);
 
