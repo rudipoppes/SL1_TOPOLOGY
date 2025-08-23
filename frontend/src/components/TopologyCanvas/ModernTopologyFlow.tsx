@@ -170,8 +170,8 @@ const ModernDeviceNode = ({ data, selected }: { data: any; selected?: boolean })
 
 // Custom edge styles
 const edgeStyles = {
-  stroke: '#94A3B8',
-  strokeWidth: 2,
+  stroke: '#3B82F6',
+  strokeWidth: 3,
   strokeDasharray: '0',
   animation: 'none',
 };
@@ -275,15 +275,19 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
           id: `edge-${sourceId}-${targetId}`,
           source: sourceId,
           target: targetId,
-          type: 'smoothstep',
+          type: 'default',  // Change to default type
           animated: false,
-          style: edgeStyles,
+          style: {
+            stroke: '#3B82F6',
+            strokeWidth: 2,
+          },
           markerEnd: {
             type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: '#94A3B8',
+            width: 15,
+            height: 15,
+            color: '#3B82F6',
           },
+          zIndex: 1000,  // Ensure edges are on top
         };
       });
     } else if (devices.length > 0) {
@@ -372,9 +376,12 @@ const TopologyFlowInner: React.FC<TopologyFlowProps> = ({
         minZoom={0.1}
         maxZoom={2}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: 'default',
           animated: false,
-          style: edgeStyles,
+          style: {
+            stroke: '#3B82F6',
+            strokeWidth: 2,
+          },
         }}
       >
         {/* Clean background without dots */}
