@@ -206,7 +206,7 @@ export const TopologyFlow: React.FC<TopologyFlowProps> = ({
           strokeWidth: 2,
         },
         markerEnd: {
-          type: 'arrowclosed',
+          type: 'arrowclosed' as const,
           color: '#4F46E5',
         },
       }));
