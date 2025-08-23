@@ -404,6 +404,14 @@ sam --version
 
 ## 🚀 Complete Deployment Process
 
+### **IMPORTANT: Fix Git Configuration First (One-time setup)**
+```bash
+# If you encounter "divergent branches" error:
+git config pull.rebase false  # Set merge as default strategy
+# OR globally:
+git config --global pull.rebase false
+```
+
 ### **Frontend Deployment (Production)**
 ```bash
 # On EC2 - Complete frontend deployment process
@@ -442,8 +450,31 @@ cd backend
 sam build
 sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
 
-# 3. Test API endpoint
+# 3. Wait for deployment (2-3 minutes)
+# Watch for "Successfully created/updated stack"
+
+# 4. Test API endpoint
 curl "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices?limit=1"
+# Should return JSON with device data, not an error
+```
+
+### **Quick Deployment (Both Frontend & Backend)**
+```bash
+# Complete deployment script
+cd ~/SL1_TOPOLOGY
+git pull origin main
+
+# Deploy backend
+cd backend
+sam build
+sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
+
+# Deploy frontend (if needed)
+cd ../frontend
+npm run build
+ps aux | grep "serve -s dist" # Find PID
+kill [PID]
+serve -s dist -l 3000
 ```
 
 ### **Development Workflow**
