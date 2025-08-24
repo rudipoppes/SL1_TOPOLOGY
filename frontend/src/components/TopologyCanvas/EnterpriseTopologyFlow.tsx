@@ -62,7 +62,7 @@ const getStatusColors = (status: string = 'unknown') => {
   }
 };
 
-// Professional Device Node with Name (120px)
+// Professional Device Node with Name
 const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
   const { label, type, status, onRemove } = data;
   const icon = getDeviceIcon(type || '', label);
@@ -96,22 +96,20 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Remove button - Always visible when hovering */}
-        {onRemove && (
+        {/* Remove button */}
+        {onRemove && isHovered && (
           <button
-            onClick={(e) => {
+            onMouseDown={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('🗑️ Removing node:', data.label);
+              console.log('🗑️ Clicking remove for:', label);
               onRemove();
             }}
-            className={`absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50 cursor-pointer transition-all duration-200 ${
-              isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
-            }`}
-            style={{ pointerEvents: 'all' }}
-            title="Remove from topology"
+            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md z-50"
+            style={{ pointerEvents: 'auto', position: 'absolute' }}
+            title="Remove"
           >
-            ✕
+            ×
           </button>
         )}
         

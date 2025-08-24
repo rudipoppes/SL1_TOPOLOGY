@@ -73,9 +73,27 @@ export const apiService = {
     limit?: number;
     offset?: number;
   }): Promise<DevicesResponse> {
-    console.log('🚀 Calling real Lambda API:', apiConfig.baseUrl);
-    const response = await api.get<DevicesResponse>('/devices', { params });
-    return response.data;
+    try {
+      console.log('🚀 Calling real Lambda API:', apiConfig.baseUrl);
+      const response = await api.get<DevicesResponse>('/devices', { params });
+      return response.data;
+    } catch (error) {
+      console.error('❌ Device API failed:', error);
+      // Return empty but valid response instead of crashing
+      return {
+        devices: [],
+        pagination: {
+          total: 0,
+          limit: params.limit || 50,
+          offset: params.offset || 0,
+          hasMore: false
+        },
+        filters: {
+          availableTypes: [],
+          availableStatuses: ['online', 'offline', 'warning', 'unknown']
+        }
+      };
+    }
   },
 
   // Search devices
