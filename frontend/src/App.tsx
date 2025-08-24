@@ -26,13 +26,20 @@ function App() {
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
-    if (draggedDevice) {
-      console.log('Dropped device:', draggedDevice);
+    
+    // If multiple devices are selected, add all of them
+    const devicesToAdd = selectedDevices.length > 0 ? selectedDevices : (draggedDevice ? [draggedDevice] : []);
+    
+    if (devicesToAdd.length > 0) {
+      console.log('Dropped devices:', devicesToAdd.map(d => d.name));
       
-      // Add device to topology devices if not already present
-      const updatedDevices = topologyDevices.some(d => d.id === draggedDevice.id) 
-        ? topologyDevices 
-        : [...topologyDevices, draggedDevice];
+      // Add devices to topology devices if not already present
+      const updatedDevices = [...topologyDevices];
+      devicesToAdd.forEach(device => {
+        if (!updatedDevices.some(d => d.id === device.id)) {
+          updatedDevices.push(device);
+        }
+      });
       
       setTopologyDevices(updatedDevices);
       
@@ -40,6 +47,8 @@ function App() {
       await fetchTopologyData(updatedDevices);
       
       setDraggedDevice(null);
+      // Clear selected devices after dropping
+      setSelectedDevices([]);
     }
   };
 

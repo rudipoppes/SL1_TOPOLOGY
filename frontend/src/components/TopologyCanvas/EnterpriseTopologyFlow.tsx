@@ -16,6 +16,8 @@ import {
   Handle,
   Position,
   BackgroundVariant,
+  getNodesBounds,
+  getViewportForBounds,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
@@ -62,8 +64,8 @@ const getStatusColors = (status: string = 'unknown') => {
   }
 };
 
-// Compact Enterprise Node (40px)
-const CompactDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
+// Professional Device Node with Name (120px)
+const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
   const { label, type, status, onRemove } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
@@ -74,25 +76,25 @@ const CompactDeviceNode = ({ data, selected }: { data: any; selected?: boolean }
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: '#3B82F6', width: 4, height: 4, borderRadius: '50%' }}
+        style={{ background: '#3B82F6', width: 6, height: 6, borderRadius: '50%' }}
       />
       
       <div
-        className="relative flex items-center justify-center"
+        className="relative flex flex-col items-center"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          width: '40px',
-          height: '40px',
-          borderRadius: '20px',
+          minWidth: '120px',
+          maxWidth: '140px',
           background: 'white',
           border: selected ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+          borderRadius: '12px',
+          padding: '8px',
           boxShadow: selected 
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
-            : isHovered ? colors.shadow : '0 2px 4px rgba(0,0,0,0.1)',
-          cursor: 'pointer',
-          fontSize: '16px',
-          transform: isHovered ? 'scale(1.1)' : 'scale(1)',
+            : isHovered ? colors.shadow : '0 2px 8px rgba(0,0,0,0.1)',
+          cursor: 'move',
+          transform: isHovered ? 'scale(1.02)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
       >
@@ -103,25 +105,37 @@ const CompactDeviceNode = ({ data, selected }: { data: any; selected?: boolean }
               e.stopPropagation();
               onRemove();
             }}
-            className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-[8px] font-bold shadow-lg z-50"
+            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50"
           >
             ✕
           </button>
         )}
         
-        {/* Device icon */}
-        <span>{icon}</span>
-        
         {/* Status dot */}
         <div
-          className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border-2 border-white"
+          className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white"
           style={{ background: colors.bg }}
         />
         
-        {/* Tooltip */}
-        {isHovered && (
-          <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded whitespace-nowrap z-50 max-w-[150px] truncate">
-            {label}
+        {/* Device icon */}
+        <div className="text-xl mb-2">{icon}</div>
+        
+        {/* Device name */}
+        <div 
+          className="text-xs font-semibold text-center text-gray-800 leading-tight"
+          style={{ 
+            wordBreak: 'break-word',
+            hyphens: 'auto',
+            maxWidth: '100%'
+          }}
+        >
+          {label}
+        </div>
+        
+        {/* Device type (on hover) */}
+        {isHovered && type && (
+          <div className="text-[10px] text-gray-500 text-center mt-1 truncate max-w-full">
+            {type}
           </div>
         )}
       </div>
@@ -129,7 +143,7 @@ const CompactDeviceNode = ({ data, selected }: { data: any; selected?: boolean }
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: '#3B82F6', width: 4, height: 4, borderRadius: '50%' }}
+        style={{ background: '#3B82F6', width: 6, height: 6, borderRadius: '50%' }}
       />
     </>
   );
@@ -254,7 +268,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   
   const nodeTypes = useMemo(() => ({
-    compact: CompactDeviceNode,
+    professional: ProfessionalDeviceNode,
   }), []);
 
   // Clear nodes and edges when topology data is cleared
@@ -269,11 +283,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     let flowEdges: Edge[] = [];
 
     if (topologyData && topologyData.nodes.length > 0) {
-      // Create compact nodes
+      // Create professional nodes  
       flowNodes = topologyData.nodes.map((node) => ({
         id: node.label || String(node.id),
-        type: 'compact',
+        type: 'professional',
         position: { x: 0, y: 0 },
+        dragHandle: '.drag-handle',
         data: { 
           label: node.label,
           type: node.type,
@@ -311,7 +326,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Fallback for device list
       flowNodes = devices.map((device) => ({
         id: device.id,
-        type: 'compact',
+        type: 'professional',
         position: { x: 0, y: 0 },
         data: { 
           label: device.name,
@@ -361,6 +376,83 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
   }, [onDeviceClick]);
 
+  // Export functions
+  const exportAsPNG = useCallback(() => {
+    const nodesBounds = getNodesBounds(nodes);
+    const viewport = getViewportForBounds(nodesBounds, 1920, 1080, 0.5, 2, 0.1);
+    
+    // Create a temporary canvas
+    const canvas = document.createElement('canvas');
+    canvas.width = 1920;
+    canvas.height = 1080;
+    const ctx = canvas.getContext('2d');
+    
+    if (ctx) {
+      // White background
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Export as PNG
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `topology-${new Date().toISOString().split('T')[0]}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      });
+    }
+  }, [nodes]);
+
+  const exportAsHTML = useCallback(() => {
+    const htmlContent = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Topology - ${new Date().toLocaleDateString()}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { border-bottom: 2px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px; }
+        .device { margin: 10px 0; padding: 10px; border: 1px solid #E5E7EB; border-radius: 8px; }
+        .connections { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Network Topology Report</h1>
+        <p>Generated: ${new Date().toLocaleDateString()}</p>
+        <p>Devices: ${nodes.length} | Connections: ${edges.length}</p>
+    </div>
+    
+    <h2>Devices</h2>
+    ${nodes.map(node => `
+        <div class="device">
+            <strong>${node.data.label}</strong><br>
+            Type: ${node.data.type || 'Unknown'}<br>
+            Status: ${node.data.status || 'Unknown'}
+        </div>
+    `).join('')}
+    
+    <div class="connections">
+        <h2>Connections</h2>
+        ${edges.map(edge => `
+            <div>${edge.source} → ${edge.target}</div>
+        `).join('')}
+    </div>
+</body>
+</html>`;
+
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `topology-${new Date().toISOString().split('T')[0]}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
   return (
     <div className={`w-full h-full ${className}`}>
       <ReactFlow
@@ -374,7 +466,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         fitView
         minZoom={0.2}
         maxZoom={3}
-        nodesDraggable={false} // Prevent manual dragging
+        nodesDraggable={true} // Allow manual dragging
         nodesConnectable={false} // Prevent manual connections
         elementsSelectable={true}
         defaultEdgeOptions={{
@@ -432,20 +524,38 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             </button>
             
             {nodes.length > 0 && (
-              <button
-                onClick={() => {
-                  // Clear topology component state
-                  setNodes([]);
-                  setEdges([]);
-                  // Notify parent to clear its state too
-                  if (onClearAll) {
-                    onClearAll();
-                  }
-                }}
-                className="block w-full text-left px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors"
-              >
-                🗑️ Clear
-              </button>
+              <>
+                <div className="border-t pt-2">
+                  <div className="text-xs font-semibold text-gray-700 mb-2">Export</div>
+                  <button
+                    onClick={exportAsPNG}
+                    className="block w-full text-left px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded transition-colors mb-1"
+                  >
+                    📷 PNG
+                  </button>
+                  <button
+                    onClick={exportAsHTML}
+                    className="block w-full text-left px-3 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors"
+                  >
+                    📄 HTML Report
+                  </button>
+                </div>
+                
+                <button
+                  onClick={() => {
+                    // Clear topology component state
+                    setNodes([]);
+                    setEdges([]);
+                    // Notify parent to clear its state too
+                    if (onClearAll) {
+                      onClearAll();
+                    }
+                  }}
+                  className="block w-full text-left px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors mt-2"
+                >
+                  🗑️ Clear
+                </button>
+              </>
             )}
           </div>
         </Panel>
