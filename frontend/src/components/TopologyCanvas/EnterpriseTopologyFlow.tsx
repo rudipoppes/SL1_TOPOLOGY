@@ -64,7 +64,7 @@ const getStatusColors = (status: string = 'unknown') => {
 
 // Professional Device Node with Name
 const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
-  const { label, type, status, onRemove } = data;
+  const { label, type, status, onRemove, isPrimary } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
@@ -84,20 +84,22 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         style={{
           minWidth: '80px',
           maxWidth: '90px',
-          background: 'white',
-          border: selected ? '2px solid #3B82F6' : '1px solid #E5E7EB',
+          background: isPrimary ? '#EBF8FF' : 'white',
+          border: selected ? '2px solid #3B82F6' : isPrimary ? '2px solid #3B82F6' : '1px solid #E5E7EB',
           borderRadius: '8px',
           padding: '6px',
           boxShadow: selected 
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
+            : isPrimary
+            ? '0 0 10px rgba(59, 130, 246, 0.3)'
             : isHovered ? colors.shadow : '0 2px 8px rgba(0,0,0,0.1)',
           cursor: 'grab',
           transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Remove button */}
-        {onRemove && isHovered && (
+        {/* Remove button - only show for primary devices */}
+        {onRemove && isPrimary && isHovered && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -111,10 +113,20 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
             }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md z-50"
             style={{ pointerEvents: 'auto', position: 'absolute', zIndex: 1000 }}
-            title="Remove"
+            title="Remove device from canvas"
           >
             ×
           </button>
+        )}
+        
+        {/* Primary device indicator */}
+        {isPrimary && (
+          <div 
+            className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center"
+            title="Primary device (removable)"
+          >
+            <span className="text-white text-[8px] font-bold">P</span>
+          </div>
         )}
         
         {/* Status dot */}
@@ -307,19 +319,26 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes.length > 0) {
       console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
+      // Determine which nodes are primary (directly dragged) vs secondary (relationships)
+      const primaryDeviceIds = new Set(devices.map(d => d.name));
+      
       // Create professional nodes  
-      flowNodes = topologyData.nodes.map((node) => ({
-        id: node.label || String(node.id),
-        type: 'professional',
-        position: { x: 0, y: 0 },
-        draggable: true,
-        data: { 
-          label: node.label,
-          type: node.type,
-          status: 'online',
-          onRemove: onRemoveDevice ? () => onRemoveDevice(node.label || String(node.id)) : undefined,
-        },
-      }));
+      flowNodes = topologyData.nodes.map((node) => {
+        const isPrimary = primaryDeviceIds.has(node.label || '');
+        return {
+          id: node.label || String(node.id),
+          type: 'professional',
+          position: { x: 0, y: 0 },
+          draggable: true,
+          data: { 
+            label: node.label,
+            type: node.type,
+            status: 'online',
+            isPrimary,
+            onRemove: onRemoveDevice && isPrimary ? () => onRemoveDevice(node.label || String(node.id)) : undefined,
+          },
+        };
+      });
 
       // CRITICAL: Only create edges if we have real relationship data from SL1 AND both source/target exist
       if (topologyData.edges && topologyData.edges.length > 0) {
@@ -370,7 +389,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         flowEdges = []; // No fake edges
       }
     } else if (devices.length > 0) {
-      // Fallback for device list
+      // Fallback for device list - all devices are primary when no topology data
       flowNodes = devices.map((device) => ({
         id: device.id,
         type: 'professional',
@@ -380,6 +399,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           label: device.name,
           type: device.type,
           status: device.status,
+          isPrimary: true,
           onRemove: onRemoveDevice ? () => onRemoveDevice(device.id) : undefined,
         },
       }));
