@@ -80,8 +80,8 @@ class SL1Client {
 // GraphQL Queries
 const QUERIES = {
   GET_DEVICES: `
-    query GetDevices($limit: Int!) {
-      devices(first: $limit) {
+    query GetDevices($first: Int!, $skip: Int) {
+      devices(first: $first, skip: $skip) {
         edges {
           node {
             id
@@ -105,8 +105,8 @@ const QUERIES = {
   `,
   
   GET_DEVICES_WITH_SEARCH: `
-    query GetDevicesWithSearch($limit: Int!, $search: DeviceSearch!) {
-      devices(first: $limit, search: $search) {
+    query GetDevicesWithSearch($first: Int!, $skip: Int, $search: DeviceSearch!) {
+      devices(first: $first, skip: $skip, search: $search) {
         edges {
           node {
             id

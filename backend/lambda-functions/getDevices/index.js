@@ -49,7 +49,10 @@ exports.handler = async (event) => {
     const sl1Client = new SL1Client();
     
     // Build query variables and select appropriate query
-    const variables = { limit };
+    const variables = { 
+      first: limit,
+      skip: offset // GraphQL uses 'skip' for offset
+    };
     let queryToUse;
     
     if (search && search.trim()) {
