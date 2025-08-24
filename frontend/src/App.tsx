@@ -77,8 +77,18 @@ function App() {
       console.log('📊 Topology data received:', response.topology);
       setTopologyData(response.topology);
     } catch (error) {
-      console.error('❌ Failed to fetch topology:', error);
-      // Keep existing topology data on error
+      console.error('❌ Failed to fetch topology - topology API may not be available:', error);
+      // Create simple topology with just the devices (no relationships)
+      setTopologyData({
+        nodes: devices.map(device => ({
+          id: device.id,
+          label: device.name,
+          type: device.type,
+          status: device.status,
+          ip: device.ip
+        })),
+        edges: [] // No relationships when API fails
+      });
     } finally {
       setLoadingTopology(false);
     }
