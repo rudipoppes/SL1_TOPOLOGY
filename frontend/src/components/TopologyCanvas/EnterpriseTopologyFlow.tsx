@@ -69,6 +69,9 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
   
+  // Ensure isPrimary is definitely a boolean
+  const isActuallyPrimary = Boolean(isPrimary);
+  
   return (
     <>
       <Handle
@@ -90,11 +93,11 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         style={{
           minWidth: '80px',
           maxWidth: '90px',
-          background: isPrimary ? '#EBF8FF' : '#F8FAFC',
+          background: isActuallyPrimary ? '#EBF8FF' : '#F8FAFC',
           border: selected 
             ? '2px solid #3B82F6' 
-            : isPrimary 
-            ? '2px solid #3B82F6' 
+            : isActuallyPrimary 
+            ? '2px solid #2563EB' 
             : '1px solid #CBD5E0',
           borderRadius: '8px',
           padding: '6px',
@@ -102,7 +105,9 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
             : isPrimary
             ? '0 0 10px rgba(59, 130, 246, 0.3)'
-            : isHovered ? colors.shadow : isPrimary ? '0 2px 8px rgba(59, 130, 246, 0.1)' : '0 2px 4px rgba(0,0,0,0.05)',
+            : isActuallyPrimary
+            ? '0 2px 8px rgba(37, 99, 235, 0.2)'
+            : isHovered ? colors.shadow : '0 2px 4px rgba(0,0,0,0.05)',
           cursor: 'grab',
           // Remove transform to prevent blurriness
           // transform: isHovered ? 'scale(1.05)' : 'scale(1)',
@@ -117,13 +122,13 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           transform: 'translateZ(0)',
         }}
       >
-        {/* Remove button - only show for primary devices */}
-        {isPrimary && onRemove && isHovered && (
+        {/* Remove button - STRICT check for primary devices only */}
+        {isActuallyPrimary && onRemove && isHovered && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
-              console.log('🗑️ Clicking remove for:', label);
+              console.log('🗑️ Removing primary device:', label);
               onRemove();
             }}
             onMouseDown={(e) => {
@@ -132,14 +137,14 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
             }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md z-50"
             style={{ pointerEvents: 'auto', position: 'absolute', zIndex: 1000 }}
-            title="Remove device from canvas"
+            title="Remove primary device from canvas"
           >
             ×
           </button>
         )}
         
-        {/* Primary device indicator - only for actual primary devices */}
-        {isPrimary === true && (
+        {/* Primary device indicator - STRICT check */}
+        {isActuallyPrimary && (
           <div 
             className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center"
             title="Primary device (removable)"
@@ -349,57 +354,59 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes.length > 0) {
       console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
-      // Determine which nodes are primary (directly dragged) vs secondary (relationships)
-      const primaryDeviceIds = new Set(devices.map(d => d.name));
-      console.log('🔑 Primary devices:', Array.from(primaryDeviceIds));
-      console.log('🔍 All topology nodes:', topologyData.nodes.map(n => n.label));
+      // SIMPLIFIED: Get primary device names from the devices prop
+      const primaryDeviceNames = new Set(devices.map(d => d.name));
       
-      // Create professional nodes  
+      console.log('🔑 PRIMARY DEVICES:', Array.from(primaryDeviceNames));
+      console.log('🔍 TOPOLOGY NODES:', topologyData.nodes.map(n => n.label));
+      
+      // Create professional nodes with clear primary/secondary distinction
       flowNodes = topologyData.nodes.map((node) => {
-        const isPrimary = primaryDeviceIds.has(node.label || '');
-        console.log(`📝 Node ${node.label}: isPrimary=${isPrimary}`);
+        const nodeLabel = node.label || String(node.id);
+        const isPrimaryDevice = primaryDeviceNames.has(nodeLabel);
+        
+        console.log(`Node: ${nodeLabel} -> Primary: ${isPrimaryDevice}`);
+        
         return {
-          id: node.label || String(node.id),
+          id: nodeLabel,
           type: 'professional',
           position: { x: 0, y: 0 },
           draggable: true,
           data: { 
-            label: node.label,
+            label: nodeLabel,
             type: node.type,
             status: 'online',
-            isPrimary,
-            onRemove: isPrimary && onRemoveDevice ? () => onRemoveDevice(node.label || String(node.id)) : undefined,
+            isPrimary: isPrimaryDevice, // This must be exact boolean
+            onRemove: isPrimaryDevice && onRemoveDevice ? () => {
+              console.log('🗑️ REMOVE CALLED for primary device:', nodeLabel);
+              onRemoveDevice(nodeLabel);
+            } : undefined,
           },
         };
       });
 
-      // CRITICAL: Only create edges if we have real relationship data from SL1 AND both source/target exist
+      // SIMPLIFIED: Only create edges if topology data explicitly provides them
       if (topologyData.edges && topologyData.edges.length > 0) {
-        console.log('📊 Processing edges from SL1:', topologyData.edges);
+        console.log('🔗 Creating edges from SL1:', topologyData.edges.length);
         
-        // Additional filtering to prevent phantom relationships
         flowEdges = topologyData.edges
           .filter((edge) => {
             const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
             const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-            const hasValidNodes = sourceNode && targetNode;
             
-            if (!hasValidNodes) {
-              console.warn('🚫 Skipping invalid edge - missing nodes:', edge);
+            if (!sourceNode || !targetNode) {
+              console.warn('⚠️ Invalid edge - missing nodes:', edge);
               return false;
             }
             
-            // Additional check: ensure edge represents a real relationship
             const sourceLabel = sourceNode.label || String(edge.source);
             const targetLabel = targetNode.label || String(edge.target);
             
-            // Skip self-connections
             if (sourceLabel === targetLabel) {
-              console.warn('🚫 Skipping self-connection:', sourceLabel);
+              console.warn('⚠️ Skipping self-loop:', sourceLabel);
               return false;
             }
             
-            // Additional validation can be added here based on SL1 data
             return true;
           })
           .map((edge) => {
@@ -408,16 +415,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             const sourceId = sourceNode.label || String(edge.source);
             const targetId = targetNode.label || String(edge.target);
             
-            console.log('✅ Creating edge:', sourceId, '→', targetId);
-            
-            // Validate this is a legitimate relationship
-            if (sourceId === targetId) {
-              console.warn('🚫 Preventing self-loop edge creation');
-              return null;
-            }
-            
             return {
-              id: `edge-${sourceId}-${targetId}`,
+              id: `${sourceId}-to-${targetId}`,
               source: sourceId,
               target: targetId,
               type: 'smoothstep',
@@ -433,14 +432,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 color: '#64748B',
               },
             };
-          })
-          .filter(edge => edge !== null); // Remove any null edges from validation
+          });
           
-        console.log('📊 Final edges created:', flowEdges.length);
-        console.log('🔗 Edge details:', flowEdges.map(e => `${e.source} → ${e.target}`));
+        console.log(`✅ Created ${flowEdges.length} valid edges`);
       } else {
-        console.log('⚠️ No edges from SL1 - showing nodes only');
-        flowEdges = []; // No fake edges
+        console.log('🗑️ No relationship data - nodes only');
+        flowEdges = [];
       }
     } else if (devices.length > 0) {
       // Fallback for device list - all devices are primary when no topology data
