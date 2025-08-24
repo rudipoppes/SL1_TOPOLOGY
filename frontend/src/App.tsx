@@ -94,8 +94,24 @@ function App() {
     }
   };
 
-  const handleDeviceClick = (device: Device) => {
-    console.log('Clicked device in topology:', device);
+  const handleDeviceClick = async (device: Device) => {
+    console.log('🎯 Clicked device in topology:', device);
+    
+    // Check if device already exists in topology
+    const deviceExists = topologyDevices.some(d => d.id === device.id);
+    
+    if (!deviceExists) {
+      // Add the clicked device if it's not already there
+      const updatedDevices = [...topologyDevices, device];
+      setTopologyDevices(updatedDevices);
+      await fetchTopologyData(updatedDevices);
+    } else {
+      // Device already exists - could expand its relationships
+      console.log('🔍 Expanding relationships for:', device.name);
+      // For now, just refetch with current devices
+      // In future, this could fetch deeper relationships or specific parent/child
+      await fetchTopologyData(topologyDevices);
+    }
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -203,13 +219,10 @@ function App() {
               onDeviceClick={handleDeviceClick}
               onRemoveDevice={(deviceId) => {
                 console.log('🗑️ App removing device:', deviceId);
-                setTopologyDevices(prev => {
-                  const filtered = prev.filter(d => d.id !== deviceId && d.name !== deviceId);
-                  console.log('Devices after removal:', filtered.map(d => d.name));
-                  return filtered;
-                });
-                // Re-fetch topology for remaining devices
                 const remaining = topologyDevices.filter(d => d.id !== deviceId && d.name !== deviceId);
+                setTopologyDevices(remaining);
+                
+                // Re-fetch topology for remaining devices
                 if (remaining.length > 0) {
                   fetchTopologyData(remaining);
                 } else {

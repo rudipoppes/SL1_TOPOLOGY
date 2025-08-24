@@ -99,14 +99,18 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         {/* Remove button */}
         {onRemove && isHovered && (
           <button
-            onMouseDown={(e) => {
+            onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
               console.log('🗑️ Clicking remove for:', label);
               onRemove();
             }}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+            }}
             className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md z-50"
-            style={{ pointerEvents: 'auto', position: 'absolute' }}
+            style={{ pointerEvents: 'auto', position: 'absolute', zIndex: 1000 }}
             title="Remove"
           >
             ×
@@ -268,10 +272,21 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
+  const [preservePositions, setPreservePositions] = useState<boolean>(false);
+  const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
   }), []);
+
+  // Save node positions when they change
+  useEffect(() => {
+    const positions = new Map<string, { x: number; y: number }>();
+    nodes.forEach(node => {
+      positions.set(node.id, { ...node.position });
+    });
+    setSavedPositions(positions);
+  }, [nodes]);
 
   // Clear nodes and edges when topology data is cleared
   useEffect(() => {
@@ -281,6 +296,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       console.log('🧹 Clearing all nodes and edges');
       setNodes([]);
       setEdges([]);
+      setPreservePositions(false);
+      setSavedPositions(new Map());
       return;
     }
     
@@ -371,23 +388,64 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (flowNodes.length > 0) {
       // Apply layout
       let layoutedNodes = [...flowNodes];
-      switch (currentLayout) {
-        case 'hierarchical':
-          layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
-          break;
-        case 'radial':
-          layoutedNodes = applyRadialLayout(layoutedNodes, flowEdges);
-          break;
-        case 'grid':
-          layoutedNodes = applyGridLayout(layoutedNodes);
-          break;
-        default:
-          layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
+      
+      // Check if we should preserve existing positions
+      const existingNodeIds = new Set(nodes.map(n => n.id));
+      const newNodeIds = flowNodes.filter(n => !existingNodeIds.has(n.id)).map(n => n.id);
+      const shouldPreserve = preservePositions && newNodeIds.length > 0 && savedPositions.size > 0;
+      
+      if (shouldPreserve) {
+        console.log('🔒 Preserving positions for existing nodes');
+        // Restore positions for existing nodes
+        layoutedNodes = layoutedNodes.map(node => {
+          const savedPos = savedPositions.get(node.id);
+          if (savedPos) {
+            return { ...node, position: savedPos };
+          }
+          // Only apply layout to new nodes
+          return node;
+        });
+        
+        // Position only new nodes
+        const newNodes = layoutedNodes.filter(n => newNodeIds.includes(n.id));
+        if (newNodes.length > 0) {
+          // Simple positioning for new nodes - place them to the right
+          const maxX = Math.max(...Array.from(savedPositions.values()).map(p => p.x), 0);
+          newNodes.forEach((node, index) => {
+            const targetNode = layoutedNodes.find(n => n.id === node.id);
+            if (targetNode) {
+              targetNode.position = {
+                x: maxX + 150 + (index % 3) * 120,
+                y: 100 + Math.floor(index / 3) * 120
+              };
+            }
+          });
+        }
+      } else {
+        // Apply full layout when not preserving or first load
+        switch (currentLayout) {
+          case 'hierarchical':
+            layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
+            break;
+          case 'radial':
+            layoutedNodes = applyRadialLayout(layoutedNodes, flowEdges);
+            break;
+          case 'grid':
+            layoutedNodes = applyGridLayout(layoutedNodes);
+            break;
+          default:
+            layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
+        }
       }
       
       console.log('🎯 Setting nodes:', layoutedNodes.length, 'edges:', flowEdges.length);
       setNodes(layoutedNodes);
       setEdges(flowEdges);
+      
+      // Enable position preservation after first layout
+      if (!preservePositions) {
+        setPreservePositions(true);
+      }
       
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
@@ -544,7 +602,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           {['hierarchical', 'radial', 'grid'].map((layout) => (
             <button
               key={layout}
-              onClick={() => setCurrentLayout(layout)}
+              onClick={() => {
+                setCurrentLayout(layout);
+                setPreservePositions(false); // Reset preservation when changing layout
+              }}
               className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
                 currentLayout === layout 
                   ? 'bg-blue-100 text-blue-800 font-medium' 
@@ -586,6 +647,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                     // Clear topology component state
                     setNodes([]);
                     setEdges([]);
+                    setPreservePositions(false);
+                    setSavedPositions(new Map());
                     // Notify parent to clear its state too
                     if (onClearAll) {
                       onClearAll();
