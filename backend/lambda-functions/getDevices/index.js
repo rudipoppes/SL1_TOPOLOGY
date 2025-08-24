@@ -97,7 +97,7 @@ exports.handler = async (event) => {
     const response = {
       devices,
       pagination: {
-        total: -1, // Unknown total count from SL1 GraphQL  
+        total: data.devices.totalCount || -1,
         limit,
         hasMore: data.devices.pageInfo?.hasNextPage || false,
         nextCursor: lastCursor

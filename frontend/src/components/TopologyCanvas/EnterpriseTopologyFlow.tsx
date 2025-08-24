@@ -275,7 +275,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Clear nodes and edges when topology data is cleared
   useEffect(() => {
+    console.log('🔄 TopologyFlow effect triggered:', { topologyData: !!topologyData, devicesLength: devices.length });
+    
     if (!topologyData && devices.length === 0) {
+      console.log('🧹 Clearing all nodes and edges');
       setNodes([]);
       setEdges([]);
       return;
@@ -285,7 +288,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     let flowEdges: Edge[] = [];
 
     if (topologyData && topologyData.nodes.length > 0) {
-      console.log('🔍 Processing topology data:', topologyData);
+      console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
       // Create professional nodes  
       flowNodes = topologyData.nodes.map((node) => ({
@@ -301,35 +304,52 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         },
       }));
 
-      // Only create edges if we have real relationship data from SL1
+      // CRITICAL: Only create edges if we have real relationship data from SL1 AND both source/target exist
       if (topologyData.edges && topologyData.edges.length > 0) {
-        console.log('📊 Creating edges from SL1 data:', topologyData.edges);
-        flowEdges = topologyData.edges.map((edge) => {
-          const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
-          const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-          const sourceId = sourceNode?.label || String(edge.source);
-          const targetId = targetNode?.label || String(edge.target);
+        console.log('📊 Processing edges from SL1:', topologyData.edges);
+        
+        flowEdges = topologyData.edges
+          .filter((edge) => {
+            const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
+            const targetNode = topologyData.nodes.find(n => n.id === edge.target);
+            const hasValidNodes = sourceNode && targetNode;
+            
+            if (!hasValidNodes) {
+              console.warn('🚫 Skipping invalid edge - missing nodes:', edge);
+            }
+            
+            return hasValidNodes;
+          })
+          .map((edge) => {
+            const sourceNode = topologyData.nodes.find(n => n.id === edge.source)!;
+            const targetNode = topologyData.nodes.find(n => n.id === edge.target)!;
+            const sourceId = sourceNode.label || String(edge.source);
+            const targetId = targetNode.label || String(edge.target);
+            
+            console.log('✅ Creating edge:', sourceId, '→', targetId);
+            
+            return {
+              id: `edge-${sourceId}-${targetId}`,
+              source: sourceId,
+              target: targetId,
+              type: 'smoothstep',
+              animated: false,
+              style: {
+                stroke: '#64748B',
+                strokeWidth: 1.5,
+              },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 12,
+                height: 12,
+                color: '#64748B',
+              },
+            };
+          });
           
-          return {
-            id: `edge-${sourceId}-${targetId}`,
-            source: sourceId,
-            target: targetId,
-            type: 'smoothstep',
-            animated: false,
-            style: {
-              stroke: '#64748B',
-              strokeWidth: 1.5,
-            },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 12,
-              height: 12,
-              color: '#64748B',
-            },
-          };
-        });
+        console.log('📊 Final edges created:', flowEdges.length);
       } else {
-        console.log('⚠️ No real edges from SL1, showing nodes only');
+        console.log('⚠️ No edges from SL1 - showing nodes only');
         flowEdges = []; // No fake edges
       }
     } else if (devices.length > 0) {
@@ -365,12 +385,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
       }
       
+      console.log('🎯 Setting nodes:', layoutedNodes.length, 'edges:', flowEdges.length);
       setNodes(layoutedNodes);
       setEdges(flowEdges);
       
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
       }, 100);
+    } else {
+      // Clear everything when no nodes
+      console.log('🧹 No nodes - clearing topology');
+      setNodes([]);
+      setEdges([]);
     }
   }, [topologyData, devices, currentLayout, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
 
