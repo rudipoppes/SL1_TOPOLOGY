@@ -82,17 +82,17 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         style={{
-          minWidth: '120px',
-          maxWidth: '140px',
+          minWidth: '80px',
+          maxWidth: '90px',
           background: 'white',
           border: selected ? '2px solid #3B82F6' : '1px solid #E5E7EB',
-          borderRadius: '12px',
-          padding: '8px',
+          borderRadius: '8px',
+          padding: '6px',
           boxShadow: selected 
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
             : isHovered ? colors.shadow : '0 2px 8px rgba(0,0,0,0.1)',
-          cursor: 'move',
-          transform: isHovered ? 'scale(1.02)' : 'scale(1)',
+          cursor: 'grab',
+          transform: isHovered ? 'scale(1.05)' : 'scale(1)',
           transition: 'all 0.2s ease',
         }}
       >
@@ -116,11 +116,11 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         />
         
         {/* Device icon */}
-        <div className="text-xl mb-2">{icon}</div>
+        <div className="text-lg mb-1">{icon}</div>
         
         {/* Device name */}
         <div 
-          className="text-xs font-semibold text-center text-gray-800 leading-tight"
+          className="text-[10px] font-semibold text-center text-gray-800 leading-tight"
           style={{ 
             wordBreak: 'break-word',
             hyphens: 'auto',
@@ -132,7 +132,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         
         {/* Device type (on hover) */}
         {isHovered && type && (
-          <div className="text-[10px] text-gray-500 text-center mt-1 truncate max-w-full">
+          <div className="text-[8px] text-gray-500 text-center mt-1 truncate max-w-full">
             {type}
           </div>
         )}
@@ -464,9 +464,11 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         fitView
         minZoom={0.2}
         maxZoom={3}
-        nodesDraggable={true} // Allow manual dragging
-        nodesConnectable={false} // Prevent manual connections
+        nodesDraggable={true}
+        nodesConnectable={false}
         elementsSelectable={true}
+        panOnDrag={[1, 2]}
+        selectionOnDrag={false}
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: false,
