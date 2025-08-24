@@ -26,8 +26,8 @@ export interface DevicesResponse {
   pagination: {
     total: number;
     limit: number;
-    offset: number;
     hasMore: boolean;
+    nextCursor?: string;
   };
   filters: {
     availableTypes: string[];
@@ -71,7 +71,7 @@ export const apiService = {
     type?: string;
     status?: string;
     limit?: number;
-    offset?: number;
+    cursor?: string;
   }): Promise<DevicesResponse> {
     try {
       console.log('🚀 Calling real Lambda API:', apiConfig.baseUrl);
@@ -85,7 +85,6 @@ export const apiService = {
         pagination: {
           total: 0,
           limit: params.limit || 50,
-          offset: params.offset || 0,
           hasMore: false
         },
         filters: {

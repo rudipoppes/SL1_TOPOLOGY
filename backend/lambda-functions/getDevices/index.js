@@ -29,10 +29,10 @@ exports.handler = async (event) => {
     const type = params.type || null;
     const status = params.status || null;
     const limit = parseInt(params.limit) || 50;
-    const offset = parseInt(params.offset) || 0;
+    const cursor = params.cursor || null;
     
     // Create cache key
-    const cacheKey = `devices:${search}:${type}:${status}:${limit}:${offset}`;
+    const cacheKey = `devices:${search}:${type}:${status}:${limit}:${cursor || 'start'}`;
     
     // Check cache
     const cachedData = await checkCache(cacheKey);
@@ -50,6 +50,10 @@ exports.handler = async (event) => {
     
     // Build query variables and select appropriate query
     const variables = { limit };
+    if (cursor) {
+      variables.after = cursor;
+    }
+    
     let queryToUse;
     
     if (search && search.trim()) {
@@ -85,14 +89,18 @@ exports.handler = async (event) => {
       devices = devices.filter(d => d.status.toLowerCase() === status.toLowerCase());
     }
     
+    // Get last cursor for next page
+    const lastCursor = data.devices.edges.length > 0 
+      ? data.devices.edges[data.devices.edges.length - 1].cursor 
+      : null;
+
     const response = {
       devices,
       pagination: {
         total: -1, // Unknown total count from SL1 GraphQL  
         limit,
-        offset,
         hasMore: data.devices.pageInfo?.hasNextPage || false,
-        currentPage: Math.floor(offset / limit) + 1
+        nextCursor: lastCursor
       },
       filters: {
         availableTypes: getUniqueTypes(devices),

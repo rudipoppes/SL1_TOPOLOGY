@@ -29,7 +29,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   // Pagination - use config
   const devicesConfig = configService.getDevicesConfig();
   const [hasMore, setHasMore] = useState(true);
-  const [offset, setOffset] = useState(0);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
   const limit = devicesConfig.itemsPerPage;
 
@@ -39,35 +39,34 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     setError(null);
     
     try {
-      const currentOffset = reset ? 0 : offset;
-      console.log('📡 Fetching devices with offset:', currentOffset);
+      const currentCursor = reset ? null : nextCursor;
+      console.log('📡 Fetching devices with cursor:', currentCursor ? 'next page' : 'first page');
       
       const response = await apiService.getDevices({
         search: searchTerm,
         type: selectedType || undefined,
         status: selectedStatus || undefined,
         limit,
-        offset: currentOffset,
+        cursor: currentCursor || undefined,
       });
       
       console.log('📊 Received devices:', response.devices.length);
       
       if (reset) {
         setDevices(response.devices);
-        setOffset(response.devices.length);
       } else {
-        // Filter out duplicates when loading more
+        // Add new devices to the list
         setDevices((prev) => {
           const existingIds = new Set(prev.map(d => d.id));
           const newDevices = response.devices.filter(d => !existingIds.has(d.id));
           console.log('New unique devices:', newDevices.length);
           return [...prev, ...newDevices];
         });
-        setOffset(currentOffset + response.devices.length);
       }
       
       setAvailableTypes(response.filters.availableTypes);
       setHasMore(response.pagination.hasMore);
+      setNextCursor(response.pagination.nextCursor || null);
       setTotal(response.pagination.total);
       
     } catch (err) {
@@ -76,11 +75,11 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedType, selectedStatus, limit]);
+  }, [searchTerm, selectedType, selectedStatus, limit, nextCursor]);
 
   // Initial load and reset when filters change
   useEffect(() => {
-    setOffset(0); // Reset offset when filters change
+    setNextCursor(null); // Reset cursor when filters change
     fetchDevices(true);
   }, [searchTerm, selectedType, selectedStatus]);
 
