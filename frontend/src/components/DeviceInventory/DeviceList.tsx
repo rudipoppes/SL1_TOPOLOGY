@@ -50,14 +50,24 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       
       if (reset) {
         setDevices(response.devices);
+        setOffset(0); // Reset offset
       } else {
-        setDevices((prev) => [...prev, ...response.devices]);
+        // Filter out duplicates when loading more
+        setDevices((prev) => {
+          const existingIds = new Set(prev.map(d => d.id));
+          const newDevices = response.devices.filter(d => !existingIds.has(d.id));
+          return [...prev, ...newDevices];
+        });
       }
       
       setAvailableTypes(response.filters.availableTypes);
       setHasMore(response.pagination.hasMore);
       setTotal(response.pagination.total);
-      setOffset(currentOffset + limit);
+      
+      // Only update offset if not resetting and there are new devices
+      if (!reset && response.devices.length > 0) {
+        setOffset(currentOffset + response.devices.length);
+      }
     } catch (err) {
       setError('Failed to fetch devices');
       console.error('Error fetching devices:', err);
@@ -66,8 +76,9 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     }
   }, [searchTerm, selectedType, selectedStatus, offset]);
 
-  // Initial load
+  // Initial load and reset when filters change
   useEffect(() => {
+    setOffset(0); // Reset offset when filters change
     fetchDevices(true);
   }, [searchTerm, selectedType, selectedStatus]);
 
@@ -142,7 +153,11 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         {/* Status bar */}
         <div className="mt-4 flex items-center justify-between text-sm">
           <div className="text-gray-600">
-            Showing <span className="font-semibold text-gray-900">{devices.length}</span> of <span className="font-semibold text-gray-900">{total}</span> devices
+            {total === -1 ? (
+              <>Showing <span className="font-semibold text-gray-900">{devices.length}</span> devices{hasMore ? ' (more available)' : ''}</>
+            ) : (
+              <>Showing <span className="font-semibold text-gray-900">{devices.length}</span> of <span className="font-semibold text-gray-900">{total}</span> devices</>
+            )}
           </div>
           {selectedDevices.size > 0 && (
             <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">

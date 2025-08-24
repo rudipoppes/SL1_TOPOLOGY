@@ -88,10 +88,11 @@ exports.handler = async (event) => {
     const response = {
       devices,
       pagination: {
-        total: devices.length, // SL1 doesn't provide totalCount
+        total: -1, // Unknown total count from SL1 GraphQL  
         limit,
         offset,
-        hasMore: data.devices.pageInfo?.hasNextPage || false
+        hasMore: data.devices.pageInfo?.hasNextPage || false,
+        currentPage: Math.floor(offset / limit) + 1
       },
       filters: {
         availableTypes: getUniqueTypes(devices),

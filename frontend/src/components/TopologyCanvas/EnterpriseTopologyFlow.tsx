@@ -101,9 +101,11 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           <button
             onClick={(e) => {
               e.stopPropagation();
+              e.preventDefault();
               onRemove();
             }}
-            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50"
+            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50 cursor-pointer"
+            style={{ pointerEvents: 'all' }}
           >
             ✕
           </button>
