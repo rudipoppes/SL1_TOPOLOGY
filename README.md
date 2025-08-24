@@ -11,7 +11,7 @@
 
 - **Frontend**: [http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/](http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/)
 - **API**: `https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod`
-- **Status**: ✅ Production Ready with Real SL1 Data
+- **Status**: ✅ Functional with Known Issues (See [TODO.md](TODO.md))
 
 ## ✨ Features
 
@@ -25,9 +25,16 @@
 
 ### User Workflow
 1. **Browse Devices** - Search and filter through SL1 device inventory
-2. **Select & Drag** - Choose devices and drag them to the topology canvas
+2. **Select & Drag** - Choose devices and drag them to the topology canvas  
 3. **Visualize Relationships** - Interactive topology map with status indicators
 4. **Explore** - Pan, zoom, and interact with the topology visualization
+
+### Known Issues
+- ⚠️ Device removal from canvas not working
+- ⚠️ Canvas layout resets when adding new devices  
+- ⚠️ No interactive device selection on canvas
+
+**See [TODO.md](TODO.md) for complete issue tracking and development status.**
 
 ## 🏗️ Architecture
 
