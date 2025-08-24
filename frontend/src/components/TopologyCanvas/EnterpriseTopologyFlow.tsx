@@ -16,8 +16,6 @@ import {
   Handle,
   Position,
   BackgroundVariant,
-  getNodesBounds,
-  getViewportForBounds,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
@@ -378,8 +376,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Export functions
   const exportAsPNG = useCallback(() => {
-    const nodesBounds = getNodesBounds(nodes);
-    const viewport = getViewportForBounds(nodesBounds, 1920, 1080, 0.5, 2, 0.1);
+    // For now, use a simple screenshot approach
+    // In production, you'd use a library like html2canvas or react-flow's toObject/toSvg
     
     // Create a temporary canvas
     const canvas = document.createElement('canvas');
