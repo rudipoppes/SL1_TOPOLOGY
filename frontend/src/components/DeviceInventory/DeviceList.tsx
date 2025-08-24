@@ -141,14 +141,24 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       <div className="p-4 bg-white border-b border-gray-100 shadow-sm">
         <div className="space-y-4">
           <DeviceSearch onSearch={setSearchTerm} />
-          <DeviceFilters
-            types={availableTypes}
-            selectedType={selectedType}
-            onTypeChange={setSelectedType}
-            selectedStatus={selectedStatus}
-            onStatusChange={setSelectedStatus}
-            onClearFilters={handleClearFilters}
-          />
+          <div className="flex items-center justify-between">
+            <DeviceFilters
+              types={availableTypes}
+              selectedType={selectedType}
+              onTypeChange={setSelectedType}
+              selectedStatus={selectedStatus}
+              onStatusChange={setSelectedStatus}
+              onClearFilters={handleClearFilters}
+            />
+            {hasMore && !loading && (
+              <button
+                onClick={() => fetchDevices(false)}
+                className="px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors"
+              >
+                Load More
+              </button>
+            )}
+          </div>
         </div>
         
         {/* Status bar */}
@@ -184,7 +194,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         ) : (
           <div className="bg-gray-50/30">
             <List
-              height={window.innerHeight - 320}
+              height={window.innerHeight - 280}
               itemCount={devices.length}
               itemSize={60}
               width="100%"
@@ -195,16 +205,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         )}
       </div>
 
-      {hasMore && !loading && (
-        <div className="p-4 bg-gradient-to-r from-gray-50 to-white border-t border-gray-200">
-          <button
-            onClick={() => fetchDevices(false)}
-            className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-indigo-500 text-white font-medium rounded-lg shadow-md hover:shadow-lg hover:from-blue-600 hover:to-indigo-600 transition-all duration-200 transform hover:scale-105"
-          >
-            Load More Devices...
-          </button>
-        </div>
-      )}
     </div>
   );
 };

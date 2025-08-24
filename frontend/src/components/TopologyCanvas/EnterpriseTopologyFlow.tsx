@@ -155,7 +155,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         
         {/* Device name */}
         <div 
-          className="text-xs font-semibold text-center text-gray-800 leading-tight"
+          className="text-[10px] font-semibold text-center text-gray-800 leading-tight"
           style={{ 
             wordBreak: 'break-word',
             hyphens: 'auto',
@@ -310,6 +310,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [preservePositions, setPreservePositions] = useState<boolean>(false);
   const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -334,6 +335,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setEdges([]);
       setPreservePositions(false);
       setSavedPositions(new Map());
+      setManualLayoutLocked(false);
       return;
     }
     
@@ -438,7 +440,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Check if we should preserve existing positions
       const existingNodeIds = new Set(nodes.map(n => n.id));
       const newNodeIds = flowNodes.filter(n => !existingNodeIds.has(n.id)).map(n => n.id);
-      const shouldPreserve = preservePositions && newNodeIds.length > 0 && savedPositions.size > 0;
+      const shouldPreserve = (preservePositions || manualLayoutLocked) && savedPositions.size > 0;
       
       if (shouldPreserve) {
         console.log('🔒 Preserving positions for existing nodes');
@@ -489,7 +491,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setEdges(flowEdges);
       
       // Enable position preservation after first layout
-      if (!preservePositions) {
+      if (!preservePositions && !manualLayoutLocked) {
         setPreservePositions(true);
       }
       
@@ -658,9 +660,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               onClick={() => {
                 setCurrentLayout(layout);
                 setPreservePositions(false); // Reset preservation when changing layout
+                setManualLayoutLocked(false); // Unlock manual layout
               }}
               className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
-                currentLayout === layout 
+                currentLayout === layout && !manualLayoutLocked
                   ? 'bg-blue-100 text-blue-800 font-medium' 
                   : 'bg-gray-50 hover:bg-gray-100'
               }`}
@@ -668,6 +671,36 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               {layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'} {layout.charAt(0).toUpperCase() + layout.slice(1)}
             </button>
           ))}
+          
+          <div className="border-t pt-2 mt-2">
+            <button
+              onClick={() => {
+                setManualLayoutLocked(!manualLayoutLocked);
+              }}
+              className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
+                manualLayoutLocked
+                  ? 'bg-green-100 text-green-800 font-medium' 
+                  : 'bg-gray-50 hover:bg-gray-100'
+              }`}
+            >
+              {manualLayoutLocked ? '🔒' : '🔓'} Manual Layout
+            </button>
+            
+            <button
+              onClick={() => {
+                setManualLayoutLocked(false);
+                setPreservePositions(false);
+                setSavedPositions(new Map());
+                // Re-apply the current layout
+                const tempLayout = currentLayout;
+                setCurrentLayout('temp');
+                setTimeout(() => setCurrentLayout(tempLayout), 0);
+              }}
+              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded transition-colors mt-1"
+            >
+              🔄 Reset Layout
+            </button>
+          </div>
           
           <div className="border-t pt-2">
             <button
@@ -702,6 +735,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                     setEdges([]);
                     setPreservePositions(false);
                     setSavedPositions(new Map());
+                    setManualLayoutLocked(false);
                     // Notify parent to clear its state too
                     if (onClearAll) {
                       onClearAll();
