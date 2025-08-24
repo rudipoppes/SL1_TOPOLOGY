@@ -97,7 +97,7 @@ exports.handler = async (event) => {
     const response = {
       devices,
       pagination: {
-        total: data.devices.totalCount || -1,
+        total: -1, // SL1 GraphQL doesn't provide totalCount 
         limit,
         hasMore: data.devices.pageInfo?.hasNextPage || false,
         nextCursor: lastCursor

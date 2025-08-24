@@ -82,7 +82,6 @@ const QUERIES = {
   GET_DEVICES: `
     query GetDevices($limit: Int!, $after: String) {
       devices(first: $limit, after: $after) {
-        totalCount
         edges {
           cursor
           node {
@@ -109,7 +108,6 @@ const QUERIES = {
   GET_DEVICES_WITH_SEARCH: `
     query GetDevicesWithSearch($limit: Int!, $after: String, $search: DeviceSearch!) {
       devices(first: $limit, after: $after, search: $search) {
-        totalCount
         edges {
           cursor
           node {
