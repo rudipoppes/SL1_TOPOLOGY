@@ -1,1 +1,35 @@
 /* Remove default styles if any */
+
+/* Improve React Flow rendering quality */
+.react-flow__renderer {
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.react-flow__node {
+  will-change: auto !important;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.react-flow__edge-path {
+  shape-rendering: geometricPrecision;
+}
+
+/* Prevent blurry text */
+.react-flow__node * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Ensure crisp rendering at all zoom levels */
+.react-flow__viewport {
+  will-change: auto !important;
+}
+
+.react-flow__pane {
+  will-change: auto !important;
+}

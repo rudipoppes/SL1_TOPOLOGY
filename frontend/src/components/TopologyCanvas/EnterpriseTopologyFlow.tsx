@@ -74,7 +74,13 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: '#3B82F6', width: 6, height: 6, borderRadius: '50%' }}
+        style={{ 
+          background: '#3B82F6', 
+          width: 8, 
+          height: 8, 
+          borderRadius: '50%',
+          border: '1px solid white',
+        }}
       />
       
       <div
@@ -94,8 +100,17 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
             ? '0 0 10px rgba(59, 130, 246, 0.3)'
             : isHovered ? colors.shadow : '0 2px 8px rgba(0,0,0,0.1)',
           cursor: 'grab',
-          transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-          transition: 'all 0.2s ease',
+          // Remove transform to prevent blurriness
+          // transform: isHovered ? 'scale(1.05)' : 'scale(1)',
+          // Use outline for hover effect instead
+          outline: isHovered ? '2px solid rgba(59, 130, 246, 0.3)' : 'none',
+          outlineOffset: '2px',
+          // Disable transition to prevent flickering
+          // transition: 'all 0.2s ease',
+          // Force GPU acceleration and prevent blurriness
+          willChange: 'auto',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)',
         }}
       >
         {/* Remove button - only show for primary devices */}
@@ -140,11 +155,14 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         
         {/* Device name */}
         <div 
-          className="text-[10px] font-semibold text-center text-gray-800 leading-tight"
+          className="text-xs font-semibold text-center text-gray-800 leading-tight"
           style={{ 
             wordBreak: 'break-word',
             hyphens: 'auto',
-            maxWidth: '100%'
+            maxWidth: '100%',
+            // Improve text rendering
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
           }}
         >
           {label}
@@ -152,7 +170,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         
         {/* Device type (on hover) */}
         {isHovered && type && (
-          <div className="text-[8px] text-gray-500 text-center mt-1 truncate max-w-full">
+          <div className="text-[10px] text-gray-500 text-center mt-1 truncate max-w-full">
             {type}
           </div>
         )}
@@ -161,7 +179,13 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: '#3B82F6', width: 6, height: 6, borderRadius: '50%' }}
+        style={{ 
+          background: '#3B82F6', 
+          width: 8, 
+          height: 8, 
+          borderRadius: '50%',
+          border: '1px solid white',
+        }}
       />
     </>
   );
@@ -372,7 +396,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               animated: false,
               style: {
                 stroke: '#64748B',
-                strokeWidth: 1.5,
+                strokeWidth: 1,
+                // Improve edge rendering
+                shapeRendering: 'geometricPrecision',
               },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
@@ -579,8 +605,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView
-        minZoom={0.2}
-        maxZoom={3}
+        minZoom={0.5}
+        maxZoom={2}
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
@@ -591,6 +617,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           type: 'smoothstep',
           animated: false,
         }}
+        // Disable animations that can cause blur
+        zoomOnScroll={true}
+        zoomOnPinch={true}
+        zoomOnDoubleClick={false}
+        preventScrolling={true}
+        // Force pixel-perfect rendering
+        attributionPosition="bottom-left"
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#E2E8F0" />
         
