@@ -96,16 +96,20 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           transition: 'all 0.2s ease',
         }}
       >
-        {/* Remove button */}
-        {isHovered && onRemove && (
+        {/* Remove button - Always visible when hovering */}
+        {onRemove && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               e.preventDefault();
+              console.log('🗑️ Removing node:', data.label);
               onRemove();
             }}
-            className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50 cursor-pointer"
+            className={`absolute -top-2 -right-2 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-lg z-50 cursor-pointer transition-all duration-200 ${
+              isHovered ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
+            }`}
             style={{ pointerEvents: 'all' }}
+            title="Remove from topology"
           >
             ✕
           </button>
@@ -283,6 +287,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     let flowEdges: Edge[] = [];
 
     if (topologyData && topologyData.nodes.length > 0) {
+      console.log('🔍 Processing topology data:', topologyData);
+      
       // Create professional nodes  
       flowNodes = topologyData.nodes.map((node) => ({
         id: node.label || String(node.id),
@@ -297,31 +303,37 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         },
       }));
 
-      // Create edges with better routing
-      flowEdges = topologyData.edges.map((edge) => {
-        const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
-        const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-        const sourceId = sourceNode?.label || String(edge.source);
-        const targetId = targetNode?.label || String(edge.target);
-        
-        return {
-          id: `edge-${sourceId}-${targetId}`,
-          source: sourceId,
-          target: targetId,
-          type: 'smoothstep', // Better edge routing
-          animated: false,
-          style: {
-            stroke: '#64748B',
-            strokeWidth: 1.5,
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 12,
-            height: 12,
-            color: '#64748B',
-          },
-        };
-      });
+      // Only create edges if we have real relationship data from SL1
+      if (topologyData.edges && topologyData.edges.length > 0) {
+        console.log('📊 Creating edges from SL1 data:', topologyData.edges);
+        flowEdges = topologyData.edges.map((edge) => {
+          const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
+          const targetNode = topologyData.nodes.find(n => n.id === edge.target);
+          const sourceId = sourceNode?.label || String(edge.source);
+          const targetId = targetNode?.label || String(edge.target);
+          
+          return {
+            id: `edge-${sourceId}-${targetId}`,
+            source: sourceId,
+            target: targetId,
+            type: 'smoothstep',
+            animated: false,
+            style: {
+              stroke: '#64748B',
+              strokeWidth: 1.5,
+            },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 12,
+              height: 12,
+              color: '#64748B',
+            },
+          };
+        });
+      } else {
+        console.log('⚠️ No real edges from SL1, showing nodes only');
+        flowEdges = []; // No fake edges
+      }
     } else if (devices.length > 0) {
       // Fallback for device list
       flowNodes = devices.map((device) => ({

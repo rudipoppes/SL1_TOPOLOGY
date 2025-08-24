@@ -160,25 +160,18 @@ export const apiService = {
         };
       });
 
-      // Add some mock related devices
-      const mockRelatedNodes: TopologyNode[] = [
-        { id: 'rel-1', label: 'Related Device 1', type: 'Switch', status: 'online', ip: '192.168.1.1' },
-        { id: 'rel-2', label: 'Related Device 2', type: 'Router', status: 'online', ip: '192.168.1.2' }
-      ];
-
-      const mockEdges: TopologyEdge[] = [
-        { source: params.deviceIds[0], target: 'rel-1' },
-        { source: 'rel-1', target: 'rel-2' }
-      ];
+      // Don't add fake related devices or edges when topology API fails
+      // Just show the selected devices without fake relationships
+      console.log('⚠️ No topology API available, showing selected devices only (no fake relationships)');
 
       return {
         topology: {
-          nodes: [...mockNodes, ...mockRelatedNodes],
-          edges: mockEdges
+          nodes: mockNodes,
+          edges: [] // No fake edges!
         },
         stats: {
-          totalDevices: mockNodes.length + mockRelatedNodes.length,
-          totalRelationships: mockEdges.length,
+          totalDevices: mockNodes.length,
+          totalRelationships: 0,
           depth: params.depth || 1,
           direction: params.direction || 'both'
         }
