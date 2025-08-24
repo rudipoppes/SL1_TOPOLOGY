@@ -286,7 +286,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         id: node.label || String(node.id),
         type: 'professional',
         position: { x: 0, y: 0 },
-        dragHandle: '.drag-handle',
+        draggable: true,
         data: { 
           label: node.label,
           type: node.type,
@@ -326,6 +326,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         id: device.id,
         type: 'professional',
         position: { x: 0, y: 0 },
+        draggable: true,
         data: { 
           label: device.name,
           type: device.type,
@@ -469,6 +470,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         elementsSelectable={true}
         panOnDrag={[1, 2]}
         selectionOnDrag={false}
+        selectNodesOnDrag={false}
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: false,
