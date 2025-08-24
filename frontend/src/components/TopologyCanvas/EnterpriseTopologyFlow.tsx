@@ -62,15 +62,15 @@ const getStatusColors = (status: string = 'unknown') => {
   }
 };
 
-// Simple Device Node - only show remove button if onRemove is provided
-const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
+// Professional Device Node with proper deletable handling
+const ProfessionalDeviceNode = ({ data, selected, deletable }: { data: any; selected?: boolean; deletable?: boolean }) => {
   const { label, type, status, onRemove } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
   
-  // Simple logic: if onRemove exists, this device can be removed
-  const canRemove = Boolean(onRemove);
+  // Use React Flow's deletable property (passed from node definition)
+  const canRemove = Boolean(deletable);
   
   return (
     <>
@@ -120,8 +120,8 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           transform: 'translateZ(0)',
         }}
       >
-        {/* Remove button - only if device can be removed */}
-        {canRemove && isHovered && (
+        {/* Remove button - only show for deletable nodes */}
+        {canRemove && onRemove && isHovered && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -136,7 +136,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           </button>
         )}
         
-        {/* Primary device indicator */}
+        {/* Primary device indicator - only for deletable nodes */}
         {canRemove && (
           <div 
             className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center"
@@ -347,10 +347,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes.length > 0) {
       console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
-      // ULTRA SIMPLE: Only devices that were dragged get onRemove function
+      // PROPER REACT FLOW APPROACH: Use deletable property on nodes
       const draggedDeviceNames = new Set(devices.map(d => d.name));
       
-      // Create nodes
+      // Create nodes with proper React Flow deletable property
       flowNodes = topologyData.nodes.map((node) => {
         const nodeLabel = node.label || String(node.id);
         const wasDragged = draggedDeviceNames.has(nodeLabel);
@@ -360,11 +360,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           type: 'professional',
           position: { x: 0, y: 0 },
           draggable: true,
+          deletable: wasDragged, // React Flow's built-in deletable property
           data: { 
             label: nodeLabel,
             type: node.type,
             status: 'online',
-            // ONLY dragged devices get the remove function
+            // Provide callback for custom delete button
             onRemove: wasDragged && onRemoveDevice ? () => onRemoveDevice(nodeLabel) : undefined,
           },
         };
@@ -406,17 +407,17 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         flowEdges = [];
       }
     } else if (devices.length > 0) {
-      // Fallback for device list - all devices are primary when no topology data
+      // Fallback for device list - all devices are deletable when no topology data
       flowNodes = devices.map((device) => ({
         id: device.id,
         type: 'professional',
         position: { x: 0, y: 0 },
         draggable: true,
+        deletable: true, // All directly added devices are deletable
         data: { 
           label: device.name,
           type: device.type,
           status: device.status,
-          isPrimary: true,
           onRemove: onRemoveDevice ? () => onRemoveDevice(device.id) : undefined,
         },
       }));
@@ -484,6 +485,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         setPreservePositions(true);
       }
       
+      // Log for debugging deletable state
+      console.log('Node deletable states:', flowNodes.map(n => `${n.data.label}: ${n.deletable}`));
+      
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
       }, 100);
@@ -496,6 +500,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   }, [topologyData, devices, currentLayout, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
+    console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
     if (onDeviceClick) {
       const device: Device = {
         id: node.id,
@@ -601,6 +606,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         nodesDraggable={true}
         nodesConnectable={false}
         elementsSelectable={true}
+        deleteKeyCode={null} // Disable default delete key to use custom removal only
         panOnDrag={[1, 2]}
         selectionOnDrag={false}
         selectNodesOnDrag={false}
