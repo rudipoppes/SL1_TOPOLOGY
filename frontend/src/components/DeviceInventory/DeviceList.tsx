@@ -40,6 +40,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     
     try {
       const currentOffset = reset ? 0 : offset;
+      console.log('📡 Fetching devices with offset:', currentOffset);
+      
       const response = await apiService.getDevices({
         search: searchTerm,
         type: selectedType || undefined,
@@ -48,33 +50,33 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         offset: currentOffset,
       });
       
+      console.log('📊 Received devices:', response.devices.length);
+      
       if (reset) {
         setDevices(response.devices);
-        setOffset(0); // Reset offset
+        setOffset(response.devices.length);
       } else {
         // Filter out duplicates when loading more
         setDevices((prev) => {
           const existingIds = new Set(prev.map(d => d.id));
           const newDevices = response.devices.filter(d => !existingIds.has(d.id));
+          console.log('New unique devices:', newDevices.length);
           return [...prev, ...newDevices];
         });
+        setOffset(currentOffset + response.devices.length);
       }
       
       setAvailableTypes(response.filters.availableTypes);
       setHasMore(response.pagination.hasMore);
       setTotal(response.pagination.total);
       
-      // Only update offset if not resetting and there are new devices
-      if (!reset && response.devices.length > 0) {
-        setOffset(currentOffset + response.devices.length);
-      }
     } catch (err) {
       setError('Failed to fetch devices');
       console.error('Error fetching devices:', err);
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedType, selectedStatus, offset]);
+  }, [searchTerm, selectedType, selectedStatus, limit]);
 
   // Initial load and reset when filters change
   useEffect(() => {

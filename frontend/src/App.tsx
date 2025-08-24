@@ -202,9 +202,14 @@ function App() {
               topologyData={topologyData || undefined}
               onDeviceClick={handleDeviceClick}
               onRemoveDevice={(deviceId) => {
-                setTopologyDevices(prev => prev.filter(d => d.id !== deviceId));
+                console.log('🗑️ App removing device:', deviceId);
+                setTopologyDevices(prev => {
+                  const filtered = prev.filter(d => d.id !== deviceId && d.name !== deviceId);
+                  console.log('Devices after removal:', filtered.map(d => d.name));
+                  return filtered;
+                });
                 // Re-fetch topology for remaining devices
-                const remaining = topologyDevices.filter(d => d.id !== deviceId);
+                const remaining = topologyDevices.filter(d => d.id !== deviceId && d.name !== deviceId);
                 if (remaining.length > 0) {
                   fetchTopologyData(remaining);
                 } else {
