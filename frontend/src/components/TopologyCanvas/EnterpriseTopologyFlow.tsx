@@ -604,16 +604,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       deviceNames: devices.map(d => d.name)
     });
     
-    // Only update if devices actually changed
-    const currentDeviceIds = devices.map(d => d.id).sort().join(',');
-    const previousDeviceIds = nodes.map(n => n.id).sort().join(',');
+    // Simply place devices on canvas - no topology loading
+    updateCanvasFromChipArea(devices);
     
-    if (currentDeviceIds !== previousDeviceIds) {
-      // Simply place devices on canvas - no topology loading
-      updateCanvasFromChipArea(devices);
-    }
-    
-  }, [devices, nodes, updateCanvasFromChipArea]);
+  }, [devices, updateCanvasFromChipArea]);
 
   // Handle topology data changes - process relationship loading results
   useEffect(() => {
