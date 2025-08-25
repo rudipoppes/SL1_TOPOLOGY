@@ -50,6 +50,13 @@ function App() {
       console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
       setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
       
+      // CRITICAL: Clear topology data first to prevent phantom edges
+      console.log('🧹 Clearing topology data to prevent phantom edges during direction change');
+      setTopologyData(null);
+      
+      // Small delay to ensure React state updates are processed
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       // Refresh topology with updated per-device directions
       await fetchTopologyDataWithDeviceDirections(topologyDevices);
     } else {
@@ -60,6 +67,14 @@ function App() {
         newDirections.set(device.id, direction);
       });
       setDeviceDirections(newDirections);
+      
+      // CRITICAL: Clear topology data first to prevent phantom edges
+      console.log('🧹 Clearing topology data to prevent phantom edges during global direction change');
+      setTopologyData(null);
+      
+      // Small delay to ensure React state updates are processed  
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
       await fetchTopologyDataWithDeviceDirections(topologyDevices);
     }
   };
