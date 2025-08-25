@@ -344,8 +344,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   // Use original edge change handler without phantom detection to avoid race conditions
   const onEdgesChange = originalOnEdgesChange;
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
-  const [preservePositions, setPreservePositions] = useState<boolean>(false);
-  const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
   
@@ -355,344 +353,267 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Save node positions when they change
   useEffect(() => {
-    const positions = new Map<string, { x: number; y: number }>();
     nodes.forEach(node => {
-      positions.set(node.id, { ...node.position });
+      canvasStateRef.current.nodePositions.set(node.id, node.position);
     });
-    setSavedPositions(positions);
   }, [nodes]);
 
-  // Clear nodes and edges when topology data is cleared
-  useEffect(() => {
-    console.log('🔄 TopologyFlow effect triggered:', { 
-      topologyData: !!topologyData, 
-      devicesLength: devices.length,
-      topologyNodes: topologyData?.nodes?.length || 0,
-      topologyEdges: topologyData?.edges?.length || 0,
-      deviceNames: devices.map(d => d.name),
-      edgeType: edgeType,
-      currentLayout: currentLayout
+  // Fresh React Flow architecture with proper state management
+  const lastTopologyRef = useRef<any>(null);
+  const initializedRef = useRef(false);
+  const canvasStateRef = useRef({
+    nodePositions: new Map<string, { x: number; y: number }>(),
+    isFirstLoad: true,
+    preserveView: false
+  });
+
+  // Core canvas management - handles device chip area changes
+  const updateCanvasFromChipArea = useCallback((selectedDevices: Device[]) => {
+    console.log('🎯 FRESH ARCHITECTURE: Updating canvas from chip area', {
+      deviceCount: selectedDevices.length,
+      deviceNames: selectedDevices.map(d => d.name)
     });
-    
-    if (!topologyData && devices.length === 0) {
-      console.log('🧹 Clearing all nodes and edges (no topology data)');
+
+    if (selectedDevices.length === 0) {
+      // Clear all when chip area is empty
+      console.log('🧹 Clearing canvas - no devices selected');
       setNodes([]);
       setEdges([]);
-      setPreservePositions(false);
-      setSavedPositions(new Map());
-      setManualLayoutLocked(false);
+      canvasStateRef.current.nodePositions.clear();
+      canvasStateRef.current.isFirstLoad = true;
+      canvasStateRef.current.preserveView = false;
       return;
     }
-    
-    if (!topologyData) {
-      console.log('🧹 No topology data - preserving existing state');
-      return;
-    }
-    
-    let flowNodes: Node[] = [];
-    let flowEdges: Edge[] = [];
 
-    if (topologyData && topologyData.nodes.length > 0) {
-      console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
+    // Create nodes for all devices in chip area
+    const newNodes: Node[] = selectedDevices.map(device => {
+      const existingPosition = canvasStateRef.current.nodePositions.get(device.id);
       
-      // Create nodes from topology data - preserve existing positions
-      const existingNodes = new Map(nodes.map(n => [n.id, n]));
-      
-      flowNodes = topologyData.nodes.map((node) => {
-        const nodeLabel = node.label || String(node.id);
-        const existingNode = existingNodes.get(node.id); // Look up by device ID, not label
-        
-        return {
-          id: node.id, // Use device ID consistently, not label!
-          type: 'professional',
-          // Preserve existing position if node exists, otherwise use default
-          position: existingNode ? existingNode.position : { x: 0, y: 0 },
-          draggable: true,
-          data: { 
-            label: nodeLabel,
-            type: node.type,
-            status: 'online',
-            direction: deviceDirections.get(node.id) || 'children',
-          },
-        };
-      });
-
-      // Create edges if they exist - with enhanced filtering
-      if (topologyData.edges && topologyData.edges.length > 0) {
-        // Get all valid node IDs for edge validation
-        const validNodeIds = new Set(topologyData.nodes.map(n => n.id));
-        const validNodeLabels = new Set(topologyData.nodes.map(n => n.label || String(n.id)));
-        
-        console.log('🔗 Validating edges against nodes:', {
-          totalEdges: topologyData.edges.length,
-          validNodeIds: Array.from(validNodeIds),
-          validNodeLabels: Array.from(validNodeLabels)
-        });
-        
-        flowEdges = topologyData.edges
-          .filter((edge) => {
-            const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
-            const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-            
-            // Enhanced validation: both nodes must exist in current topology data
-            const isValid = sourceNode && targetNode && 
-                           validNodeIds.has(edge.source) && 
-                           validNodeIds.has(edge.target);
-            
-            if (!isValid) {
-              console.log('🚫 Filtering out invalid edge:', {
-                edge: `${edge.source} → ${edge.target}`,
-                sourceExists: !!sourceNode,
-                targetExists: !!targetNode,
-                sourceInSet: validNodeIds.has(edge.source),
-                targetInSet: validNodeIds.has(edge.target)
-              });
-            }
-            
-            return isValid;
-          })
-          .map((edge) => {
-            const sourceNode = topologyData.nodes.find(n => n.id === edge.source)!;
-            const targetNode = topologyData.nodes.find(n => n.id === edge.target)!;
-            
-            // CRITICAL FIX: Use device IDs directly, no conversion to labels
-            const sourceId = edge.source;
-            const targetId = edge.target;
-            
-            // Double-check that both nodes exist in the flowNodes we're creating
-            const sourceFlowNode = flowNodes.find(n => n.id === sourceId);
-            const targetFlowNode = flowNodes.find(n => n.id === targetId);
-            
-            if (!sourceFlowNode || !targetFlowNode) {
-              console.error('🚨 CRITICAL: Edge references non-existent flow node:', {
-                edge: `${sourceId} → ${targetId}`,
-                sourceNodeExists: !!sourceFlowNode,
-                targetNodeExists: !!targetFlowNode,
-                availableFlowNodes: flowNodes.map(n => n.id)
-              });
-              return null; // Return null for invalid edges
-            }
-            
-            const edgeStyle = getEdgeStyle(sourceNode.type, targetNode.type);
-            
-            return {
-              id: `${sourceId}-${targetId}`,
-              source: sourceId,
-              target: targetId,
-              type: edgeType, // Dynamic edge type
-              animated: false,
-              style: edgeStyle,
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                width: 14,
-                height: 14,
-                color: edgeStyle.stroke,
-              },
-              // Improve interaction
-              interactionWidth: 10, // Wider invisible clickable area
-            };
-          })
-          .filter(edge => edge !== null); // Remove null edges
-      } else {
-        flowEdges = [];
-      }
-    } else if (devices.length > 0) {
-      // Fallback for device list - simple nodes
-      console.log('📍 Showing devices without topology data');
-      flowNodes = devices.map((device) => ({
-        id: device.id, // Consistent device ID usage
+      return {
+        id: device.id,
         type: 'professional',
-        position: { x: 0, y: 0 },
+        position: existingPosition || { x: 0, y: 0 }, // Will be layouted if no position
         draggable: true,
-        data: { 
+        data: {
           label: device.name,
           type: device.type,
           status: device.status,
           direction: deviceDirections.get(device.id) || 'children',
-        },
-      }));
-      
-      flowEdges = []; // Ensure no edges for device-only view
-      
-      // Explicitly clear any existing edges to prevent phantom connections
-      console.log('🧹 Explicitly clearing edges for devices-only view');
-      setEdges([]);
-    }
+          ip: device.ip
+        }
+      };
+    });
 
-    if (flowNodes.length > 0) {
-      // Apply layout with incremental positioning
-      let layoutedNodes = [...flowNodes];
+    // Apply layout only to nodes without positions
+    const nodesNeedingLayout = newNodes.filter(n => n.position.x === 0 && n.position.y === 0);
+    if (nodesNeedingLayout.length > 0 && !manualLayoutLocked) {
+      console.log('📍 Applying layout to', nodesNeedingLayout.length, 'new nodes');
       
-      // Identify existing vs new nodes
-      const existingNodeIds = new Set(nodes.map(n => n.id));
-      const newNodeIds = flowNodes.filter(n => !existingNodeIds.has(n.id)).map(n => n.id);
-      const hasNewNodes = newNodeIds.length > 0;
-      const shouldPreservePositions = nodes.length > 0; // If we have existing nodes, preserve their positions
+      // Simple incremental positioning
+      const existingPositions = newNodes
+        .filter(n => n.position.x !== 0 || n.position.y !== 0)
+        .map(n => n.position);
       
-      console.log('📍 Layout analysis:', {
-        totalNodes: flowNodes.length,
-        existingNodes: existingNodeIds.size,
-        newNodes: newNodeIds.length,
-        shouldPreservePositions,
-        preservePositions,
-        manualLayoutLocked
-      });
+      let startX = 100;
+      let startY = 100;
       
-      if (shouldPreservePositions && !manualLayoutLocked && hasNewNodes && existingNodeIds.size > 0) {
-        console.log('🔒 INCREMENTAL LAYOUT: Preserving existing positions, positioning new nodes');
-        
-        // For existing nodes: keep their current positions from React Flow state
-        layoutedNodes = layoutedNodes.map(node => {
-          const existingNode = nodes.find(n => n.id === node.id);
-          if (existingNode) {
-            // Preserve position from current React Flow state
-            return { ...node, position: existingNode.position };
-          }
-          // New nodes keep default position for now
-          return node;
-        });
-        
-        // Position only new nodes intelligently
-        if (hasNewNodes) {
-          const newNodes = layoutedNodes.filter(n => newNodeIds.includes(n.id));
-          const existingPositions = nodes.map(n => n.position);
-          
-          if (existingPositions.length > 0) {
-            // Calculate smart positioning for new nodes
-            const maxX = Math.max(...existingPositions.map(p => p.x), 200);
-            const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
-            
-            newNodes.forEach((node, index) => {
-              const targetNode = layoutedNodes.find(n => n.id === node.id);
-              if (targetNode) {
-                // Place new nodes to the right of existing ones
-                targetNode.position = {
-                  x: maxX + 150 + (index % 3) * 120,
-                  y: avgY + (Math.floor(index / 3) - 1) * 120
-                };
-              }
-            });
-          } else {
-            // Fallback if no existing positions
-            newNodes.forEach((node, index) => {
-              const targetNode = layoutedNodes.find(n => n.id === node.id);
-              if (targetNode) {
-                targetNode.position = {
-                  x: 100 + (index % 3) * 120,
-                  y: 100 + Math.floor(index / 3) * 120
-                };
-              }
-            });
-          }
-        }
-      } else if (manualLayoutLocked) {
-        console.log('🔒 MANUAL LAYOUT LOCKED: Preserving all positions');
-        // Keep all existing positions when manual layout is locked
-        layoutedNodes = layoutedNodes.map(node => {
-          const savedPos = savedPositions.get(node.id);
-          const existingNode = nodes.find(n => n.id === node.id);
-          if (existingNode) {
-            return { ...node, position: existingNode.position };
-          } else if (savedPos) {
-            return { ...node, position: savedPos };
-          }
-          return node;
-        });
-      } else {
-        console.log('🎯 FULL LAYOUT: Applying algorithmic layout');
-        // Apply full layout when not preserving or first load
-        switch (currentLayout) {
-          case 'hierarchical':
-            layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
-            break;
-          case 'radial':
-            layoutedNodes = applyRadialLayout(layoutedNodes, flowEdges);
-            break;
-          case 'grid':
-            layoutedNodes = applyGridLayout(layoutedNodes);
-            break;
-          default:
-            layoutedNodes = applyHierarchicalLayout(layoutedNodes, flowEdges);
-        }
+      if (existingPositions.length > 0) {
+        // Place new nodes to the right of existing ones
+        const maxX = Math.max(...existingPositions.map(p => p.x), 100);
+        const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
+        startX = maxX + 150;
+        startY = avgY;
       }
       
-      console.log('🎯 Setting nodes:', layoutedNodes.length, 'edges:', flowEdges.length);
-      
-      // AGGRESSIVE: Final validation with enhanced phantom edge prevention
-      const nodeIds = new Set(layoutedNodes.map(n => n.id));
-      console.log('🔍 PHANTOM PREVENTION: Final edge validation', {
-        totalEdges: flowEdges.length,
-        availableNodes: Array.from(nodeIds),
-        edgeDetails: flowEdges.map(e => `${e.source}→${e.target}`)
+      nodesNeedingLayout.forEach((node, index) => {
+        node.position = {
+          x: startX + (index % 3) * 120,
+          y: startY + Math.floor(index / 3) * 120
+        };
       });
+    }
+
+    // Update canvas with just the device nodes (no relationships yet)
+    setNodes(newNodes);
+    setEdges([]); // Clear edges until topology data arrives
+    
+    // Save positions
+    newNodes.forEach(node => {
+      canvasStateRef.current.nodePositions.set(node.id, node.position);
+    });
+
+    // Fit view only on first load
+    if (canvasStateRef.current.isFirstLoad && newNodes.length > 0) {
+      console.log('🎯 Fitting view (first load)');
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
+        canvasStateRef.current.isFirstLoad = false;
+      }, 100);
+    }
+
+    canvasStateRef.current.preserveView = true;
+  }, [deviceDirections, manualLayoutLocked, reactFlowInstance, setNodes, setEdges]);
+
+  // Relationship management - handles topology data changes
+  const updateCanvasRelationships = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
+    console.log('🔗 FRESH ARCHITECTURE: Updating relationships', {
+      nodes: topologyData.nodes.length,
+      edges: topologyData.edges.length
+    });
+
+    // Get current nodes to merge with topology nodes
+    const currentNodeMap = new Map(nodes.map(n => [n.id, n]));
+    const allNodes: Node[] = [];
+
+    // Process topology nodes
+    topologyData.nodes.forEach(apiNode => {
+      const existingNode = currentNodeMap.get(apiNode.id);
       
-      const validatedEdges = flowEdges.filter(edge => {
-        const sourceExists = nodeIds.has(edge.source);
-        const targetExists = nodeIds.has(edge.target);
-        const isValid = sourceExists && targetExists;
+      if (existingNode) {
+        // Update existing node data, preserve position
+        allNodes.push({
+          ...existingNode,
+          data: {
+            ...existingNode.data,
+            label: apiNode.label,
+            type: apiNode.type,
+            status: apiNode.status,
+            ip: apiNode.ip,
+            direction: deviceDirections.get(apiNode.id) || existingNode.data.direction
+          }
+        });
+      } else {
+        // New node from relationships - position it near related nodes
+        const savedPosition = canvasStateRef.current.nodePositions.get(apiNode.id);
+        let newPosition = savedPosition || { x: 0, y: 0 };
         
-        if (!isValid) {
-          console.error('🚫 PHANTOM EDGE REMOVED at final validation:', {
-            edge: `${edge.source} → ${edge.target}`,
+        if (!savedPosition) {
+          // Find connected nodes to position near them
+          const connectedEdges = topologyData.edges.filter(e => e.source === apiNode.id || e.target === apiNode.id);
+          const connectedNodeIds = connectedEdges.flatMap(e => [e.source, e.target]).filter(id => id !== apiNode.id);
+          const connectedPositions = connectedNodeIds
+            .map(id => canvasStateRef.current.nodePositions.get(id))
+            .filter(pos => pos !== undefined);
+          
+          if (connectedPositions.length > 0) {
+            // Position near connected nodes
+            const avgX = connectedPositions.reduce((sum, pos) => sum + pos.x, 0) / connectedPositions.length;
+            const avgY = connectedPositions.reduce((sum, pos) => sum + pos.y, 0) / connectedPositions.length;
+            newPosition = {
+              x: avgX + (Math.random() - 0.5) * 100, // Add some randomness
+              y: avgY + (Math.random() - 0.5) * 100
+            };
+          } else {
+            // Default positioning for orphaned nodes
+            const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
+            if (existingPositions.length > 0) {
+              const maxX = Math.max(...existingPositions.map(p => p.x), 200);
+              newPosition = { x: maxX + 150, y: 200 + Math.random() * 100 };
+            } else {
+              newPosition = { x: 300 + Math.random() * 100, y: 300 + Math.random() * 100 };
+            }
+          }
+        }
+        
+        allNodes.push({
+          id: apiNode.id,
+          type: 'professional',
+          position: newPosition,
+          draggable: true,
+          data: {
+            label: apiNode.label,
+            type: apiNode.type,
+            status: apiNode.status,
+            direction: deviceDirections.get(apiNode.id) || 'children',
+            ip: apiNode.ip
+          }
+        });
+        
+        canvasStateRef.current.nodePositions.set(apiNode.id, newPosition);
+      }
+    });
+
+    // Create valid edges - strict validation
+    const nodeIdSet = new Set(allNodes.map(n => n.id));
+    const validEdges: Edge[] = topologyData.edges
+      .filter(edge => {
+        const sourceExists = nodeIdSet.has(edge.source);
+        const targetExists = nodeIdSet.has(edge.target);
+        
+        if (!sourceExists || !targetExists) {
+          console.log('🚫 Filtering invalid edge:', edge, {
             sourceExists,
             targetExists,
-            availableNodes: Array.from(nodeIds)
+            availableNodes: Array.from(nodeIdSet)
           });
         }
-        return isValid;
+        
+        return sourceExists && targetExists;
+      })
+      .map(edge => {
+        const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
+        const targetNode = topologyData.nodes.find(n => n.id === edge.target);
+        const edgeStyle = getEdgeStyle(sourceNode?.type, targetNode?.type);
+        
+        return {
+          id: `${edge.source}-${edge.target}`,
+          source: edge.source,
+          target: edge.target,
+          type: edgeType,
+          animated: false,
+          style: edgeStyle,
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 14,
+            height: 14,
+            color: edgeStyle.stroke
+          }
+        };
       });
-      
-      if (validatedEdges.length !== flowEdges.length) {
-        console.warn('🧹 PHANTOM CLEANUP: Removed', flowEdges.length - validatedEdges.length, 'phantom edges');
-      }
-      
-      console.log('✅ Final edge count after phantom cleanup:', validatedEdges.length, 'vs original:', flowEdges.length);
-      
-      setNodes(layoutedNodes);
-      setEdges(validatedEdges);
-      
-      // Enable position preservation after first layout
-      if (!preservePositions && !manualLayoutLocked) {
-        setPreservePositions(true);
-      }
-      
-      // Log for debugging deletable state
-      console.log('Node deletable states:', flowNodes.map(n => `${n.data.label}: ${n.deletable}`));
-      
-      // Fit view logic: ONLY on initial load or explicit layout algorithm changes
-      const isInitialLoad = nodes.length === 0;
-      const isExplicitLayoutChange = !shouldPreservePositions && !manualLayoutLocked;
-      
-      // Only fit view for true initial loads or when user explicitly changes layout algorithm
-      if (isInitialLoad && layoutedNodes.length > 0) {
-        console.log('🎯 Fitting view (initial load)');
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
-        }, 100);
-      } else if (isExplicitLayoutChange) {
-        console.log('🎯 Fitting view (explicit layout change)');
-        setTimeout(() => {
-          reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
-        }, 100);
-      } else {
-        console.log('🔒 PRESERVING VIEW: Skipping fitView (incremental update or preserved positions)', {
-          shouldPreservePositions,
-          manualLayoutLocked,
-          hasNewNodes,
-          existingNodeIds: existingNodeIds.size
-        });
-      }
-    } else {
-      // Clear everything when no nodes
-      console.log('🧹 No nodes - clearing topology');
-      setNodes([]);
-      setEdges([]);
-    }
-  }, [topologyData, devices, currentLayout, edgeType, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
 
-  // REMOVED: Additional phantom edge detection useEffect 
-  // This was causing race conditions with the main topology useEffect
-  // Phantom edge prevention is now handled entirely within the main topology processing logic
+    console.log('✅ Canvas update complete:', {
+      totalNodes: allNodes.length,
+      validEdges: validEdges.length,
+      preserveView: canvasStateRef.current.preserveView
+    });
+
+    // Update canvas
+    setNodes(allNodes);
+    setEdges(validEdges);
+
+    // Never fit view during relationship updates - preserves user's current view
+    console.log('🔒 Preserving view during relationship update');
+  }, [nodes, deviceDirections, edgeType, setNodes, setEdges]);
+
+  // Handle device selection changes from chip area
+  useEffect(() => {
+    console.log('🔄 Device selection effect:', {
+      deviceCount: devices.length,
+      deviceNames: devices.map(d => d.name)
+    });
+    
+    updateCanvasFromChipArea(devices);
+  }, [devices, updateCanvasFromChipArea]);
+
+  // Handle topology data changes (relationships)
+  useEffect(() => {
+    if (!topologyData || !initializedRef.current) {
+      if (devices.length > 0) {
+        initializedRef.current = true;
+      }
+      return;
+    }
+
+    // Skip if topology data hasn't changed
+    if (JSON.stringify(topologyData) === JSON.stringify(lastTopologyRef.current)) {
+      console.log('🔒 Skipping topology update - data unchanged');
+      return;
+    }
+    
+    lastTopologyRef.current = topologyData;
+    updateCanvasRelationships(topologyData);
+  }, [topologyData, updateCanvasRelationships, devices.length]);
+
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
@@ -996,8 +917,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               key={layout}
               onClick={() => {
                 setCurrentLayout(layout);
-                setPreservePositions(false); // Reset preservation when changing layout
                 setManualLayoutLocked(false); // Unlock manual layout
+                canvasStateRef.current.isFirstLoad = true; // Allow fitView for layout change
               }}
               className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
                 currentLayout === layout && !manualLayoutLocked
@@ -1026,8 +947,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <button
               onClick={() => {
                 setManualLayoutLocked(false);
-                setPreservePositions(false);
-                setSavedPositions(new Map());
+                canvasStateRef.current.nodePositions.clear();
+                canvasStateRef.current.isFirstLoad = true;
                 // Re-apply the current layout
                 const tempLayout = currentLayout;
                 setCurrentLayout('temp');
