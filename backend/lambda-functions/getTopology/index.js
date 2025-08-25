@@ -70,10 +70,21 @@ exports.handler = async (event) => {
       allRelationships = relationshipData.deviceRelationships.edges.filter(edge => {
         const parentId = edge.node.parentDevice?.id;
         const childId = edge.node.childDevice?.id;
-        return deviceIds.includes(parentId) || deviceIds.includes(childId);
+        
+        // Apply direction-based filtering
+        if (direction === 'parents') {
+          // Only include relationships where our devices are children (to see their parents)
+          return deviceIds.includes(childId);
+        } else if (direction === 'children') {
+          // Only include relationships where our devices are parents (to see their children)
+          return deviceIds.includes(parentId);
+        } else {
+          // 'both' - include any relationship involving our devices
+          return deviceIds.includes(parentId) || deviceIds.includes(childId);
+        }
       });
       
-      console.log(`Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
+      console.log(`Direction: ${direction} - Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
     }
     
     console.log(`Total relationships found: ${allRelationships.length}`);
