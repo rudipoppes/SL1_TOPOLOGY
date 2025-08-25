@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import {
   ReactFlow,
   MiniMap,
@@ -29,7 +29,6 @@ interface TopologyFlowProps {
     edges: TopologyEdge[];
   };
   onDeviceClick?: (device: Device) => void;
-  onRemoveDevice?: (deviceId: string) => void;
   onClearAll?: () => void;
   deviceDirections?: Map<string, 'parents' | 'children' | 'both'>;
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId?: string) => void;
@@ -215,109 +214,8 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   );
 };
 
-// Layout algorithms
-const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]) => {
-  // Find root nodes (no incoming edges)
-  const hasIncomingEdge = new Set(edges.map(e => e.target));
-  const rootNodes = nodes.filter(n => !hasIncomingEdge.has(n.id));
-  
-  // Build adjacency list
-  const adjacency = new Map<string, string[]>();
-  edges.forEach(edge => {
-    if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
-    adjacency.get(edge.source)!.push(edge.target);
-  });
-  
-  // Level-based positioning
-  const levels = new Map<string, number>();
-  const visited = new Set<string>();
-  
-  const assignLevel = (nodeId: string, level: number) => {
-    if (visited.has(nodeId)) return;
-    visited.add(nodeId);
-    levels.set(nodeId, Math.max(levels.get(nodeId) || 0, level));
-    
-    const children = adjacency.get(nodeId) || [];
-    children.forEach(child => assignLevel(child, level + 1));
-  };
-  
-  rootNodes.forEach(node => assignLevel(node.id, 0));
-  
-  // Position nodes by level
-  const levelGroups = new Map<number, Node[]>();
-  nodes.forEach(node => {
-    const level = levels.get(node.id) || 0;
-    if (!levelGroups.has(level)) levelGroups.set(level, []);
-    levelGroups.get(level)!.push(node);
-  });
-  
-  let yPos = 100;
-  const levelHeight = 120;
-  
-  levelGroups.forEach((levelNodes, _level) => {
-    const totalWidth = levelNodes.length * 120;
-    const startX = Math.max(100, (800 - totalWidth) / 2);
-    
-    levelNodes.forEach((node, index) => {
-      node.position = {
-        x: startX + (index * 120),
-        y: yPos
-      };
-    });
-    yPos += levelHeight;
-  });
-  
-  return nodes;
-};
-
-const applyRadialLayout = (nodes: Node[], edges: Edge[]) => {
-  if (nodes.length === 0) return nodes;
-  
-  // Find central node (most connections)
-  const connectionCount = new Map<string, number>();
-  edges.forEach(edge => {
-    connectionCount.set(edge.source, (connectionCount.get(edge.source) || 0) + 1);
-    connectionCount.set(edge.target, (connectionCount.get(edge.target) || 0) + 1);
-  });
-  
-  const centralNode = nodes.reduce((max, node) => 
-    (connectionCount.get(node.id) || 0) > (connectionCount.get(max.id) || 0) ? node : max
-  );
-  
-  // Place central node at center
-  centralNode.position = { x: 400, y: 300 };
-  
-  // Place other nodes in concentric circles
-  const otherNodes = nodes.filter(n => n.id !== centralNode.id);
-  const radius = 200;
-  const angleStep = (2 * Math.PI) / Math.max(otherNodes.length, 1);
-  
-  otherNodes.forEach((node, index) => {
-    const angle = index * angleStep;
-    node.position = {
-      x: 400 + radius * Math.cos(angle),
-      y: 300 + radius * Math.sin(angle)
-    };
-  });
-  
-  return nodes;
-};
-
-const applyGridLayout = (nodes: Node[]) => {
-  const cols = Math.ceil(Math.sqrt(nodes.length));
-  const cellSize = 100;
-  
-  nodes.forEach((node, index) => {
-    const row = Math.floor(index / cols);
-    const col = index % cols;
-    node.position = {
-      x: 100 + col * cellSize,
-      y: 100 + row * cellSize
-    };
-  });
-  
-  return nodes;
-};
+// Note: Layout algorithms removed as they're not used in the new architecture
+// The new architecture uses intelligent incremental positioning instead
 
 // Main component
 const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
@@ -325,7 +223,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   selectedDevices = [],
   topologyData,
   onDeviceClick,
-  onRemoveDevice,
   onClearAll,
   deviceDirections = new Map(),
   onDirectionChange,
@@ -507,7 +404,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             // Default positioning for orphaned nodes
             const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
             if (existingPositions.length > 0) {
-              const maxX = Math.max(...existingPositions.map(p => p.x), 200);
+              const maxX = Math.max(...existingPositions.map((p: { x: number; y: number }) => p.x), 200);
               newPosition = { x: maxX + 150, y: 200 + Math.random() * 100 };
             } else {
               newPosition = { x: 300 + Math.random() * 100, y: 300 + Math.random() * 100 };
@@ -1007,11 +904,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 
                 <button
                   onClick={() => {
-                    // Clear topology component state
+                    // Clear all state
                     setNodes([]);
                     setEdges([]);
-                    setPreservePositions(false);
-                    setSavedPositions(new Map());
+                    canvasStateRef.current.nodePositions.clear();
+                    canvasStateRef.current.isFirstLoad = true;
+                    canvasStateRef.current.preserveView = false;
                     setManualLayoutLocked(false);
                     // Notify parent to clear its state too
                     if (onClearAll) {
