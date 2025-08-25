@@ -84,11 +84,17 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     }
   }, [searchTerm, selectedType, selectedStatus, limit, nextCursor]);
 
-  // Initial load and reset when filters change
+  // Initial load and reset when filters change (but NOT search term)
   useEffect(() => {
     setNextCursor(null); // Reset cursor when filters change
     fetchDevices(true);
-  }, [searchTerm, selectedType, selectedStatus]);
+  }, [selectedType, selectedStatus]);
+  
+  // Separate effect for search term to maintain selection
+  useEffect(() => {
+    setNextCursor(null);
+    fetchDevices(true);
+  }, [searchTerm]);
 
   // Handle device selection
   const handleDeviceSelect = (device: Device) => {
@@ -146,7 +152,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       {parentSelectedDevices.length > 0 && (
         <div className="p-4 bg-blue-50 border-b border-blue-200">
           <div className="text-sm font-medium text-blue-800 mb-2">
-            Selected for Topology ({parentSelectedDevices.length})
+            Selected for Topology
           </div>
           <div className="flex flex-wrap gap-2">
             {parentSelectedDevices.map((device) => (
