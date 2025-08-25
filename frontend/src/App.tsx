@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { EnterpriseTopologyFlow } from './components/TopologyCanvas/EnterpriseTopologyFlow';
+import { configService } from './services/config';
 import './App.css';
 
 function App() {
@@ -11,6 +12,9 @@ function App() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
   const [loadingTopology, setLoadingTopology] = useState(false);
+  const [topologyDirection, setTopologyDirection] = useState<'parents' | 'children' | 'both'>(
+    configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both'
+  );
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDeviceSelect = async (devices: Device[]) => {
@@ -32,7 +36,16 @@ function App() {
     setSelectedDevices([]);
   };
 
-  const fetchTopologyData = async (devices: Device[]) => {
+  const handleDirectionChange = async (direction: 'parents' | 'children' | 'both') => {
+    console.log('🔄 Changing topology direction to:', direction);
+    setTopologyDirection(direction);
+    // Refresh topology with new direction
+    if (topologyDevices.length > 0) {
+      await fetchTopologyData(topologyDevices, direction);
+    }
+  };
+
+  const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
     if (devices.length === 0) {
       setTopologyData(null);
       return;
@@ -40,11 +53,12 @@ function App() {
 
     setLoadingTopology(true);
     try {
-      console.log('🔍 Fetching topology for devices:', devices.map(d => d.name));
+      const currentDirection = direction || topologyDirection;
+      console.log('🔍 Fetching topology for devices:', devices.map(d => d.name), 'Direction:', currentDirection);
       const response = await apiService.getTopology({
         deviceIds: devices.map(d => d.id),
         depth: 1,
-        direction: 'both'
+        direction: currentDirection
       });
       
       console.log('📊 Topology data received:', response.topology);
@@ -164,6 +178,8 @@ function App() {
               devices={topologyDevices}
               topologyData={topologyData || undefined}
               onClearAll={handleClearAll}
+              currentDirection={topologyDirection}
+              onDirectionChange={handleDirectionChange}
               className="h-full"
             />
           </div>

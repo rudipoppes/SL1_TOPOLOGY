@@ -30,7 +30,17 @@ interface TopologyFlowProps {
   onDeviceClick?: (device: Device) => void;
   onRemoveDevice?: (deviceId: string) => void;
   onClearAll?: () => void;
+  currentDirection?: 'parents' | 'children' | 'both';
+  onDirectionChange?: (direction: 'parents' | 'children' | 'both') => void;
   className?: string;
+}
+
+interface ContextMenuState {
+  visible: boolean;
+  x: number;
+  y: number;
+  nodeId?: string;
+  nodeName?: string;
 }
 
 // Enhanced edge styling based on relationship type/importance
@@ -302,11 +312,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   onDeviceClick,
   onRemoveDevice,
   onClearAll,
+  currentDirection = 'both',
+  onDirectionChange,
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, originalOnEdgesChange] = useEdgesState<Edge>([]);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+  });
   
   // Custom edge change handler with phantom detection
   const onEdgesChange = useCallback((changes: any) => {
@@ -620,6 +637,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
+    // Hide context menu on regular click
+    setContextMenu({ visible: false, x: 0, y: 0 });
     if (onDeviceClick) {
       const device: Device = {
         id: node.id,
@@ -631,6 +650,30 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       onDeviceClick(device);
     }
   }, [onDeviceClick]);
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      event.preventDefault();
+      
+      // Calculate position relative to the viewport
+      const bounds = (event.target as HTMLElement).closest('.react-flow')?.getBoundingClientRect();
+      if (!bounds) return;
+      
+      setContextMenu({
+        visible: true,
+        x: event.clientX - bounds.left,
+        y: event.clientY - bounds.top,
+        nodeId: node.id,
+        nodeName: String(node.data.label || 'Unknown'),
+      });
+    },
+    []
+  );
+
+  const onPaneClick = useCallback(() => {
+    // Hide context menu when clicking on the pane
+    setContextMenu({ visible: false, x: 0, y: 0 });
+  }, []);
 
   // Export functions
   const exportAsPNG = useCallback(() => {
@@ -717,6 +760,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
+        onNodeContextMenu={onNodeContextMenu}
+        onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
         fitView
@@ -761,6 +806,67 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           showInteractive={false}
           position="bottom-right"
         />
+        
+        {/* Context Menu */}
+        {contextMenu.visible && (
+          <div
+            className="absolute bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50"
+            style={{
+              left: contextMenu.x,
+              top: contextMenu.y,
+              minWidth: '200px',
+            }}
+          >
+            <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">
+              {contextMenu.nodeName}
+            </div>
+            <button
+              onClick={() => {
+                onDirectionChange?.('parents');
+                setContextMenu({ visible: false, x: 0, y: 0 });
+              }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                currentDirection === 'parents' ? 'bg-blue-100 text-blue-800' : ''
+              }`}
+            >
+              👆 Show Parents Only
+            </button>
+            <button
+              onClick={() => {
+                onDirectionChange?.('children');
+                setContextMenu({ visible: false, x: 0, y: 0 });
+              }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                currentDirection === 'children' ? 'bg-blue-100 text-blue-800' : ''
+              }`}
+            >
+              👇 Show Children Only
+            </button>
+            <button
+              onClick={() => {
+                onDirectionChange?.('both');
+                setContextMenu({ visible: false, x: 0, y: 0 });
+              }}
+              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+                currentDirection === 'both' ? 'bg-blue-100 text-blue-800' : ''
+              }`}
+            >
+              ↕️ Show Both
+            </button>
+            <div className="border-t border-gray-100 mt-2 pt-2">
+              <button
+                onClick={() => {
+                  // Refresh topology with current direction
+                  onDirectionChange?.(currentDirection);
+                  setContextMenu({ visible: false, x: 0, y: 0 });
+                }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+              >
+                🔄 Refresh Relationships
+              </button>
+            </div>
+          </div>
+        )}
         
         <MiniMap 
           nodeColor={(node) => {
@@ -847,9 +953,19 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               ))}
             </div>
             
+            <div className="border-t pt-2">
+              <div className="text-xs font-semibold text-gray-700 mb-2">Relationship Direction</div>
+              <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs">
+                {currentDirection === 'parents' && '👆 Parents Only'}
+                {currentDirection === 'children' && '👇 Children Only'}
+                {currentDirection === 'both' && '↕️ Both'}
+                <span className="text-gray-500 ml-1">(Right-click node to change)</span>
+              </div>
+            </div>
+            
             <button
               onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 500 })}
-              className="block w-full text-left px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 rounded transition-colors"
+              className="block w-full text-left px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 rounded transition-colors mt-2"
             >
               🎯 Fit View
             </button>
