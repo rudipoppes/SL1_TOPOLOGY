@@ -12,9 +12,8 @@ function App() {
   const [leftPanelWidth, setLeftPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
   const [loadingTopology, setLoadingTopology] = useState(false);
-  const [topologyDirection, setTopologyDirection] = useState<'parents' | 'children' | 'both'>(
-    configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both'
-  );
+  const [deviceDirections, setDeviceDirections] = useState<Map<string, 'parents' | 'children' | 'both'>>(new Map());
+  const defaultDirection = configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both';
   const containerRef = useRef<HTMLDivElement>(null);
 
   const handleDeviceSelect = async (devices: Device[]) => {
@@ -24,8 +23,17 @@ function App() {
     // Update topology to match chip area (selected devices)
     setTopologyDevices(devices);
     
-    // Fetch topology data for selected devices
-    await fetchTopologyData(devices);
+    // Set default directions for all new devices
+    const newDirections = new Map(deviceDirections);
+    devices.forEach(device => {
+      if (!newDirections.has(device.id)) {
+        newDirections.set(device.id, defaultDirection);
+      }
+    });
+    setDeviceDirections(newDirections);
+    
+    // Fetch topology data with per-device directions
+    await fetchTopologyDataWithDeviceDirections(devices);
   };
 
 
@@ -36,12 +44,23 @@ function App() {
     setSelectedDevices([]);
   };
 
-  const handleDirectionChange = async (direction: 'parents' | 'children' | 'both') => {
-    console.log('🔄 Changing topology direction to:', direction);
-    setTopologyDirection(direction);
-    // Refresh topology with new direction
-    if (topologyDevices.length > 0) {
-      await fetchTopologyData(topologyDevices, direction);
+  const handleDirectionChange = async (direction: 'parents' | 'children' | 'both', deviceId?: string) => {
+    if (deviceId) {
+      // Change direction for specific device
+      console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
+      setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
+      
+      // Refresh topology with updated per-device directions
+      await fetchTopologyDataWithDeviceDirections(topologyDevices);
+    } else {
+      // Global direction change (fallback for compatibility)
+      console.log('🔄 Changing global direction to:', direction);
+      const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
+      topologyDevices.forEach(device => {
+        newDirections.set(device.id, direction);
+      });
+      setDeviceDirections(newDirections);
+      await fetchTopologyDataWithDeviceDirections(topologyDevices);
     }
   };
 
@@ -60,11 +79,14 @@ function App() {
     setSelectedDevices(updatedDevices);
     setTopologyDevices(updatedDevices);
     
+    // Set default direction for new device
+    setDeviceDirections(prev => new Map(prev.set(device.id, defaultDirection)));
+    
     // Fetch incremental topology data for ONLY the new device
-    await fetchIncrementalTopologyData([device], topologyDirection);
+    await fetchIncrementalTopologyDataWithDirections([device]);
   };
 
-  const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
+  const fetchTopologyDataWithDeviceDirections = async (devices: Device[]) => {
     if (devices.length === 0) {
       setTopologyData(null);
       return;
@@ -72,12 +94,18 @@ function App() {
 
     setLoadingTopology(true);
     try {
-      const currentDirection = direction || topologyDirection;
-      console.log('🔍 Fetching topology for devices:', devices.map(d => d.name), 'Direction:', currentDirection);
+      // Create device directions object
+      const deviceDirectionsObj: { [deviceId: string]: 'parents' | 'children' | 'both' } = {};
+      devices.forEach(device => {
+        deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
+      });
+
+      console.log('🔍 Fetching topology with per-device directions:', deviceDirectionsObj);
+      
       const response = await apiService.getTopology({
         deviceIds: devices.map(d => d.id),
         depth: 1,
-        direction: currentDirection
+        deviceDirections: deviceDirectionsObj
       });
       
       console.log('📊 Topology data received:', response.topology);
@@ -100,10 +128,10 @@ function App() {
         edges: response.topology.edges
       };
       
-      console.log('📊 Complete topology with all selected devices:', completeTopology);
+      console.log('📊 Complete topology with per-device directions:', completeTopology);
       setTopologyData(completeTopology);
     } catch (error) {
-      console.error('❌ Failed to fetch topology - topology API may not be available:', error);
+      console.error('❌ Failed to fetch topology with device directions:', error);
       // Create simple topology with just the devices (no relationships)
       setTopologyData({
         nodes: devices.map(device => ({
@@ -120,18 +148,23 @@ function App() {
     }
   };
 
-  const fetchIncrementalTopologyData = async (newDevices: Device[], direction?: 'parents' | 'children' | 'both') => {
+  const fetchIncrementalTopologyDataWithDirections = async (newDevices: Device[]) => {
     if (newDevices.length === 0) return;
 
     setLoadingTopology(true);
     try {
-      const currentDirection = direction || topologyDirection;
-      console.log('🔄 Fetching INCREMENTAL topology for devices:', newDevices.map(d => d.name), 'Direction:', currentDirection);
+      // Create device directions object for new devices only
+      const deviceDirectionsObj: { [deviceId: string]: 'parents' | 'children' | 'both' } = {};
+      newDevices.forEach(device => {
+        deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
+      });
+
+      console.log('🔄 Fetching INCREMENTAL topology with per-device directions:', deviceDirectionsObj);
       
       const response = await apiService.getTopology({
         deviceIds: newDevices.map(d => d.id),
         depth: 1,
-        direction: currentDirection
+        deviceDirections: deviceDirectionsObj
       });
       
       console.log('📊 Incremental topology data received:', response.topology);
@@ -139,11 +172,10 @@ function App() {
       // Merge with existing topology data instead of replacing
       setTopologyData(prevTopology => {
         if (!prevTopology) {
-          // If no existing topology, just use the new data
           return response.topology;
         }
         
-        // Ensure the new devices are always included, even if API didn't return them
+        // Ensure the new devices are always included
         const newDeviceNodes = newDevices.map(device => ({
           id: device.id,
           label: device.name,
@@ -157,7 +189,6 @@ function App() {
         const apiNodes = response.topology.nodes.filter(n => !existingNodeIds.has(n.id));
         const missingDeviceNodes = newDeviceNodes.filter(n => !existingNodeIds.has(n.id));
         
-        // Combine API nodes with missing device nodes  
         const allNewNodes = [...apiNodes];
         missingDeviceNodes.forEach(deviceNode => {
           if (!allNewNodes.some(n => n.id === deviceNode.id)) {
@@ -167,12 +198,12 @@ function App() {
         
         const mergedNodes = [...prevTopology.nodes, ...allNewNodes];
         
-        // Merge edges (avoid duplicates by source-target combination)
+        // Merge edges (avoid duplicates)
         const existingEdgeKeys = new Set(prevTopology.edges.map(e => `${e.source}-${e.target}`));
         const newEdges = response.topology.edges.filter(e => !existingEdgeKeys.has(`${e.source}-${e.target}`));
         const mergedEdges = [...prevTopology.edges, ...newEdges];
         
-        console.log('🔄 Merged topology:', {
+        console.log('🔄 Merged topology with per-device directions:', {
           prevNodes: prevTopology.nodes.length,
           newApiNodes: apiNodes.length,
           newDeviceNodes: allNewNodes.length,
@@ -189,7 +220,7 @@ function App() {
       });
       
     } catch (error) {
-      console.error('❌ Failed to fetch incremental topology:', error);
+      console.error('❌ Failed to fetch incremental topology with device directions:', error);
       
       // Fallback: add just the new devices as nodes without relationships
       setTopologyData(prevTopology => {
@@ -205,7 +236,6 @@ function App() {
           return { nodes: newNodes, edges: [] };
         }
         
-        // Merge with existing, avoiding duplicates
         const existingNodeIds = new Set(prevTopology.nodes.map(n => n.id));
         const filteredNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id));
         
@@ -219,6 +249,31 @@ function App() {
     }
   };
 
+  // Legacy function - kept for potential future compatibility  
+  const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
+    // Legacy function - now redirects to per-device approach
+    const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
+    devices.forEach(device => {
+      newDirections.set(device.id, direction || defaultDirection);
+    });
+    setDeviceDirections(newDirections);
+    return fetchTopologyDataWithDeviceDirections(devices);
+  };
+
+
+  // Legacy function - kept for potential future compatibility
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const fetchIncrementalTopologyData = async (newDevices: Device[], direction?: 'parents' | 'children' | 'both') => {
+    // Legacy function - now redirects to per-device approach
+    newDevices.forEach(device => {
+      setDeviceDirections(prev => new Map(prev.set(device.id, direction || defaultDirection)));
+    });
+    return fetchIncrementalTopologyDataWithDirections(newDevices);
+  };
+
+  // Reference legacy functions to avoid TS unused variable errors
+  void fetchTopologyData;
+  void fetchIncrementalTopologyData;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -317,7 +372,7 @@ function App() {
               selectedDevices={selectedDevices}
               topologyData={topologyData || undefined}
               onClearAll={handleClearAll}
-              currentDirection={topologyDirection}
+              deviceDirections={deviceDirections}
               onDirectionChange={handleDirectionChange}
               onAddDeviceToSelection={handleAddDeviceToSelection}
               className="h-full"

@@ -31,8 +31,8 @@ interface TopologyFlowProps {
   onDeviceClick?: (device: Device) => void;
   onRemoveDevice?: (deviceId: string) => void;
   onClearAll?: () => void;
-  currentDirection?: 'parents' | 'children' | 'both';
-  onDirectionChange?: (direction: 'parents' | 'children' | 'both') => void;
+  deviceDirections?: Map<string, 'parents' | 'children' | 'both'>;
+  onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   className?: string;
 }
@@ -327,7 +327,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   onDeviceClick,
   onRemoveDevice,
   onClearAll,
-  currentDirection = 'both',
+  deviceDirections = new Map(),
   onDirectionChange,
   onAddDeviceToSelection,
   className = '',
@@ -432,7 +432,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             label: nodeLabel,
             type: node.type,
             status: 'online',
-            direction: currentDirection,
+            direction: deviceDirections.get(node.id) || 'children',
           },
         };
       });
@@ -523,7 +523,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           label: device.name,
           type: device.type,
           status: device.status,
-          direction: currentDirection,
+          direction: deviceDirections.get(device.id) || 'children',
         },
       }));
       
@@ -751,17 +751,17 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const handleContextMenuAction = useCallback((direction: 'parents' | 'children' | 'both') => {
     if (!contextMenu.nodeId) return;
     
+    // Find the device ID for the clicked node
+    const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+    const deviceId = topologyNode?.id || contextMenu.nodeId;
+    
     // Check if clicked device is already in selected devices (chip area)
-    // Note: contextMenu.nodeId is the node label (device name), not the ID
     const isDeviceInChipArea = selectedDevices.some(d => d.name === contextMenu.nodeId);
     
     if (!isDeviceInChipArea && onAddDeviceToSelection) {
       // Device is NOT in chip area - need to add it first
-      // We need to find the actual device from topologyData to get proper ID and info
-      const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-      
       const clickedDevice: Device = {
-        id: topologyNode?.id || contextMenu.nodeId, // Use topology ID if available
+        id: deviceId,
         name: contextMenu.nodeName || 'Unknown',
         type: topologyNode?.type || 'Unknown',
         status: (topologyNode?.status || 'unknown') as Device['status'],
@@ -770,6 +770,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       
       console.log('🎯 Adding device to selection and changing direction:', {
         device: clickedDevice.name,
+        deviceId,
         direction,
         isInChipArea: isDeviceInChipArea
       });
@@ -778,8 +779,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       onAddDeviceToSelection(clickedDevice);
     }
     
-    // Change direction (this will trigger topology refresh)
-    onDirectionChange?.(direction);
+    // Change direction for THIS SPECIFIC device only
+    console.log('🎯 Changing direction for device:', deviceId, 'to:', direction);
+    onDirectionChange?.(direction, deviceId);
     setContextMenu({ visible: false, x: 0, y: 0 });
   }, [contextMenu.nodeId, contextMenu.nodeName, selectedDevices, topologyData?.nodes, onAddDeviceToSelection, onDirectionChange]);
 
@@ -931,7 +933,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <button
               onClick={() => handleContextMenuAction('parents')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
-                currentDirection === 'parents' ? 'bg-blue-100 text-blue-800' : ''
+                (() => {
+                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+                  const deviceId = topologyNode?.id || contextMenu.nodeId;
+                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
+                  return deviceDirection === 'parents' ? 'bg-blue-100 text-blue-800' : '';
+                })()
               }`}
             >
               👆 Show parent(s)
@@ -939,7 +946,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <button
               onClick={() => handleContextMenuAction('children')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
-                currentDirection === 'children' ? 'bg-blue-100 text-blue-800' : ''
+                (() => {
+                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+                  const deviceId = topologyNode?.id || contextMenu.nodeId;
+                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
+                  return deviceDirection === 'children' ? 'bg-blue-100 text-blue-800' : '';
+                })()
               }`}
             >
               👇 Show child(ren)
@@ -947,7 +959,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <button
               onClick={() => handleContextMenuAction('both')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
-                currentDirection === 'both' ? 'bg-blue-100 text-blue-800' : ''
+                (() => {
+                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+                  const deviceId = topologyNode?.id || contextMenu.nodeId;
+                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
+                  return deviceDirection === 'both' ? 'bg-blue-100 text-blue-800' : '';
+                })()
               }`}
             >
               ↕️ Show both
@@ -955,8 +972,11 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <div className="border-t border-gray-100 mt-2 pt-2">
               <button
                 onClick={() => {
-                  // Refresh topology with current direction
-                  onDirectionChange?.(currentDirection);
+                  // Refresh topology for this device with its current direction
+                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+                  const deviceId = topologyNode?.id || contextMenu.nodeId;
+                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
+                  onDirectionChange?.(deviceDirection, deviceId);
                   setContextMenu({ visible: false, x: 0, y: 0 });
                 }}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
