@@ -391,6 +391,26 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     console.log('🔒 User dragged node - locking manual layout');
     setManualLayoutLocked(true);
   }, []);
+
+  // Load relationships for a specific device in specified direction
+  const loadDeviceRelationships = useCallback(async (deviceId: string, direction: 'up' | 'down' | 'both') => {
+    console.log('🔗 Loading relationships for device:', deviceId, 'direction:', direction);
+    setContextMenu({ visible: false, x: 0, y: 0 });
+    setIsUpdatingTopology(true);
+    
+    try {
+      // Map direction to expected format
+      const mappedDirection = direction === 'up' ? 'parents' : direction === 'down' ? 'children' : 'both';
+      
+      // This will trigger the parent component to load topology data for this specific device
+      if (onDirectionChange) {
+        onDirectionChange(mappedDirection, deviceId);
+      }
+    } catch (error) {
+      console.error('Failed to load relationships:', error);
+      setIsUpdatingTopology(false);
+    }
+  }, [onDirectionChange]);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
@@ -461,7 +481,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Fresh React Flow architecture with proper state management
   const lastTopologyRef = useRef<any>(null);
-  const initializedRef = useRef(false);
   const canvasStateRef = useRef({
     nodePositions: new Map<string, { x: number; y: number }>(),
     isFirstLoad: true,
@@ -505,49 +524,42 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       };
     });
 
-    // Apply simple positioning to new nodes (hierarchical layout will happen after topology data arrives)
+    // Apply positioning to new devices only - no relationships loading
     const nodesNeedingLayout = newNodes.filter(n => n.position.x === 0 && n.position.y === 0);
-    if (nodesNeedingLayout.length > 0 && !manualLayoutLocked) {
-      console.log('📍 Applying temporary positioning to', nodesNeedingLayout.length, 'new nodes (hierarchical layout will apply after relationships load)');
+    if (nodesNeedingLayout.length > 0) {
+      console.log('📍 Positioning', nodesNeedingLayout.length, 'new devices on canvas');
       
-      // Simple positioning - hierarchical layout will be applied when topology data arrives
+      // Position devices in a clean grid layout
       const existingPositions = newNodes
         .filter(n => n.position.x !== 0 || n.position.y !== 0)
         .map(n => n.position);
       
-      let startX = 100;
-      let startY = 100;
+      let startX = 300;
+      let startY = 200;
       
       if (existingPositions.length > 0) {
-        // Place new nodes to the right of existing ones
-        const maxX = Math.max(...existingPositions.map(p => p.x), 100);
+        // Place new devices to the right of existing ones
+        const maxX = Math.max(...existingPositions.map(p => p.x), 200);
         const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
-        startX = maxX + 150;
+        startX = maxX + 200;
         startY = avgY;
       }
       
-      // Simple grid positioning - will be replaced by hierarchical when relationships arrive
+      // Grid positioning for devices only
       nodesNeedingLayout.forEach((node, index) => {
         node.position = {
-          x: startX + (index % 3) * 150,
-          y: startY + Math.floor(index / 3) * 120
+          x: startX + (index % 4) * 200,
+          y: startY + Math.floor(index / 4) * 150
         };
       });
     }
 
-    // Update canvas with device nodes - preserve existing edges if possible
+    // Update canvas with device nodes only - clear edges since relationships are manual
     setNodes(newNodes);
     
-    // Only clear edges if we're starting fresh, otherwise preserve existing ones
-    const selectedDeviceIds = new Set(selectedDevices.map(d => d.id));
-    if (edges.length > 0) {
-      // Keep edges that are still valid for current devices
-      const validEdges = edges.filter(edge => 
-        selectedDeviceIds.has(edge.source) && selectedDeviceIds.has(edge.target)
-      );
-      setEdges(validEdges);
-      console.log('🔗 Preserved', validEdges.length, 'existing edges during device update');
-    }
+    // Clear edges - relationships will be added manually per device
+    setEdges([]);
+    console.log('✨ Canvas updated with', newNodes.length, 'devices (no auto relationships)');
     
     // Save positions
     newNodes.forEach(node => {
@@ -564,10 +576,142 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
 
     canvasStateRef.current.preserveView = true;
-  }, [deviceDirections, manualLayoutLocked, reactFlowInstance, setNodes, setEdges]);
+  }, [deviceDirections, manualLayoutLocked, reactFlowInstance, setNodes, setEdges]); */
 
-  // Relationship management - handles topology data changes
-  const updateCanvasRelationships = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
+  // Add relationships to existing canvas (smart positioning for new relationship nodes)
+  const addRelationshipsToCanvas = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
+    console.log('🎯 Adding relationships to existing canvas');
+    
+    const currentNodeMap = new Map(nodes.map(n => [n.id, n]));
+    const newNodes: Node[] = [...nodes]; // Start with existing nodes
+    const newRelationshipNodes: Node[] = [];
+    
+    // Process topology nodes - only add NEW relationship nodes
+    topologyData.nodes.forEach((apiNode, index) => {
+      const existingNode = currentNodeMap.get(apiNode.id);
+      
+      if (existingNode) {
+        // Update existing node data, preserve position
+        const nodeIndex = newNodes.findIndex(n => n.id === apiNode.id);
+        if (nodeIndex !== -1) {
+          newNodes[nodeIndex] = {
+            ...existingNode,
+            data: {
+              ...existingNode.data,
+              label: apiNode.label,
+              type: apiNode.type,
+              status: apiNode.status,
+              ip: apiNode.ip
+            }
+          };
+        }
+      } else {
+        // New relationship node - use smart positioning
+        let newPosition = { x: 0, y: 0 };
+        
+        // Find connected nodes for smart positioning
+        const connectedEdges = topologyData.edges.filter(e => e.source === apiNode.id || e.target === apiNode.id);
+        const connectedNodeIds = connectedEdges.flatMap(e => [e.source, e.target]).filter(id => id !== apiNode.id);
+        const connectedPositions = connectedNodeIds
+          .map(id => canvasStateRef.current.nodePositions.get(id) || currentNodeMap.get(id)?.position)
+          .filter(pos => pos !== undefined);
+        
+        if (connectedPositions.length > 0) {
+          // Position around connected nodes using radial placement
+          const avgX = connectedPositions.reduce((sum, pos) => sum + pos!.x, 0) / connectedPositions.length;
+          const avgY = connectedPositions.reduce((sum, pos) => sum + pos!.y, 0) / connectedPositions.length;
+          
+          // Use hierarchical positioning based on relationship direction
+          const angle = (index * 60) % 360; // 60 degree increments for better spread
+          const radius = 180 + (index % 2) * 80; // Varying distances
+          const radians = (angle * Math.PI) / 180;
+          
+          newPosition = {
+            x: avgX + Math.cos(radians) * radius,
+            y: avgY + Math.sin(radians) * radius
+          };
+        } else {
+          // Default grid positioning for orphaned nodes
+          const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
+          if (existingPositions.length > 0) {
+            const maxX = Math.max(...existingPositions.map(p => p.x), 200);
+            newPosition = { 
+              x: maxX + 200 + (index % 3) * 180, 
+              y: 200 + Math.floor(index / 3) * 150 
+            };
+          } else {
+            newPosition = { 
+              x: 400 + (index % 4) * 180, 
+              y: 200 + Math.floor(index / 4) * 150 
+            };
+          }
+        }
+        
+        const relationshipNode: Node = {
+          id: apiNode.id,
+          type: 'professional',
+          position: newPosition,
+          draggable: true,
+          data: {
+            label: apiNode.label,
+            type: apiNode.type,
+            status: apiNode.status,
+            ip: apiNode.ip
+          }
+        };
+        
+        newNodes.push(relationshipNode);
+        newRelationshipNodes.push(relationshipNode);
+      }
+    });
+    
+    // Create edges
+    const validEdges = topologyData.edges
+      .filter(edge => {
+        const sourceExists = newNodes.some(n => n.id === edge.source);
+        const targetExists = newNodes.some(n => n.id === edge.target);
+        return sourceExists && targetExists;
+      })
+      .map(edge => {
+        return {
+          id: `${edge.source}-${edge.target}`,
+          source: edge.source,
+          target: edge.target,
+          type: 'straight',
+          animated: false,
+          style: {
+            strokeWidth: 2,
+            stroke: '#3B82F6',
+            strokeOpacity: 0.8,
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 14,
+            height: 14,
+            color: '#3B82F6'
+          }
+        };
+      });
+    
+    console.log('✅ Adding relationships to canvas:', {
+      totalNodes: newNodes.length,
+      newRelationshipNodes: newRelationshipNodes.length,
+      edges: validEdges.length
+    });
+    
+    // Update canvas
+    setNodes(newNodes);
+    setEdges(validEdges);
+    
+    // Save all positions
+    newNodes.forEach(node => {
+      canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
+    });
+    
+  }, [nodes, setNodes, setEdges]);
+
+  // UNUSED: Legacy relationship management - replaced with addRelationshipsToCanvas
+  /* const updateCanvasRelationships = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
     console.log('🔗 FRESH ARCHITECTURE: Updating relationships', {
       nodes: topologyData.nodes.length,
       edges: topologyData.edges.length
@@ -761,46 +905,42 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
   }, [deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance, currentLayout]);
 
-  // Handle device selection changes from chip area
+  // Handle device selection changes from chip area - DEVICE ONLY (no auto relationships)
   useEffect(() => {
-    console.log('🔄 Device selection effect:', {
+    console.log('🔄 Device-only selection effect:', {
       deviceCount: devices.length,
       deviceNames: devices.map(d => d.name)
     });
     
-    // Show updating indicator when devices change
-    setIsUpdatingTopology(true);
+    // Simply place devices on canvas - no topology loading
     updateCanvasFromChipArea(devices);
     
-    // Hide indicator after a short delay (topology data will arrive soon)
-    const timeoutId = setTimeout(() => {
-      setIsUpdatingTopology(false);
-    }, 2000); // Hide after 2 seconds if no topology data arrives
-    
-    return () => clearTimeout(timeoutId);
   }, [devices, updateCanvasFromChipArea]);
 
-  // Handle topology data changes (relationships)
-  useEffect(() => {
-    if (!topologyData || !initializedRef.current) {
-      if (devices.length > 0) {
-        initializedRef.current = true;
-      }
-      return;
-    }
-
+  // UNUSED: Manual relationship loading - will be implemented via props later
+  /* const handleManualTopologyData = useCallback((newTopologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
+    console.log('🔗 Manual relationship loading:', {
+      nodes: newTopologyData.nodes.length,
+      edges: newTopologyData.edges.length
+    });
+    
     // Skip if topology data hasn't changed
-    if (JSON.stringify(topologyData) === JSON.stringify(lastTopologyRef.current)) {
+    if (JSON.stringify(newTopologyData) === JSON.stringify(lastTopologyRef.current)) {
       console.log('🔒 Skipping topology update - data unchanged');
+      setIsUpdatingTopology(false);
       return;
     }
     
-    lastTopologyRef.current = topologyData;
-    updateCanvasRelationships(topologyData);
+    lastTopologyRef.current = newTopologyData;
     
-    // Hide updating indicator when topology data arrives
+    // Add relationships to existing canvas without resetting device positions
+    addRelationshipsToCanvas(newTopologyData);
+    
+    // Hide updating indicator
     setIsUpdatingTopology(false);
-  }, [topologyData, updateCanvasRelationships, devices.length]);
+  }, []); */
+
+  // Manual topology loading will be handled via props in future iterations
 
   // Handle edge style changes - update existing edges with new style
   useEffect(() => {
@@ -861,7 +1001,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     setContextMenu({ visible: false, x: 0, y: 0 });
   }, []);
 
-  const handleContextMenuAction = useCallback((direction: 'parents' | 'children' | 'both') => {
+  /* const handleContextMenuAction = useCallback((direction: 'parents' | 'children' | 'both') => {
     if (!contextMenu.nodeId) return;
     
     // Find the device ID for the clicked node
@@ -896,7 +1036,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     console.log('🎯 Changing direction for device:', deviceId, 'to:', direction);
     onDirectionChange?.(direction, deviceId);
     setContextMenu({ visible: false, x: 0, y: 0 });
-  }, [contextMenu.nodeId, contextMenu.nodeName, selectedDevices, topologyData?.nodes, onAddDeviceToSelection, onDirectionChange]);
+  }, [contextMenu.nodeId, contextMenu.nodeName, selectedDevices, topologyData?.nodes, onAddDeviceToSelection, onDirectionChange]); */
 
   // Export functions
   const exportAsPNG = useCallback(() => {
@@ -1063,59 +1203,32 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             }}
           >
             <div className="px-4 py-3 border-b border-white/20">
-              <div className="text-xs font-semibold text-muted uppercase tracking-wide">Device Actions</div>
+              <div className="text-xs font-semibold text-muted uppercase tracking-wide">Relationship Controls</div>
               <div className="text-sm font-medium text-emphasis mt-1" style={{ fontSize: 'var(--text-sm)' }}>{contextMenu.nodeName}</div>
             </div>
             <button
-              onClick={() => handleContextMenuAction('parents')}
-              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
-                (() => {
-                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-                  const deviceId = topologyNode?.id || contextMenu.nodeId;
-                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'parents' 
-                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
-                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
-                })()
-              }`}
+              onClick={() => contextMenu.nodeId && loadDeviceRelationships(contextMenu.nodeId, 'up')}
+              className="w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 hover:bg-blue-50/50 hover:backdrop-blur-sm text-secondary hover:text-primary"
               style={{ fontSize: 'var(--text-sm)' }}
             >
-              <span className="text-base">👆</span>
-              <span className="font-medium">Show parent(s)</span>
+              <span className="text-base">⬆️</span>
+              <span className="font-medium">Load Parent Devices</span>
             </button>
             <button
-              onClick={() => handleContextMenuAction('children')}
-              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
-                (() => {
-                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-                  const deviceId = topologyNode?.id || contextMenu.nodeId;
-                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'children' 
-                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
-                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
-                })()
-              }`}
+              onClick={() => contextMenu.nodeId && loadDeviceRelationships(contextMenu.nodeId, 'down')}
+              className="w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 hover:bg-green-50/50 hover:backdrop-blur-sm text-secondary hover:text-primary"
               style={{ fontSize: 'var(--text-sm)' }}
             >
-              <span className="text-base">👇</span>
-              <span className="font-medium">Show child(ren)</span>
+              <span className="text-base">⬇️</span>
+              <span className="font-medium">Load Child Devices</span>
             </button>
             <button
-              onClick={() => handleContextMenuAction('both')}
-              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
-                (() => {
-                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-                  const deviceId = topologyNode?.id || contextMenu.nodeId;
-                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'both' 
-                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
-                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
-                })()
-              }`}
+              onClick={() => contextMenu.nodeId && loadDeviceRelationships(contextMenu.nodeId, 'both')}
+              className="w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 hover:bg-purple-50/50 hover:backdrop-blur-sm text-secondary hover:text-primary"
               style={{ fontSize: 'var(--text-sm)' }}
             >
-              <span className="text-base">↕️</span>
-              <span className="font-medium">Show both</span>
+              <span className="text-base">🔄</span>
+              <span className="font-medium">Load Both Directions</span>
             </button>
             <div className="border-t border-white/20 mt-2 pt-2">
               <button
