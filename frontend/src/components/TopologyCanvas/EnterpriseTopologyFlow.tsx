@@ -710,12 +710,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     
   }, [nodes, setNodes, setEdges]);
 
-  // UNUSED: Legacy relationship management - replaced with addRelationshipsToCanvas
-  /* const updateCanvasRelationships = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
-    console.log('🔗 FRESH ARCHITECTURE: Updating relationships', {
-      nodes: topologyData.nodes.length,
-      edges: topologyData.edges.length
-    });
+  // Handle device selection changes from chip area - DEVICE ONLY (no auto relationships)
 
     // Get current nodes to merge with topology nodes
     const currentNodeMap = new Map(nodes.map(n => [n.id, n]));
