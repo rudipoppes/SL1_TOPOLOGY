@@ -15,60 +15,144 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 
-// Simple device node - no fancy features that could cause issues
-const SimpleDeviceNode = React.memo(({ data }: { data: any }) => {
+// Professional device node with proper styling
+const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
+  const getStatusColor = () => {
+    switch (data.status) {
+      case 'online': return '#10b981';
+      case 'offline': return '#ef4444'; 
+      case 'warning': return '#f59e0b';
+      default: return '#6b7280';
+    }
+  };
+
+  const getDeviceIcon = () => {
+    const type = data.type?.toLowerCase() || '';
+    if (type.includes('router')) return '🔀';
+    if (type.includes('switch')) return '🔌';
+    if (type.includes('server')) return '🖥️';
+    if (type.includes('firewall')) return '🛡️';
+    return '📡';
+  };
+
   return (
     <div
       style={{
-        padding: '8px 12px',
-        borderRadius: '4px',
+        padding: '10px 15px',
+        borderRadius: '8px',
         background: '#ffffff',
-        border: '2px solid #3b82f6',
+        border: `2px solid ${getStatusColor()}`,
         fontSize: '12px',
         fontWeight: 500,
         textAlign: 'center',
         position: 'relative',
         userSelect: 'none',
+        minWidth: '120px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        cursor: 'grab',
       }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        style={{ opacity: 0 }}
+        style={{ background: getStatusColor(), width: 8, height: 8 }}
       />
-      <div>{data.label}</div>
+      
+      {/* Device icon */}
+      <div style={{ fontSize: '18px', marginBottom: '4px' }}>
+        {getDeviceIcon()}
+      </div>
+      
+      {/* Device name */}
+      <div style={{ color: '#1f2937', fontWeight: 600, marginBottom: '2px' }}>
+        {data.label}
+      </div>
+      
+      {/* IP address */}
       {data.ip && (
-        <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>
+        <div style={{ fontSize: '10px', color: '#6b7280' }}>
           {data.ip}
         </div>
       )}
+      
+      {/* Status indicator */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '4px',
+          right: '4px',
+          width: '12px',
+          height: '12px',
+          borderRadius: '50%',
+          background: getStatusColor(),
+          border: '2px solid #ffffff',
+        }}
+      />
+      
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ opacity: 0 }}
+        style={{ background: getStatusColor(), width: 8, height: 8 }}
       />
     </div>
   );
 });
 
-SimpleDeviceNode.displayName = 'SimpleDeviceNode';
+ProfessionalDeviceNode.displayName = 'ProfessionalDeviceNode';
 
-const nodeTypes = { device: SimpleDeviceNode };
+const nodeTypes = { device: ProfessionalDeviceNode };
 
-// Simple grid layout - no fancy algorithms
-const calculateGridPosition = (index: number, columns: number = 4): XYPosition => {
+// Layout algorithms
+type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'circular';
+
+const calculatePosition = (index: number, total: number, layoutType: LayoutType): XYPosition => {
   const SPACING_X = 200;
-  const SPACING_Y = 120;
-  const START_X = 100;
+  const SPACING_Y = 150;
+  const START_X = 150;
   const START_Y = 100;
-  
-  const col = index % columns;
-  const row = Math.floor(index / columns);
-  
-  return {
-    x: START_X + (col * SPACING_X),
-    y: START_Y + (row * SPACING_Y),
-  };
+
+  switch (layoutType) {
+    case 'grid':
+      const columns = Math.ceil(Math.sqrt(total));
+      const col = index % columns;
+      const row = Math.floor(index / columns);
+      return {
+        x: START_X + (col * SPACING_X),
+        y: START_Y + (row * SPACING_Y),
+      };
+
+    case 'hierarchical':
+      const levels = Math.ceil(total / 4);
+      const itemsPerLevel = Math.ceil(total / levels);
+      const level = Math.floor(index / itemsPerLevel);
+      const posInLevel = index % itemsPerLevel;
+      return {
+        x: START_X + (posInLevel * SPACING_X),
+        y: START_Y + (level * SPACING_Y),
+      };
+
+    case 'radial':
+      if (index === 0) {
+        return { x: 400, y: 300 }; // Center
+      }
+      const angle = ((index - 1) * 2 * Math.PI) / (total - 1);
+      const radius = 200;
+      return {
+        x: 400 + radius * Math.cos(angle),
+        y: 300 + radius * Math.sin(angle),
+      };
+
+    case 'circular':
+      const circleAngle = (index * 2 * Math.PI) / total;
+      const circleRadius = Math.max(150, total * 20);
+      return {
+        x: 400 + circleRadius * Math.cos(circleAngle),
+        y: 300 + circleRadius * Math.sin(circleAngle),
+      };
+
+    default:
+      return { x: START_X, y: START_Y };
+  }
 };
 
 interface ControlledTopologyProps {
@@ -92,6 +176,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   // Controlled state - we manage everything explicitly
   const [nodes, setNodes] = useState<Node[]>([]);
   const [edges, setEdges] = useState<Edge[]>([]);
+  const [currentLayout, setCurrentLayout] = useState<LayoutType>('grid');
+  const [showControls, setShowControls] = useState(false);
   
   // Track positions separately to ensure stability
   const nodePositions = useRef<Map<string, XYPosition>>(new Map());
@@ -109,7 +195,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         // Get existing position or calculate new one
         let position = nodePositions.current.get(device.id);
         if (!position) {
-          position = calculateGridPosition(index);
+          position = calculatePosition(index, devices.length + (topologyData?.nodes.length || 0), currentLayout);
           nodePositions.current.set(device.id, position);
         }
         
@@ -140,7 +226,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           if (!position) {
             // Place new nodes below existing ones
             const existingCount = processedIds.size;
-            position = calculateGridPosition(existingCount);
+            const totalCount = devices.length + (topologyData?.nodes.length || 0);
+            position = calculatePosition(existingCount, totalCount, currentLayout);
             nodePositions.current.set(node.id, position);
           }
           
@@ -177,7 +264,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     setNodes(newNodes);
     setEdges(newEdges);
     
-  }, [devices, topologyData]);
+  }, [devices, topologyData, currentLayout]);
   
   // Handle node drag - update our position map
   const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -293,10 +380,10 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     [onDirectionChange]
   );
   
-  // Re-layout button
-  const handleRelayout = useCallback(() => {
+  // Apply layout
+  const applyLayout = useCallback((layoutType: LayoutType) => {
     const updatedNodes = nodes.map((node, index) => {
-      const newPosition = calculateGridPosition(index);
+      const newPosition = calculatePosition(index, nodes.length, layoutType);
       nodePositions.current.set(node.id, newPosition);
       return {
         ...node,
@@ -309,6 +396,12 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       reactFlowInstance.fitView({ padding: 0.2 });
     }, 100);
   }, [nodes, reactFlowInstance]);
+
+  // Change layout
+  const changeLayout = useCallback((layoutType: LayoutType) => {
+    setCurrentLayout(layoutType);
+    applyLayout(layoutType);
+  }, [applyLayout]);
   
   return (
     <div className={`w-full h-full ${className}`}>
@@ -326,8 +419,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         attributionPosition="bottom-left"
         minZoom={0.5}
         maxZoom={2}
-        snapGrid={[10, 10]}
-        snapToGrid={true}
+        snapGrid={[15, 15]}
+        snapToGrid={false}
         nodesDraggable={true}
         nodesConnectable={false}
         nodesFocusable={false}
@@ -349,30 +442,138 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         nodeOrigin={[0, 0]}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        <Background variant={BackgroundVariant.Cross} gap={25} size={0.5} color="#e2e8f0" />
         <Controls position="bottom-right" />
         
+        {/* Professional Layout Controls */}
         <div style={{
           position: 'absolute',
-          top: '10px',
-          left: '10px',
-          zIndex: 5,
+          top: '15px',
+          left: '15px',
+          zIndex: 10,
+          background: 'rgba(255, 255, 255, 0.95)',
+          backdropFilter: 'blur(10px)',
+          borderRadius: '8px',
+          padding: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          border: '1px solid rgba(255,255,255,0.2)',
         }}>
-          <button
-            onClick={handleRelayout}
-            style={{
-              padding: '6px 12px',
-              background: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '13px',
-              fontWeight: 500,
-            }}
-          >
-            Re-Layout
-          </button>
+          {!showControls ? (
+            <button
+              onClick={() => setShowControls(true)}
+              style={{
+                padding: '8px',
+                background: 'none',
+                border: 'none',
+                cursor: 'pointer',
+                fontSize: '16px',
+                color: '#6b7280',
+              }}
+              title="Show layout controls"
+            >
+              ⚙️
+            </button>
+          ) : (
+            <div>
+              <div style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'space-between',
+                marginBottom: '8px' 
+              }}>
+                <h3 style={{ 
+                  fontSize: '14px', 
+                  fontWeight: 600, 
+                  color: '#1f2937',
+                  margin: 0 
+                }}>
+                  Layout Controls
+                </h3>
+                <button
+                  onClick={() => setShowControls(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    padding: '2px',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                {[
+                  { type: 'grid' as LayoutType, label: '📊 Grid', desc: 'Square grid layout' },
+                  { type: 'hierarchical' as LayoutType, label: '📈 Hierarchical', desc: 'Layered structure' },
+                  { type: 'radial' as LayoutType, label: '⭐ Radial', desc: 'Center-out layout' },
+                  { type: 'circular' as LayoutType, label: '🔄 Circular', desc: 'Circular arrangement' },
+                ].map(({ type, label, desc }) => (
+                  <button
+                    key={type}
+                    onClick={() => changeLayout(type)}
+                    style={{
+                      padding: '8px 12px',
+                      background: currentLayout === type ? '#3b82f6' : '#f8fafc',
+                      color: currentLayout === type ? 'white' : '#374151',
+                      border: `1px solid ${currentLayout === type ? '#3b82f6' : '#e5e7eb'}`,
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      textAlign: 'left',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      minWidth: '140px',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (currentLayout !== type) {
+                        e.currentTarget.style.background = '#f1f5f9';
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (currentLayout !== type) {
+                        e.currentTarget.style.background = '#f8fafc';
+                        e.currentTarget.style.borderColor = '#e5e7eb';
+                      }
+                    }}
+                  >
+                    <span>{label}</span>
+                    <span style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px' }}>
+                      {desc}
+                    </span>
+                  </button>
+                ))}
+                
+                <div style={{ 
+                  borderTop: '1px solid #e5e7eb', 
+                  paddingTop: '6px', 
+                  marginTop: '6px' 
+                }}>
+                  <button
+                    onClick={() => reactFlowInstance.fitView({ padding: 0.2 })}
+                    style={{
+                      padding: '6px 12px',
+                      background: '#10b981',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      width: '100%',
+                    }}
+                  >
+                    🎯 Center View
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </ReactFlow>
     </div>
