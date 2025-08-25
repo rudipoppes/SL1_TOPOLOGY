@@ -997,8 +997,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           gap={20} 
           size={1} 
           color="#E2E8F0" 
-          style={{ opacity: 0.3 }}
-          className="dark:opacity-0"
+          className="opacity-30 dark:!opacity-0"
         />
         
         <Controls 
