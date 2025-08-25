@@ -38,39 +38,72 @@ const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
   return (
     <div
       style={{
-        padding: '10px 15px',
+        padding: '12px 16px',
         borderRadius: '8px',
         background: '#ffffff',
-        border: `2px solid ${getStatusColor()}`,
+        border: `3px solid ${getStatusColor()}`,
         fontSize: '12px',
         fontWeight: 500,
         textAlign: 'center',
         position: 'relative',
         userSelect: 'none',
-        minWidth: '120px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
+        minWidth: '130px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         cursor: 'grab',
+        // Ensure solid background
+        backdropFilter: 'blur(0px)',
+        opacity: 1,
       }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: getStatusColor(), width: 8, height: 8 }}
+        style={{ 
+          background: getStatusColor(), 
+          width: 10, 
+          height: 10,
+          border: '2px solid #ffffff',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}
       />
       
       {/* Device icon */}
-      <div style={{ fontSize: '18px', marginBottom: '4px' }}>
+      <div style={{ 
+        fontSize: '22px', 
+        marginBottom: '8px',
+        filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
+        lineHeight: 1,
+      }}>
         {getDeviceIcon()}
       </div>
       
-      {/* Device name */}
-      <div style={{ color: '#1f2937', fontWeight: 600, marginBottom: '2px' }}>
-        {data.label}
+      {/* Device name - FORCE BLACK TEXT */}
+      <div style={{ 
+        color: '#000000 !important', 
+        fontWeight: 800, 
+        marginBottom: '4px',
+        textShadow: 'none',
+        fontSize: '14px',
+        lineHeight: '16px',
+        // Force text to be visible
+        WebkitTextFillColor: '#000000',
+        textRendering: 'optimizeLegibility',
+      }}>
+        {data.label || 'Device'}
       </div>
       
-      {/* IP address */}
+      {/* IP address - FORCE DARK GRAY TEXT */}
       {data.ip && (
-        <div style={{ fontSize: '10px', color: '#6b7280' }}>
+        <div style={{ 
+          fontSize: '12px', 
+          color: '#1f2937 !important',
+          fontWeight: 600,
+          textShadow: 'none',
+          lineHeight: '14px',
+          // Force text to be visible
+          WebkitTextFillColor: '#1f2937',
+          textRendering: 'optimizeLegibility',
+        }}>
           {data.ip}
         </div>
       )}
@@ -79,20 +112,27 @@ const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
       <div
         style={{
           position: 'absolute',
-          top: '4px',
-          right: '4px',
-          width: '12px',
-          height: '12px',
+          top: '6px',
+          right: '6px',
+          width: '14px',
+          height: '14px',
           borderRadius: '50%',
           background: getStatusColor(),
-          border: '2px solid #ffffff',
+          border: '3px solid #ffffff',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
         }}
       />
       
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: getStatusColor(), width: 8, height: 8 }}
+        style={{ 
+          background: getStatusColor(), 
+          width: 10, 
+          height: 10,
+          border: '2px solid #ffffff',
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+        }}
       />
     </div>
   );
