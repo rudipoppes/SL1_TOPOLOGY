@@ -689,9 +689,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       preserveView: canvasStateRef.current.preserveView
     });
 
-    // Apply layout on first load OR when adding devices (but not if user has manually positioned nodes)
-    const shouldApplyLayout = allNodes.length > 1 && !manualLayoutLocked && 
-      (canvasStateRef.current.isFirstLoad || allNodes.length > nodes.length);
+    // Apply layout ONLY on very first load - never when adding to existing canvas
+    const shouldApplyLayout = allNodes.length > 1 && canvasStateRef.current.isFirstLoad;
     
     console.log('🔍 Layout check:', {
       allNodesCount: allNodes.length,
@@ -745,7 +744,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       
       console.log('🔒 Preserving view during relationship update (no layout change)');
     }
-  }, [nodes, deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance, currentLayout]);
+  }, [deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance, currentLayout]);
 
   // Handle device selection changes from chip area
   useEffect(() => {
