@@ -608,21 +608,36 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             .filter(pos => pos !== undefined);
           
           if (connectedPositions.length > 0) {
-            // Position near connected nodes
+            // Position near connected nodes with better spacing
             const avgX = connectedPositions.reduce((sum, pos) => sum + pos.x, 0) / connectedPositions.length;
             const avgY = connectedPositions.reduce((sum, pos) => sum + pos.y, 0) / connectedPositions.length;
+            
+            // Create a unique offset for each new node to prevent stacking
+            const nodeIndex = topologyData.nodes.findIndex(n => n.id === apiNode.id);
+            const angle = (nodeIndex * 45) % 360; // 45 degree increments
+            const radius = 120 + (nodeIndex % 3) * 50; // Varying distance
+            const radians = (angle * Math.PI) / 180;
+            
             newPosition = {
-              x: avgX + (Math.random() - 0.5) * 100, // Add some randomness
-              y: avgY + (Math.random() - 0.5) * 100
+              x: avgX + Math.cos(radians) * radius,
+              y: avgY + Math.sin(radians) * radius
             };
           } else {
-            // Default positioning for orphaned nodes
+            // Default positioning for orphaned nodes with better spacing
             const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
+            const nodeIndex = topologyData.nodes.findIndex(n => n.id === apiNode.id);
+            
             if (existingPositions.length > 0) {
               const maxX = Math.max(...existingPositions.map((p: { x: number; y: number }) => p.x), 200);
-              newPosition = { x: maxX + 150, y: 200 + Math.random() * 100 };
+              newPosition = { 
+                x: maxX + 150 + (nodeIndex % 3) * 150, 
+                y: 200 + Math.floor(nodeIndex / 3) * 120 
+              };
             } else {
-              newPosition = { x: 300 + Math.random() * 100, y: 300 + Math.random() * 100 };
+              newPosition = { 
+                x: 300 + (nodeIndex % 4) * 150, 
+                y: 300 + Math.floor(nodeIndex / 4) * 120 
+              };
             }
           }
         }
