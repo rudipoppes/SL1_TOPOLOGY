@@ -214,8 +214,126 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   );
 };
 
-// Note: Layout algorithms removed as they're not used in the new architecture
-// The new architecture uses intelligent incremental positioning instead
+// Layout algorithms for the new architecture
+const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]) => {
+  if (nodes.length === 0) return nodes;
+  
+  // Find root nodes (no incoming edges)
+  const hasIncomingEdge = new Set(edges.map(e => e.target));
+  const rootNodes = nodes.filter(n => !hasIncomingEdge.has(n.id));
+  
+  // Build adjacency list
+  const adjacency = new Map<string, string[]>();
+  edges.forEach(edge => {
+    if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
+    adjacency.get(edge.source)!.push(edge.target);
+  });
+  
+  // Level-based positioning
+  const levels = new Map<string, number>();
+  const visited = new Set<string>();
+  
+  const assignLevel = (nodeId: string, level: number) => {
+    if (visited.has(nodeId)) return;
+    visited.add(nodeId);
+    levels.set(nodeId, Math.max(levels.get(nodeId) || 0, level));
+    
+    const children = adjacency.get(nodeId) || [];
+    children.forEach(child => assignLevel(child, level + 1));
+  };
+  
+  // Start from root nodes or first node if no clear hierarchy
+  if (rootNodes.length > 0) {
+    rootNodes.forEach(node => assignLevel(node.id, 0));
+  } else {
+    // Fallback: start from first node if no clear hierarchy
+    assignLevel(nodes[0].id, 0);
+  }
+  
+  // Position nodes by level
+  const levelGroups = new Map<number, Node[]>();
+  nodes.forEach(node => {
+    const level = levels.get(node.id) || 0;
+    if (!levelGroups.has(level)) levelGroups.set(level, []);
+    levelGroups.get(level)!.push(node);
+  });
+  
+  let yPos = 100;
+  const levelHeight = 120;
+  
+  levelGroups.forEach((levelNodes, _level) => {
+    const totalWidth = levelNodes.length * 150;
+    const startX = Math.max(100, (800 - totalWidth) / 2);
+    
+    levelNodes.forEach((node, index) => {
+      node.position = {
+        x: startX + (index * 150),
+        y: yPos
+      };
+    });
+    yPos += levelHeight;
+  });
+  
+  return nodes;
+};
+
+const applyRadialLayout = (nodes: Node[], edges: Edge[]) => {
+  if (nodes.length === 0) return nodes;
+  
+  if (nodes.length === 1) {
+    nodes[0].position = { x: 400, y: 300 };
+    return nodes;
+  }
+  
+  // Find central node (most connections)
+  const connectionCount = new Map<string, number>();
+  edges.forEach(edge => {
+    connectionCount.set(edge.source, (connectionCount.get(edge.source) || 0) + 1);
+    connectionCount.set(edge.target, (connectionCount.get(edge.target) || 0) + 1);
+  });
+  
+  const centralNode = nodes.reduce((max, node) => 
+    (connectionCount.get(node.id) || 0) > (connectionCount.get(max.id) || 0) ? node : max
+  );
+  
+  // Place central node at center
+  centralNode.position = { x: 400, y: 300 };
+  
+  // Place other nodes in concentric circles
+  const otherNodes = nodes.filter(n => n.id !== centralNode.id);
+  if (otherNodes.length === 0) return nodes;
+  
+  const radius = Math.max(200, Math.min(300, otherNodes.length * 20));
+  const angleStep = (2 * Math.PI) / otherNodes.length;
+  
+  otherNodes.forEach((node, index) => {
+    const angle = index * angleStep;
+    node.position = {
+      x: 400 + radius * Math.cos(angle),
+      y: 300 + radius * Math.sin(angle)
+    };
+  });
+  
+  return nodes;
+};
+
+const applyGridLayout = (nodes: Node[]) => {
+  if (nodes.length === 0) return nodes;
+  
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  const cellSize = 150;
+  
+  nodes.forEach((node, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    node.position = {
+      x: 100 + col * cellSize,
+      y: 100 + row * cellSize
+    };
+  });
+  
+  return nodes;
+};
 
 // Main component
 const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
@@ -254,6 +372,44 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       canvasStateRef.current.nodePositions.set(node.id, node.position);
     });
   }, [nodes]);
+
+  // Apply layout to current nodes
+  const applyLayoutToNodes = useCallback((layoutType: string) => {
+    if (nodes.length === 0) return;
+
+    console.log('🎯 Applying layout:', layoutType, 'to', nodes.length, 'nodes');
+    
+    let layoutedNodes = [...nodes];
+    
+    switch (layoutType) {
+      case 'hierarchical':
+        layoutedNodes = applyHierarchicalLayout(layoutedNodes, edges);
+        break;
+      case 'radial':
+        layoutedNodes = applyRadialLayout(layoutedNodes, edges);
+        break;
+      case 'grid':
+        layoutedNodes = applyGridLayout(layoutedNodes);
+        break;
+      default:
+        layoutedNodes = applyHierarchicalLayout(layoutedNodes, edges);
+    }
+    
+    // Update nodes with new positions
+    setNodes(layoutedNodes);
+    
+    // Update position cache
+    layoutedNodes.forEach(node => {
+      canvasStateRef.current.nodePositions.set(node.id, node.position);
+    });
+    
+    // Fit view to show the new layout
+    setTimeout(() => {
+      reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
+    }, 100);
+    
+    console.log('✅ Layout applied successfully');
+  }, [nodes, edges, setNodes, reactFlowInstance]);
 
   // Fresh React Flow architecture with proper state management
   const lastTopologyRef = useRef<any>(null);
@@ -813,9 +969,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <button
               key={layout}
               onClick={() => {
+                console.log('🎯 Layout button clicked:', layout);
                 setCurrentLayout(layout);
                 setManualLayoutLocked(false); // Unlock manual layout
-                canvasStateRef.current.isFirstLoad = true; // Allow fitView for layout change
+                applyLayoutToNodes(layout); // Apply the layout immediately
               }}
               className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
                 currentLayout === layout && !manualLayoutLocked
@@ -843,13 +1000,11 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             
             <button
               onClick={() => {
+                console.log('🔄 Reset layout clicked');
                 setManualLayoutLocked(false);
                 canvasStateRef.current.nodePositions.clear();
-                canvasStateRef.current.isFirstLoad = true;
                 // Re-apply the current layout
-                const tempLayout = currentLayout;
-                setCurrentLayout('temp');
-                setTimeout(() => setCurrentLayout(tempLayout), 0);
+                applyLayoutToNodes(currentLayout);
               }}
               className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded transition-colors mt-1"
             >
