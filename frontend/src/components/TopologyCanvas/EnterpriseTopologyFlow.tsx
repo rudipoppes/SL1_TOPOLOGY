@@ -674,20 +674,39 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       preserveView: canvasStateRef.current.preserveView
     });
 
-    // Apply hierarchical layout if this is the initial topology load and not manual locked
-    console.log('🔍 Hierarchical layout check:', {
+    // Apply current layout if this is the initial topology load or new devices added (and not manual locked)
+    const shouldApplyLayout = allNodes.length > 1 && !manualLayoutLocked && 
+      (canvasStateRef.current.isFirstLoad || allNodes.length > nodes.length);
+    
+    console.log('🔍 Layout check:', {
       allNodesCount: allNodes.length,
+      currentNodesCount: nodes.length,
       manualLayoutLocked,
       isFirstLoad: canvasStateRef.current.isFirstLoad,
       validEdgesCount: validEdges.length,
-      shouldApplyLayout: allNodes.length > 1 && !manualLayoutLocked && canvasStateRef.current.isFirstLoad
+      currentLayout,
+      shouldApplyLayout
     });
     
-    if (allNodes.length > 1 && !manualLayoutLocked && canvasStateRef.current.isFirstLoad) {
-      console.log('🎯 Applying initial hierarchical layout to', allNodes.length, 'nodes with', validEdges.length, 'edges');
-      const layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
+    if (shouldApplyLayout) {
+      console.log('🎯 Applying', currentLayout, 'layout to', allNodes.length, 'nodes with', validEdges.length, 'edges');
       
-      console.log('📍 Hierarchical layout positions:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
+      let layoutedNodes: Node[];
+      switch (currentLayout) {
+        case 'hierarchical':
+          layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
+          break;
+        case 'radial':
+          layoutedNodes = applyRadialLayout(allNodes, validEdges);
+          break;
+        case 'grid':
+          layoutedNodes = applyGridLayout(allNodes);
+          break;
+        default:
+          layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
+      }
+      
+      console.log('📍', currentLayout, 'layout positions:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
       
       // Update canvas with layouted nodes
       setNodes(layoutedNodes);
@@ -702,16 +721,16 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       canvasStateRef.current.isFirstLoad = false;
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
-        console.log('🎯 Initial hierarchical layout applied with fitView');
+        console.log('🎯', currentLayout, 'layout applied with fitView');
       }, 100);
     } else {
       // Update canvas normally without layout
       setNodes(allNodes);
       setEdges(validEdges);
       
-      console.log('🔒 Preserving view during relationship update (no hierarchical layout)');
+      console.log('🔒 Preserving view during relationship update (no layout change)');
     }
-  }, [nodes, deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance]);
+  }, [nodes, deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance, currentLayout]);
 
   // Handle device selection changes from chip area
   useEffect(() => {
