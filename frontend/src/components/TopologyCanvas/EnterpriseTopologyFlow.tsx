@@ -267,6 +267,7 @@ const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
 
 const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   devices = [],
+  topologyData,
   deviceDirections = new Map(),
   onDirectionChange,
   className = '',
@@ -379,6 +380,106 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     preserveView: false
   });
 
+  // Process topology data to create nodes and edges for relationships
+  const updateCanvasFromTopologyData = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
+    console.log('🎯 Updating canvas from topology data', {
+      nodeCount: topologyData.nodes.length,
+      edgeCount: topologyData.edges.length,
+      nodes: topologyData.nodes.map(n => n.label),
+      edges: topologyData.edges.map(e => `${e.source}->${e.target}`)
+    });
+
+    // Create React Flow nodes from topology nodes
+    const flowNodes: Node[] = topologyData.nodes.map(node => {
+      const existingPosition = canvasStateRef.current.nodePositions.get(node.id);
+      
+      return {
+        id: node.id,
+        type: 'professional',
+        position: existingPosition || { x: 0, y: 0 },
+        draggable: true,
+        data: {
+          label: node.label,
+          type: node.type,
+          status: node.status,
+          direction: deviceDirections.get(node.id) || 'children',
+          ip: node.ip
+        }
+      };
+    });
+
+    // Apply positioning to new nodes
+    const nodesNeedingLayout = flowNodes.filter(n => n.position.x === 0 && n.position.y === 0);
+    if (nodesNeedingLayout.length > 0) {
+      console.log('📍 Positioning', nodesNeedingLayout.length, 'new topology nodes');
+      
+      // Smart positioning for new relationship nodes
+      const existingPositions = flowNodes
+        .filter(n => n.position.x !== 0 || n.position.y !== 0)
+        .map(n => n.position);
+      
+      let startX = 300;
+      let startY = 200;
+      
+      if (existingPositions.length > 0) {
+        // Place new nodes around existing ones
+        const avgX = existingPositions.reduce((sum, p) => sum + p.x, 0) / existingPositions.length;
+        const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
+        startX = avgX;
+        startY = avgY + 200; // Below existing nodes
+      }
+      
+      // Radial positioning around center
+      const centerX = startX;
+      const centerY = startY;
+      const radius = 150;
+      
+      nodesNeedingLayout.forEach((node, index) => {
+        const angle = (index * 2 * Math.PI) / nodesNeedingLayout.length;
+        node.position = {
+          x: centerX + radius * Math.cos(angle),
+          y: centerY + radius * Math.sin(angle)
+        };
+      });
+    }
+
+    // Create React Flow edges from topology edges
+    const flowEdges: Edge[] = topologyData.edges.map((edge, index) => ({
+      id: `edge-${edge.source}-${edge.target}-${index}`,
+      source: edge.source,
+      target: edge.target,
+      type: 'straight',
+      animated: false,
+      style: {
+        strokeWidth: 2,
+        stroke: '#3B82F6',
+        strokeOpacity: 0.8,
+      },
+    }));
+
+    // Update canvas with nodes and edges
+    setNodes(flowNodes);
+    setEdges(flowEdges);
+    
+    console.log('✨ Canvas updated with topology data:', {
+      nodes: flowNodes.length,
+      edges: flowEdges.length
+    });
+    
+    // Save positions
+    flowNodes.forEach(node => {
+      canvasStateRef.current.nodePositions.set(node.id, node.position);
+    });
+
+    // Fit view to show all nodes
+    if (flowNodes.length > 0) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
+      }, 100);
+    }
+
+  }, [deviceDirections, setNodes, setEdges, reactFlowInstance]);
+
   // Core canvas management - handles device chip area changes
   const updateCanvasFromChipArea = useCallback((selectedDevices: Device[]) => {
     console.log('🎯 Updating canvas from chip area - DEVICE ONLY', {
@@ -482,6 +583,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     updateCanvasFromChipArea(devices);
     
   }, [devices, updateCanvasFromChipArea]);
+
+  // Handle topology data changes - process relationship loading results
+  useEffect(() => {
+    if (topologyData && (topologyData.nodes.length > 0 || topologyData.edges.length > 0)) {
+      console.log('🔄 Topology data effect - processing relationships:', {
+        nodeCount: topologyData.nodes.length,
+        edgeCount: topologyData.edges.length
+      });
+      
+      updateCanvasFromTopologyData(topologyData);
+    }
+  }, [topologyData, updateCanvasFromTopologyData]);
 
   // Reset loading state when topology data changes (safeguard against infinite loading)
   useEffect(() => {
