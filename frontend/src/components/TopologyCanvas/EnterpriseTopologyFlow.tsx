@@ -14,6 +14,8 @@ import {
   Panel,
   useReactFlow,
   ReactFlowProvider,
+  Handle,
+  Position,
   BackgroundVariant,
   useUpdateNodeInternals,
 } from '@xyflow/react';
@@ -110,6 +112,21 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   
   return (
     <>
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ 
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 1, 
+          height: 1, 
+          minWidth: 1,
+          minHeight: 1,
+          border: 'none',
+          background: 'transparent',
+        }}
+      />
+      
       <div
         className="relative flex flex-col items-center"
         onMouseEnter={() => setIsHovered(true)}
@@ -185,6 +202,21 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           </div>
         )}
       </div>
+      
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ 
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 1, 
+          height: 1, 
+          minWidth: 1,
+          minHeight: 1,
+          border: 'none',
+          background: 'transparent',
+        }}
+      />
     </>
   );
 };
