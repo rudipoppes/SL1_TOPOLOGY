@@ -6,14 +6,21 @@ import { DeviceItem } from './DeviceItem';
 import { DeviceSearch } from './DeviceSearch';
 import { DeviceFilters } from './DeviceFilters';
 
+const statusIcons = {
+  online: '🟢',
+  offline: '🔴', 
+  warning: '🟡',
+  unknown: '⚪',
+};
+
 interface DeviceListProps {
   onDeviceSelect: (devices: Device[]) => void;
-  onDeviceDrag: (device: Device) => void;
+  selectedDevices: Device[];
 }
 
 export const DeviceList: React.FC<DeviceListProps> = ({
   onDeviceSelect,
-  onDeviceDrag,
+  selectedDevices: parentSelectedDevices,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
@@ -113,7 +120,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       <div style={style}>
         <DeviceItem
           device={device}
-          onDragStart={onDeviceDrag}
           isSelected={selectedDevices.has(device.id)}
           onSelect={handleDeviceSelect}
         />
@@ -137,6 +143,38 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         </div>
       </div>
       
+      {/* Selected Devices Area */}
+      {parentSelectedDevices.length > 0 && (
+        <div className="p-4 bg-blue-50 border-b border-blue-200">
+          <div className="text-sm font-medium text-blue-800 mb-2">
+            Selected for Topology ({parentSelectedDevices.length})
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {parentSelectedDevices.map((device) => (
+              <div
+                key={device.id}
+                className="flex items-center bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-xs font-medium"
+              >
+                <span className="mr-1">{statusIcons[device.status]}</span>
+                <span className="truncate max-w-32">{device.name}</span>
+                <button
+                  onClick={() => {
+                    const newSelected = new Set(selectedDevices);
+                    newSelected.delete(device.id);
+                    setSelectedDevices(newSelected);
+                    const newList = devices.filter(d => newSelected.has(d.id));
+                    onDeviceSelect(newList);
+                  }}
+                  className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Search and filters with modern styling */}
       <div className="p-4 bg-white border-b border-gray-100 shadow-sm">
         <div className="space-y-4">

@@ -62,15 +62,12 @@ const getStatusColors = (status: string = 'unknown') => {
   }
 };
 
-// Professional Device Node with proper deletable handling
+// Simple Device Node - no removal controls needed
 const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
-  const { label, type, status, onRemove, wasDropped } = data;
+  const { label, type, status } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
-  
-  // ONLY show P and X if this exact device was dropped (not related devices)
-  const showRemoveControls = Boolean(wasDropped);
   
   return (
     <>
@@ -93,18 +90,14 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
         style={{
           minWidth: '80px',
           maxWidth: '90px',
-          background: showRemoveControls ? '#EBF8FF' : '#F8FAFC',
+          background: '#F8FAFC',
           border: selected 
             ? '2px solid #3B82F6' 
-            : showRemoveControls 
-            ? '2px solid #2563EB' 
             : '1px solid #CBD5E0',
           borderRadius: '8px',
           padding: '6px',
           boxShadow: selected 
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
-            : showRemoveControls
-            ? '0 2px 8px rgba(37, 99, 235, 0.2)'
             : isHovered ? colors.shadow : '0 2px 4px rgba(0,0,0,0.05)',
           cursor: 'grab',
           // Remove transform to prevent blurriness
@@ -120,31 +113,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           transform: 'translateZ(0)',
         }}
       >
-        {/* Remove button - only show for deletable nodes */}
-        {showRemoveControls && onRemove && isHovered && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              e.preventDefault();
-              onRemove();
-            }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold shadow-md z-50"
-            style={{ pointerEvents: 'auto', position: 'absolute', zIndex: 1000 }}
-            title="Remove device from canvas"
-          >
-            ×
-          </button>
-        )}
-        
-        {/* Primary device indicator - only for deletable nodes */}
-        {showRemoveControls && (
-          <div 
-            className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center"
-            title="Primary device (removable)"
-          >
-            <span className="text-white text-[8px] font-bold">P</span>
-          </div>
-        )}
+        {/* No removal controls - selection manages topology */}
         
         {/* Status dot */}
         <div
@@ -347,26 +316,19 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes.length > 0) {
       console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
-      // PROPER REACT FLOW APPROACH: Use deletable property on nodes
-      const draggedDeviceNames = new Set(devices.map(d => d.name));
-      
-      // Create nodes with proper React Flow deletable property
+      // Create nodes from topology data - simple approach
       flowNodes = topologyData.nodes.map((node) => {
         const nodeLabel = node.label || String(node.id);
-        const wasDragged = draggedDeviceNames.has(nodeLabel);
         
         return {
           id: nodeLabel,
           type: 'professional',
           position: { x: 0, y: 0 },
           draggable: true,
-          deletable: wasDragged, // React Flow's built-in deletable property
           data: { 
             label: nodeLabel,
             type: node.type,
             status: 'online',
-            // Provide callback for custom delete button
-            onRemove: wasDragged && onRemoveDevice ? () => onRemoveDevice(nodeLabel) : undefined,
           },
         };
       });
@@ -407,18 +369,16 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         flowEdges = [];
       }
     } else if (devices.length > 0) {
-      // Fallback for device list - all devices are deletable when no topology data
+      // Fallback for device list - simple nodes
       flowNodes = devices.map((device) => ({
         id: device.id,
         type: 'professional',
         position: { x: 0, y: 0 },
         draggable: true,
-        deletable: true, // All directly added devices are deletable
         data: { 
           label: device.name,
           type: device.type,
           status: device.status,
-          onRemove: onRemoveDevice ? () => onRemoveDevice(device.id) : undefined,
         },
       }));
     }

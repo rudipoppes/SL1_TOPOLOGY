@@ -8,49 +8,29 @@ function App() {
   const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
   const [topologyDevices, setTopologyDevices] = useState<Device[]>([]);
   const [topologyData, setTopologyData] = useState<TopologyResponse['topology'] | null>(null);
-  const [draggedDevice, setDraggedDevice] = useState<Device | null>(null);
   const [leftPanelWidth, setLeftPanelWidth] = useState(480);
   const [isResizing, setIsResizing] = useState(false);
   const [loadingTopology, setLoadingTopology] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDeviceSelect = (devices: Device[]) => {
+  const handleDeviceSelect = async (devices: Device[]) => {
     setSelectedDevices(devices);
-    // Future: Could be used for batch operations
-    console.log('Selected devices:', selectedDevices.length, '→', devices.length);
+    console.log('Selected devices changed:', devices.map(d => d.name));
+    
+    // Immediately update topology when selection changes
+    setTopologyDevices(devices);
+    
+    // Fetch topology data for selected devices
+    await fetchTopologyData(devices);
   };
 
-  const handleDeviceDrag = (device: Device) => {
-    setDraggedDevice(device);
-  };
+  // Remove drag functionality
+  // const handleDeviceDrag = (device: Device) => {
+  //   setDraggedDevice(device);
+  // };
 
-  const handleDrop = async (e: React.DragEvent) => {
-    e.preventDefault();
-    
-    // If multiple devices are selected, add all of them
-    const devicesToAdd = selectedDevices.length > 0 ? selectedDevices : (draggedDevice ? [draggedDevice] : []);
-    
-    if (devicesToAdd.length > 0) {
-      console.log('Dropped devices:', devicesToAdd.map(d => d.name));
-      
-      // Add devices to topology devices if not already present
-      const updatedDevices = [...topologyDevices];
-      devicesToAdd.forEach(device => {
-        if (!updatedDevices.some(d => d.id === device.id)) {
-          updatedDevices.push(device);
-        }
-      });
-      
-      setTopologyDevices(updatedDevices);
-      
-      // Fetch topology data for all devices on canvas to get proper relationships
-      await fetchTopologyData(updatedDevices);
-      
-      setDraggedDevice(null);
-      // Clear selected devices after dropping
-      setSelectedDevices([]);
-    }
-  };
+  // Remove drop functionality - selection handles topology now
+  // const handleDrop = async (e: React.DragEvent) => { ... };
 
   const handleClearAll = () => {
     console.log('Clearing all topology data');
@@ -114,9 +94,8 @@ function App() {
     }
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+  // Remove drag over - no longer needed
+  // const handleDragOver = (e: React.DragEvent) => { ... };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -164,7 +143,7 @@ function App() {
       >
         <DeviceList
           onDeviceSelect={handleDeviceSelect}
-          onDeviceDrag={handleDeviceDrag}
+          selectedDevices={selectedDevices}
         />
       </div>
 
@@ -181,11 +160,7 @@ function App() {
       />
 
       {/* Right Panel - Topology Canvas */}
-      <div 
-        className="flex-1 p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50"
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-      >
+      <div className="flex-1 p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50">
         {topologyDevices.length === 0 ? (
           <div className="h-full bg-white/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 flex items-center justify-center">
             <div className="text-center text-gray-500">
@@ -217,18 +192,6 @@ function App() {
               devices={topologyDevices}
               topologyData={topologyData || undefined}
               onDeviceClick={handleDeviceClick}
-              onRemoveDevice={(deviceId) => {
-                console.log('🗑️ App removing device:', deviceId);
-                const remaining = topologyDevices.filter(d => d.id !== deviceId && d.name !== deviceId);
-                setTopologyDevices(remaining);
-                
-                // Re-fetch topology for remaining devices
-                if (remaining.length > 0) {
-                  fetchTopologyData(remaining);
-                } else {
-                  setTopologyData(null);
-                }
-              }}
               onClearAll={handleClearAll}
               className="h-full"
             />

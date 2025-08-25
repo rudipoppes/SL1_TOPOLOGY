@@ -3,7 +3,6 @@ import { Device } from '../../services/api';
 
 interface DeviceItemProps {
   device: Device;
-  onDragStart: (device: Device) => void;
   isSelected?: boolean;
   onSelect?: (device: Device) => void;
 }
@@ -17,17 +16,14 @@ const statusIcons = {
 
 export const DeviceItem: React.FC<DeviceItemProps> = ({
   device,
-  onDragStart,
   isSelected,
   onSelect,
 }) => {
   return (
     <div
-      draggable
-      onDragStart={() => onDragStart(device)}
       onClick={() => onSelect?.(device)}
       className={`
-        group relative flex items-center justify-between p-2 mx-3 mb-1 rounded-lg cursor-move
+        group relative flex items-center justify-between p-2 mx-3 mb-1 rounded-lg cursor-pointer
         transition-all duration-200 ease-out transform hover:scale-[1.01]
         ${isSelected 
           ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-400 shadow-lg ring-2 ring-blue-100' 
@@ -77,7 +73,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
           {device.type}
         </div>
         
-        {/* Drag indicator */}
+        {/* Selection indicator dots */}
         <div className="flex space-x-0.5 opacity-20 group-hover:opacity-40 transition-opacity mt-1">
           <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
           <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
