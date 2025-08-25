@@ -385,6 +385,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const onEdgesChange = useCallback((changes: any[]) => {
     originalOnEdgesChange(changes);
   }, [originalOnEdgesChange]);
+
+  // Lock manual layout when user drags nodes
+  const onNodeDragStop = useCallback(() => {
+    console.log('🔒 User dragged node - locking manual layout');
+    setManualLayoutLocked(true);
+  }, []);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
@@ -683,9 +689,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       preserveView: canvasStateRef.current.preserveView
     });
 
-    // Apply current layout if this is the initial topology load or new devices added (and not manual locked)
+    // Apply current layout ONLY if this is the very first load (never after manual positioning)
     const shouldApplyLayout = allNodes.length > 1 && !manualLayoutLocked && 
-      (canvasStateRef.current.isFirstLoad || allNodes.length > nodes.length);
+      canvasStateRef.current.isFirstLoad && nodes.length === 0;
     
     console.log('🔍 Layout check:', {
       allNodesCount: allNodes.length,
@@ -964,6 +970,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
+        onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
         connectionMode={ConnectionMode.Loose}
