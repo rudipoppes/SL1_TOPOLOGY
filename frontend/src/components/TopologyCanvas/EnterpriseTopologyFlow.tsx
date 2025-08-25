@@ -14,8 +14,6 @@ import {
   Panel,
   useReactFlow,
   ReactFlowProvider,
-  Handle,
-  Position,
   BackgroundVariant,
   useUpdateNodeInternals,
 } from '@xyflow/react';
@@ -112,18 +110,6 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   
   return (
     <>
-      <Handle
-        type="target"
-        position={Position.Top}
-        style={{ 
-          background: '#3B82F6', 
-          width: 8, 
-          height: 8, 
-          borderRadius: '50%',
-          border: '1px solid white',
-        }}
-      />
-      
       <div
         className="relative flex flex-col items-center"
         onMouseEnter={() => setIsHovered(true)}
@@ -199,18 +185,6 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           </div>
         )}
       </div>
-      
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        style={{ 
-          background: '#3B82F6', 
-          width: 8, 
-          height: 8, 
-          borderRadius: '50%',
-          border: '1px solid white',
-        }}
-      />
     </>
   );
 };
@@ -375,8 +349,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     y: 0,
   });
   
-  // Use original edge change handler without phantom detection to avoid race conditions
-  const onEdgesChange = originalOnEdgesChange;
+  // Optimized edge change handler for smooth drag performance
+  const onEdgesChange = useCallback((changes: any[]) => {
+    // Batch edge updates to prevent lag during node dragging
+    requestAnimationFrame(() => {
+      originalOnEdgesChange(changes);
+    });
+  }, [originalOnEdgesChange]);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
@@ -985,6 +964,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             strokeOpacity: 0.8,
           },
         }}
+        // Performance optimizations for smooth edge following
+        elevateEdgesOnSelect={false}
+        elevateNodesOnSelect={false}
+        disableKeyboardA11y={false}
+        autoPanOnConnect={false}
+        autoPanOnNodeDrag={false}
         // Disable animations that can cause blur
         zoomOnScroll={true}
         zoomOnPinch={true}
