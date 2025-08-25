@@ -26,6 +26,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
+  const [allSelectedDeviceObjects, setAllSelectedDeviceObjects] = useState<Device[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -98,19 +99,33 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     fetchDevices(true);
   }, [searchTerm]);
 
+  // Sync local selected devices with parent state
+  useEffect(() => {
+    const parentDeviceIds = new Set(parentSelectedDevices.map(d => d.id));
+    setSelectedDevices(parentDeviceIds);
+    setAllSelectedDeviceObjects([...parentSelectedDevices]);
+  }, [parentSelectedDevices]);
+
   // Handle device selection - toggle add/remove from chip area
   const handleDeviceSelect = (device: Device) => {
     const newSelected = new Set(selectedDevices);
-    if (newSelected.has(device.id)) {
-      newSelected.delete(device.id);
-    } else {
-      newSelected.add(device.id);
-    }
-    setSelectedDevices(newSelected);
+    let updatedDeviceObjects = [...allSelectedDeviceObjects];
     
-    // Send the updated list of selected devices to parent
-    const selectedDeviceList = devices.filter((d) => newSelected.has(d.id));
-    onDeviceSelect(selectedDeviceList);
+    if (newSelected.has(device.id)) {
+      // Remove device
+      newSelected.delete(device.id);
+      updatedDeviceObjects = updatedDeviceObjects.filter(d => d.id !== device.id);
+    } else {
+      // Add device
+      newSelected.add(device.id);
+      updatedDeviceObjects.push(device);
+    }
+    
+    setSelectedDevices(newSelected);
+    setAllSelectedDeviceObjects(updatedDeviceObjects);
+    
+    // Send the complete list of selected devices to parent (not filtered by current search)
+    onDeviceSelect(updatedDeviceObjects);
   };
 
   // Clear filters
@@ -161,6 +176,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             <button
               onClick={() => {
                 setSelectedDevices(new Set());
+                setAllSelectedDeviceObjects([]);
                 onClearSelection();
               }}
               className="text-xs text-blue-600 hover:text-blue-800 font-medium"
@@ -182,8 +198,10 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                     const newSelected = new Set(selectedDevices);
                     newSelected.delete(device.id);
                     setSelectedDevices(newSelected);
-                    const newList = devices.filter(d => newSelected.has(d.id));
-                    onDeviceSelect(newList);
+                    
+                    const updatedDeviceObjects = allSelectedDeviceObjects.filter(d => d.id !== device.id);
+                    setAllSelectedDeviceObjects(updatedDeviceObjects);
+                    onDeviceSelect(updatedDeviceObjects);
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
                 >
