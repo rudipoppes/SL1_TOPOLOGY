@@ -381,12 +381,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     y: 0,
   });
   
-  // Optimized edge change handler for smooth drag performance
+  // Immediate edge change handler - let React Flow handle the optimization
   const onEdgesChange = useCallback((changes: any[]) => {
-    // Batch edge updates to prevent lag during node dragging
-    requestAnimationFrame(() => {
-      originalOnEdgesChange(changes);
-    });
+    originalOnEdgesChange(changes);
   }, [originalOnEdgesChange]);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
@@ -988,7 +985,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         selectionOnDrag={false}
         selectNodesOnDrag={false}
         defaultEdgeOptions={{
-          type: edgeType as any,
+          type: 'straight', // Use straight edges for better performance during dragging
           animated: false,
           style: {
             strokeWidth: 2,
@@ -1002,6 +999,14 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         disableKeyboardA11y={false}
         autoPanOnConnect={false}
         autoPanOnNodeDrag={false}
+        // Additional performance settings
+        onlyRenderVisibleElements={true}
+        translateExtent={[[-2000, -2000], [2000, 2000]]}
+        nodeExtent={[[-2000, -2000], [2000, 2000]]}
+        snapToGrid={false}
+        snapGrid={[15, 15]}
+        // Edge rendering optimizations
+        edgesFocusable={false}
         // Disable animations that can cause blur
         zoomOnScroll={true}
         zoomOnPinch={true}
