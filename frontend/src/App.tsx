@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
-import { StableTopologyFlow } from './components/TopologyCanvas/StableTopologyFlow';
+import { ControlledTopology } from './components/TopologyCanvas/ControlledTopology';
 import { configService } from './services/config';
 import { useTheme } from './hooks/useTheme';
 import './App.css';
@@ -410,7 +410,7 @@ function App() {
                 </div>
               </div>
             )}
-            <StableTopologyFlow 
+            <ControlledTopology 
               devices={topologyDevices}
               topologyData={topologyData || undefined}
               onDirectionChange={handleDirectionChange}
