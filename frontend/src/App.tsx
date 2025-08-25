@@ -3,6 +3,7 @@ import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { EnterpriseTopologyFlow } from './components/TopologyCanvas/EnterpriseTopologyFlow';
 import { configService } from './services/config';
+import { useTheme } from './hooks/useTheme';
 import './App.css';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
   const [deviceDirections, setDeviceDirections] = useState<Map<string, 'parents' | 'children' | 'both'>>(new Map());
   const defaultDirection = configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both';
   const containerRef = useRef<HTMLDivElement>(null);
+  const { theme, toggleTheme } = useTheme();
 
   const handleDeviceSelect = async (devices: Device[]) => {
     setSelectedDevices(devices);
@@ -347,7 +349,21 @@ function App() {
   }, [isResizing]);
 
   return (
-    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30">
+    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+      {/* Theme Toggle Button */}
+      <button
+        onClick={toggleTheme}
+        className="
+          fixed top-4 right-4 z-50 glass-panel backdrop-blur-lg border-white/30 
+          rounded-lg shadow-lg p-2 transition-all duration-300 hover:shadow-xl
+          hover:bg-white/20 dark:hover:bg-white/10
+        "
+        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+      >
+        <span className="text-lg">
+          {theme === 'light' ? '🌙' : '☀️'}
+        </span>
+      </button>
       {/* Resizable Left Panel - Device Inventory */}
       <div 
         className="glass-panel flex-shrink-0 border-r border-white/20 animate-slide-in"
@@ -377,7 +393,7 @@ function App() {
       />
 
       {/* Right Panel - Topology Canvas */}
-      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 animate-slide-in" style={{ animationDelay: '100ms' }}>
+      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 dark:from-slate-800/50 dark:via-slate-900/30 dark:to-slate-800/40 animate-slide-in transition-colors duration-300" style={{ animationDelay: '100ms' }}>
         {topologyDevices.length === 0 ? (
           <div className="h-full glass-panel rounded-2xl flex items-center justify-center border border-white/30 animate-scale-in hover-lift" style={{ animationDelay: '200ms' }}>
             <div className="text-center text-slate-600">

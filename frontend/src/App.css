@@ -1,6 +1,6 @@
 /* Modern CSS Variables for Consistent Design System */
 :root {
-  /* Primary Color Palette */
+  /* Light Theme - Primary Color Palette */
   --color-primary-50: #eff6ff;
   --color-primary-100: #dbeafe;
   --color-primary-200: #bfdbfe;
@@ -12,7 +12,7 @@
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
 
-  /* Neutral Color Palette */
+  /* Light Theme - Neutral Color Palette */
   --color-neutral-50: #f8fafc;
   --color-neutral-100: #f1f5f9;
   --color-neutral-200: #e2e8f0;
@@ -30,11 +30,17 @@
   --color-error: #ef4444;
   --color-info: #3b82f6;
 
-  /* Glass Morphism Variables */
+  /* Light Theme - Glass Morphism Variables */
   --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(255, 255, 255, 0.18);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
   --glass-backdrop: blur(8px);
+  
+  /* Light Theme - Background Variables */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-gradient-start: #f1f5f9;
+  --bg-gradient-end: #e2e8f0;
 
   /* Spacing Scale */
   --space-1: 0.25rem;   /* 4px */
@@ -89,6 +95,45 @@
   --transition-fast: 150ms ease-out;
   --transition-normal: 250ms ease-out;
   --transition-slow: 350ms ease-out;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  /* Dark Theme - Primary Colors (slightly adjusted for better contrast) */
+  --color-primary-50: #1e3a8a;
+  --color-primary-100: #1e40af;
+  --color-primary-200: #1d4ed8;
+  --color-primary-300: #2563eb;
+  --color-primary-400: #3b82f6;
+  --color-primary-500: #60a5fa;
+  --color-primary-600: #93c5fd;
+  --color-primary-700: #bfdbfe;
+  --color-primary-800: #dbeafe;
+  --color-primary-900: #eff6ff;
+
+  /* Dark Theme - Neutral Colors */
+  --color-neutral-50: #0f172a;
+  --color-neutral-100: #1e293b;
+  --color-neutral-200: #334155;
+  --color-neutral-300: #475569;
+  --color-neutral-400: #64748b;
+  --color-neutral-500: #94a3b8;
+  --color-neutral-600: #cbd5e1;
+  --color-neutral-700: #e2e8f0;
+  --color-neutral-800: #f1f5f9;
+  --color-neutral-900: #f8fafc;
+
+  /* Dark Theme - Glass Morphism */
+  --glass-bg: rgba(30, 41, 59, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --glass-backdrop: blur(8px);
+  
+  /* Dark Theme - Backgrounds */
+  --bg-primary: #0f172a;
+  --bg-secondary: #1e293b;
+  --bg-gradient-start: #1e293b;
+  --bg-gradient-end: #334155;
 }
 
 /* Modern Glassmorphism Utilities */
@@ -245,7 +290,7 @@
   background: var(--color-neutral-400);
 }
 
-/* Improved Text Rendering with Animations */
+/* Improved Text Rendering with Theme Support */
 body {
   font-family: system-ui, -apple-system, 'Segoe UI', 'Roboto', 'Ubuntu', 'Cantarell', 'Noto Sans', sans-serif;
   font-size: var(--text-base);
@@ -255,7 +300,9 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   color: var(--color-neutral-800);
+  background-color: var(--bg-primary);
   overflow-x: hidden; /* Prevent horizontal scroll from animations */
+  transition: background-color var(--transition-normal), color var(--transition-normal);
 }
 
 /* Heading Hierarchy */

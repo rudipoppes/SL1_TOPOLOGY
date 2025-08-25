@@ -381,6 +381,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
   const [isUpdatingTopology, setIsUpdatingTopology] = useState<boolean>(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -1226,7 +1227,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 </button>
               </>
             )}
-          </div>
+            </div>
+          )}
         </Panel>
         
         <Panel position="top-right" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl px-5 py-3">

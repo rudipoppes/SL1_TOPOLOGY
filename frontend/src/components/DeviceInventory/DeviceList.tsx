@@ -151,21 +151,21 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20">
-      {/* Glassmorphism header */}
-      <div className="glass-panel border-b border-white/20 backdrop-blur-lg bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white p-6">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20 dark:from-slate-900/30 dark:via-slate-800/50 dark:to-slate-900/20 transition-colors duration-300">
+      {/* Enhanced readable header */}
+      <div className="border-b border-white/20 dark:border-gray-700/30 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-800 dark:to-indigo-800 text-white p-6 shadow-lg transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-gradient-subtle mb-1" style={{ fontSize: 'var(--text-2xl)', fontWeight: 'var(--font-bold)', color: 'white' }}>
+            <h2 className="text-2xl font-bold mb-1 text-white drop-shadow-sm">
               Device Inventory
             </h2>
-            <p className="text-blue-100/90" style={{ fontSize: 'var(--text-sm)' }}>
+            <p className="text-blue-100 text-sm font-medium">
               Click devices to add to topology
             </p>
           </div>
-          <div className="glass-panel bg-white/15 backdrop-blur-sm border-white/30 rounded-xl p-4">
-            <div className="text-2xl font-bold text-white">{devices.length}</div>
-            <div className="text-xs text-blue-100/80" style={{ fontSize: 'var(--text-xs)' }}>devices loaded</div>
+          <div className="bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl p-4 transition-colors duration-300">
+            <div className="text-2xl font-bold text-white drop-shadow-sm">{devices.length}</div>
+            <div className="text-xs text-blue-100 font-medium uppercase tracking-wide">devices loaded</div>
           </div>
         </div>
       </div>
@@ -297,7 +297,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             <List
               height={window.innerHeight - 280}
               itemCount={devices.length}
-              itemSize={76}
+              itemSize={60}
               width="100%"
             >
               {Row}

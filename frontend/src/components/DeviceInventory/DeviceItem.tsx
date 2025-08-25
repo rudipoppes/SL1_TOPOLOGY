@@ -22,9 +22,9 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       onClick={() => onSelect?.(device)}
       className="
         group relative flex items-center justify-between cursor-pointer
-        mx-3 mb-3 p-4 rounded-xl transition-all duration-300 ease-out
+        mx-2 mb-2 p-3 rounded-lg transition-all duration-300 ease-out
         glass-panel border-white/30 hover:border-white/50
-        transform hover:scale-[1.02] hover:shadow-xl
+        transform hover:scale-[1.01] hover:shadow-lg
         backdrop-blur-md
       "
     >
@@ -38,43 +38,35 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
           )}
         </div>
         
-        {/* Enhanced device info */}
-        <div className="min-w-0 flex-1 ml-4">
-          {/* Modern device name */}
+        {/* Compact device info */}
+        <div className="min-w-0 flex-1 ml-3">
+          {/* Device name - more compact */}
           <div 
-            className="font-semibold text-base text-emphasis truncate group-hover:text-gradient-primary transition-all duration-300"
+            className="font-medium text-sm text-emphasis truncate group-hover:text-gradient-primary transition-all duration-300"
             title={device.name}
-            style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-semibold)' }}
           >
-            {device.name.length > 40 ? `${device.name.substring(0, 40)}...` : device.name}
+            {device.name.length > 35 ? `${device.name.substring(0, 35)}...` : device.name}
           </div>
           
-          {/* Enhanced IP address */}
-          <div className="flex items-center mt-2 text-muted font-mono" style={{ fontSize: 'var(--text-sm)' }}>
-            <div className="w-2 h-2 bg-gradient-to-br from-blue-400/60 to-blue-500/60 rounded-full mr-2 shadow-sm"></div>
+          {/* Compact IP address */}
+          <div className="flex items-center mt-1 text-muted font-mono text-xs">
+            <div className="w-1.5 h-1.5 bg-gradient-to-br from-blue-400/60 to-blue-500/60 rounded-full mr-2"></div>
             <span className="tracking-wide">{device.ip}</span>
           </div>
         </div>
       </div>
       
-      {/* Modern device type badge */}
-      <div className="flex flex-col items-end space-y-2">
+      {/* Compact device type badge */}
+      <div className="flex flex-col items-end space-y-1">
         <div className="
-          px-3 py-1.5 rounded-lg backdrop-blur-sm border
+          px-2 py-1 rounded-md backdrop-blur-sm border
           bg-gradient-to-r from-blue-50/80 to-indigo-50/80
-          border-blue-200/50 text-primary shadow-sm
-          font-medium transition-all duration-300
+          border-blue-200/50 text-primary
+          text-xs font-medium transition-all duration-300
           group-hover:from-blue-100/90 group-hover:to-indigo-100/90
-          group-hover:border-blue-300/60 group-hover:shadow-md
-        " style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' }}>
+          group-hover:border-blue-300/60
+        ">
           {device.type}
-        </div>
-        
-        {/* Modern interaction indicator */}
-        <div className="flex space-x-1 opacity-30 group-hover:opacity-60 transition-all duration-300">
-          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110"></div>
-          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110 transition-transform delay-75"></div>
-          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110 transition-transform delay-150"></div>
         </div>
       </div>
       
