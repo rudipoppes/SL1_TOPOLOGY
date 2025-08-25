@@ -105,7 +105,7 @@ const getStatusColors = (status: string = 'unknown') => {
 
 // Simple Device Node - no removal controls needed
 const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
-  const { label, type, status } = data;
+  const { label, type, status, direction } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
@@ -161,6 +161,18 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
           className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white"
           style={{ background: colors.bg }}
         />
+        
+        {/* Direction indicator */}
+        {direction && (
+          <div
+            className="absolute -top-1 -left-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white text-xs"
+            title={`Showing ${direction === 'parents' ? 'parent(s)' : direction === 'children' ? 'child(ren)' : 'both'}`}
+          >
+            {direction === 'parents' && '👆'}
+            {direction === 'children' && '👇'}  
+            {direction === 'both' && '↕️'}
+          </div>
+        )}
         
         {/* Device icon */}
         <div className="text-lg mb-1">{icon}</div>
@@ -420,6 +432,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             label: nodeLabel,
             type: node.type,
             status: 'online',
+            direction: currentDirection,
           },
         };
       });
@@ -510,6 +523,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           label: device.name,
           type: device.type,
           status: device.status,
+          direction: currentDirection,
         },
       }));
       
@@ -539,7 +553,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         manualLayoutLocked
       });
       
-      if (shouldPreservePositions && !manualLayoutLocked) {
+      if (shouldPreservePositions && !manualLayoutLocked && hasNewNodes && existingNodeIds.size > 0) {
         console.log('🔒 INCREMENTAL LAYOUT: Preserving existing positions, positioning new nodes');
         
         // For existing nodes: keep their current positions from React Flow state
@@ -647,12 +661,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Log for debugging deletable state
       console.log('Node deletable states:', flowNodes.map(n => `${n.data.label}: ${n.deletable}`));
       
-      // Only fit view on initial load or full layout changes, NOT on incremental updates
+      // Fit view logic: initial load, layout changes, or manual layout unlock
       const isInitialLoad = nodes.length === 0;
-      const isFullLayoutChange = !shouldPreservePositions || manualLayoutLocked === false;
+      const isLayoutChangeOrUnlock = !shouldPreservePositions || manualLayoutLocked === false;
+      const isIncrementalOnly = shouldPreservePositions && hasNewNodes && existingNodeIds.size > 0;
       
-      if (isInitialLoad || isFullLayoutChange) {
-        console.log('🎯 Fitting view (initial load or full layout change)');
+      if (isInitialLoad || (isLayoutChangeOrUnlock && !isIncrementalOnly)) {
+        console.log('🎯 Fitting view (initial load or layout change)');
         setTimeout(() => {
           reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
         }, 100);
@@ -1037,15 +1052,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               ))}
             </div>
             
-            <div className="border-t pt-2">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Relationship Direction</div>
-              <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs">
-                {currentDirection === 'parents' && '👆 Parent(s)'}
-                {currentDirection === 'children' && '👇 Child(ren)'}
-                {currentDirection === 'both' && '↕️ Both'}
-                <span className="text-gray-500 ml-1">(Right-click node to change)</span>
-              </div>
-            </div>
             
             <button
               onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 500 })}

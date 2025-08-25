@@ -81,7 +81,27 @@ function App() {
       });
       
       console.log('📊 Topology data received:', response.topology);
-      setTopologyData(response.topology);
+      
+      // Ensure ALL selected devices appear on canvas, even if they have no relationships
+      const deviceNodes = devices.map(device => ({
+        id: device.id,
+        label: device.name,
+        type: device.type,
+        status: device.status,
+        ip: device.ip
+      }));
+      
+      // Merge API nodes with selected device nodes (avoid duplicates)
+      const existingNodeIds = new Set(response.topology.nodes.map(n => n.id));
+      const missingDeviceNodes = deviceNodes.filter(node => !existingNodeIds.has(node.id));
+      
+      const completeTopology = {
+        nodes: [...response.topology.nodes, ...missingDeviceNodes],
+        edges: response.topology.edges
+      };
+      
+      console.log('📊 Complete topology with all selected devices:', completeTopology);
+      setTopologyData(completeTopology);
     } catch (error) {
       console.error('❌ Failed to fetch topology - topology API may not be available:', error);
       // Create simple topology with just the devices (no relationships)
@@ -123,10 +143,29 @@ function App() {
           return response.topology;
         }
         
+        // Ensure the new devices are always included, even if API didn't return them
+        const newDeviceNodes = newDevices.map(device => ({
+          id: device.id,
+          label: device.name,
+          type: device.type,
+          status: device.status,
+          ip: device.ip
+        }));
+        
         // Merge nodes (avoid duplicates by ID)
         const existingNodeIds = new Set(prevTopology.nodes.map(n => n.id));
-        const newNodes = response.topology.nodes.filter(n => !existingNodeIds.has(n.id));
-        const mergedNodes = [...prevTopology.nodes, ...newNodes];
+        const apiNodes = response.topology.nodes.filter(n => !existingNodeIds.has(n.id));
+        const missingDeviceNodes = newDeviceNodes.filter(n => !existingNodeIds.has(n.id));
+        
+        // Combine API nodes with missing device nodes  
+        const allNewNodes = [...apiNodes];
+        missingDeviceNodes.forEach(deviceNode => {
+          if (!allNewNodes.some(n => n.id === deviceNode.id)) {
+            allNewNodes.push(deviceNode);
+          }
+        });
+        
+        const mergedNodes = [...prevTopology.nodes, ...allNewNodes];
         
         // Merge edges (avoid duplicates by source-target combination)
         const existingEdgeKeys = new Set(prevTopology.edges.map(e => `${e.source}-${e.target}`));
@@ -135,7 +174,8 @@ function App() {
         
         console.log('🔄 Merged topology:', {
           prevNodes: prevTopology.nodes.length,
-          newNodes: newNodes.length,
+          newApiNodes: apiNodes.length,
+          newDeviceNodes: allNewNodes.length,
           totalNodes: mergedNodes.length,
           prevEdges: prevTopology.edges.length,
           newEdges: newEdges.length,
