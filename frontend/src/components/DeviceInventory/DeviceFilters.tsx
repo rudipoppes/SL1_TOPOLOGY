@@ -29,7 +29,7 @@ export const DeviceFilters: React.FC<DeviceFiltersProps> = ({
       <select
         value={selectedType || ''}
         onChange={(e) => onTypeChange(e.target.value || null)}
-        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-300"
       >
         <option value="">All Types</option>
         {types.map((type) => (
@@ -42,7 +42,7 @@ export const DeviceFilters: React.FC<DeviceFiltersProps> = ({
       <select
         value={selectedStatus || ''}
         onChange={(e) => onStatusChange(e.target.value || null)}
-        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-colors duration-300"
       >
         <option value="">All Status</option>
         {statuses.map((status) => (
@@ -55,7 +55,7 @@ export const DeviceFilters: React.FC<DeviceFiltersProps> = ({
       {(selectedType || selectedStatus) && (
         <button
           onClick={onClearFilters}
-          className="px-3 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+          className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-300"
         >
           Clear Filters
         </button>

@@ -151,7 +151,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20 dark:from-slate-900/30 dark:via-slate-800/50 dark:to-slate-900/20 transition-colors duration-300">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20 dark:from-slate-800/30 dark:via-slate-700/50 dark:to-slate-800/20 transition-colors duration-300">
       {/* Enhanced readable header */}
       <div className="border-b border-white/20 dark:border-gray-700/30 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-800 dark:to-indigo-800 text-white p-6 shadow-lg transition-colors duration-300">
         <div className="flex items-center justify-between">

@@ -992,7 +992,14 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         // Force pixel-perfect rendering
         attributionPosition="bottom-left"
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#E2E8F0" />
+        <Background 
+          variant={BackgroundVariant.Dots} 
+          gap={20} 
+          size={1} 
+          color="#E2E8F0" 
+          style={{ opacity: 0.3 }}
+          className="dark:opacity-0"
+        />
         
         <Controls 
           showZoom={true}
@@ -1102,7 +1109,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           }}
         />
         
-        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 rounded-lg shadow-lg p-2 space-y-2">
+        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg p-2 space-y-2">
           <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2" style={{ fontSize: 'var(--text-xs)' }}>Controls</div>
           
           {['hierarchical', 'radial', 'grid'].map((layout) => (

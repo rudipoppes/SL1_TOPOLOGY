@@ -349,7 +349,7 @@ function App() {
   }, [isResizing]);
 
   return (
-    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 transition-colors duration-300">
+    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 transition-colors duration-300">
       {/* Theme Toggle Button */}
       <button
         onClick={toggleTheme}
@@ -393,7 +393,7 @@ function App() {
       />
 
       {/* Right Panel - Topology Canvas */}
-      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 dark:from-slate-800/50 dark:via-slate-900/30 dark:to-slate-800/40 animate-slide-in transition-colors duration-300" style={{ animationDelay: '100ms' }}>
+      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 dark:from-slate-700/50 dark:via-slate-600/30 dark:to-slate-700/40 animate-slide-in transition-colors duration-300" style={{ animationDelay: '100ms' }}>
         {topologyDevices.length === 0 ? (
           <div className="h-full glass-panel rounded-2xl flex items-center justify-center border border-white/30 animate-scale-in hover-lift" style={{ animationDelay: '200ms' }}>
             <div className="text-center text-slate-600">
