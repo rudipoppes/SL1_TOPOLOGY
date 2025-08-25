@@ -387,13 +387,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       currentLayout: currentLayout
     });
     
-    // CRITICAL: Always clear edges first to prevent phantom connections
-    console.log('🧹 Force clearing all edges at start of effect to prevent phantoms');
-    setEdges([]);
-    
     if (!topologyData && devices.length === 0) {
       console.log('🧹 Clearing all nodes and edges');
       setNodes([]);
+      setEdges([]);
       setPreservePositions(false);
       setSavedPositions(new Map());
       setManualLayoutLocked(false);
@@ -406,14 +403,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     if (topologyData && topologyData.nodes.length > 0) {
       console.log('🔍 Processing topology data with', topologyData.nodes.length, 'nodes and', topologyData.edges.length, 'edges');
       
-      // Create nodes from topology data - simple approach
+      // Create nodes from topology data - preserve existing positions
+      const existingNodes = new Map(nodes.map(n => [n.id, n]));
+      
       flowNodes = topologyData.nodes.map((node) => {
         const nodeLabel = node.label || String(node.id);
+        const existingNode = existingNodes.get(nodeLabel);
         
         return {
           id: nodeLabel,
           type: 'professional',
-          position: { x: 0, y: 0 },
+          // Preserve existing position if node exists, otherwise use default
+          position: existingNode ? existingNode.position : { x: 0, y: 0 },
           draggable: true,
           data: { 
             label: nodeLabel,
@@ -520,42 +521,87 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
 
     if (flowNodes.length > 0) {
-      // Apply layout
+      // Apply layout with incremental positioning
       let layoutedNodes = [...flowNodes];
       
-      // Check if we should preserve existing positions
+      // Identify existing vs new nodes
       const existingNodeIds = new Set(nodes.map(n => n.id));
       const newNodeIds = flowNodes.filter(n => !existingNodeIds.has(n.id)).map(n => n.id);
-      const shouldPreserve = (preservePositions || manualLayoutLocked) && savedPositions.size > 0;
+      const hasNewNodes = newNodeIds.length > 0;
+      const shouldPreservePositions = nodes.length > 0; // If we have existing nodes, preserve their positions
       
-      if (shouldPreserve) {
-        console.log('🔒 Preserving positions for existing nodes');
-        // Restore positions for existing nodes
+      console.log('📍 Layout analysis:', {
+        totalNodes: flowNodes.length,
+        existingNodes: existingNodeIds.size,
+        newNodes: newNodeIds.length,
+        shouldPreservePositions,
+        preservePositions,
+        manualLayoutLocked
+      });
+      
+      if (shouldPreservePositions && !manualLayoutLocked) {
+        console.log('🔒 INCREMENTAL LAYOUT: Preserving existing positions, positioning new nodes');
+        
+        // For existing nodes: keep their current positions from React Flow state
         layoutedNodes = layoutedNodes.map(node => {
-          const savedPos = savedPositions.get(node.id);
-          if (savedPos) {
-            return { ...node, position: savedPos };
+          const existingNode = nodes.find(n => n.id === node.id);
+          if (existingNode) {
+            // Preserve position from current React Flow state
+            return { ...node, position: existingNode.position };
           }
-          // Only apply layout to new nodes
+          // New nodes keep default position for now
           return node;
         });
         
-        // Position only new nodes
-        const newNodes = layoutedNodes.filter(n => newNodeIds.includes(n.id));
-        if (newNodes.length > 0) {
-          // Simple positioning for new nodes - place them to the right
-          const maxX = Math.max(...Array.from(savedPositions.values()).map(p => p.x), 0);
-          newNodes.forEach((node, index) => {
-            const targetNode = layoutedNodes.find(n => n.id === node.id);
-            if (targetNode) {
-              targetNode.position = {
-                x: maxX + 150 + (index % 3) * 120,
-                y: 100 + Math.floor(index / 3) * 120
-              };
-            }
-          });
+        // Position only new nodes intelligently
+        if (hasNewNodes) {
+          const newNodes = layoutedNodes.filter(n => newNodeIds.includes(n.id));
+          const existingPositions = nodes.map(n => n.position);
+          
+          if (existingPositions.length > 0) {
+            // Calculate smart positioning for new nodes
+            const maxX = Math.max(...existingPositions.map(p => p.x), 200);
+            const maxY = Math.max(...existingPositions.map(p => p.y), 100);
+            const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
+            
+            newNodes.forEach((node, index) => {
+              const targetNode = layoutedNodes.find(n => n.id === node.id);
+              if (targetNode) {
+                // Place new nodes to the right of existing ones
+                targetNode.position = {
+                  x: maxX + 150 + (index % 3) * 120,
+                  y: avgY + (Math.floor(index / 3) - 1) * 120
+                };
+              }
+            });
+          } else {
+            // Fallback if no existing positions
+            newNodes.forEach((node, index) => {
+              const targetNode = layoutedNodes.find(n => n.id === node.id);
+              if (targetNode) {
+                targetNode.position = {
+                  x: 100 + (index % 3) * 120,
+                  y: 100 + Math.floor(index / 3) * 120
+                };
+              }
+            });
+          }
         }
+      } else if (manualLayoutLocked) {
+        console.log('🔒 MANUAL LAYOUT LOCKED: Preserving all positions');
+        // Keep all existing positions when manual layout is locked
+        layoutedNodes = layoutedNodes.map(node => {
+          const savedPos = savedPositions.get(node.id);
+          const existingNode = nodes.find(n => n.id === node.id);
+          if (existingNode) {
+            return { ...node, position: existingNode.position };
+          } else if (savedPos) {
+            return { ...node, position: savedPos };
+          }
+          return node;
+        });
       } else {
+        console.log('🎯 FULL LAYOUT: Applying algorithmic layout');
         // Apply full layout when not preserving or first load
         switch (currentLayout) {
           case 'hierarchical':
@@ -602,9 +648,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Log for debugging deletable state
       console.log('Node deletable states:', flowNodes.map(n => `${n.data.label}: ${n.deletable}`));
       
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
-      }, 100);
+      // Only fit view on initial load or full layout changes, NOT on incremental updates
+      const isInitialLoad = nodes.length === 0;
+      const isFullLayoutChange = !shouldPreservePositions || manualLayoutLocked === false;
+      
+      if (isInitialLoad || isFullLayoutChange) {
+        console.log('🎯 Fitting view (initial load or full layout change)');
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
+        }, 100);
+      } else {
+        console.log('🔒 PRESERVING VIEW: Skipping fitView for incremental update');
+      }
     } else {
       // Clear everything when no nodes
       console.log('🧹 No nodes - clearing topology');

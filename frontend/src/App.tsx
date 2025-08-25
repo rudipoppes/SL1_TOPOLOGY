@@ -60,8 +60,8 @@ function App() {
     setSelectedDevices(updatedDevices);
     setTopologyDevices(updatedDevices);
     
-    // Fetch topology data for all devices including the new one
-    await fetchTopologyData(updatedDevices, topologyDirection);
+    // Fetch incremental topology data for ONLY the new device
+    await fetchIncrementalTopologyData([device], topologyDirection);
   };
 
   const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
@@ -94,6 +94,85 @@ function App() {
           ip: device.ip
         })),
         edges: [] // No relationships when API fails
+      });
+    } finally {
+      setLoadingTopology(false);
+    }
+  };
+
+  const fetchIncrementalTopologyData = async (newDevices: Device[], direction?: 'parents' | 'children' | 'both') => {
+    if (newDevices.length === 0) return;
+
+    setLoadingTopology(true);
+    try {
+      const currentDirection = direction || topologyDirection;
+      console.log('🔄 Fetching INCREMENTAL topology for devices:', newDevices.map(d => d.name), 'Direction:', currentDirection);
+      
+      const response = await apiService.getTopology({
+        deviceIds: newDevices.map(d => d.id),
+        depth: 1,
+        direction: currentDirection
+      });
+      
+      console.log('📊 Incremental topology data received:', response.topology);
+      
+      // Merge with existing topology data instead of replacing
+      setTopologyData(prevTopology => {
+        if (!prevTopology) {
+          // If no existing topology, just use the new data
+          return response.topology;
+        }
+        
+        // Merge nodes (avoid duplicates by ID)
+        const existingNodeIds = new Set(prevTopology.nodes.map(n => n.id));
+        const newNodes = response.topology.nodes.filter(n => !existingNodeIds.has(n.id));
+        const mergedNodes = [...prevTopology.nodes, ...newNodes];
+        
+        // Merge edges (avoid duplicates by source-target combination)
+        const existingEdgeKeys = new Set(prevTopology.edges.map(e => `${e.source}-${e.target}`));
+        const newEdges = response.topology.edges.filter(e => !existingEdgeKeys.has(`${e.source}-${e.target}`));
+        const mergedEdges = [...prevTopology.edges, ...newEdges];
+        
+        console.log('🔄 Merged topology:', {
+          prevNodes: prevTopology.nodes.length,
+          newNodes: newNodes.length,
+          totalNodes: mergedNodes.length,
+          prevEdges: prevTopology.edges.length,
+          newEdges: newEdges.length,
+          totalEdges: mergedEdges.length
+        });
+        
+        return {
+          nodes: mergedNodes,
+          edges: mergedEdges
+        };
+      });
+      
+    } catch (error) {
+      console.error('❌ Failed to fetch incremental topology:', error);
+      
+      // Fallback: add just the new devices as nodes without relationships
+      setTopologyData(prevTopology => {
+        const newNodes = newDevices.map(device => ({
+          id: device.id,
+          label: device.name,
+          type: device.type,
+          status: device.status,
+          ip: device.ip
+        }));
+        
+        if (!prevTopology) {
+          return { nodes: newNodes, edges: [] };
+        }
+        
+        // Merge with existing, avoiding duplicates
+        const existingNodeIds = new Set(prevTopology.nodes.map(n => n.id));
+        const filteredNewNodes = newNodes.filter(n => !existingNodeIds.has(n.id));
+        
+        return {
+          nodes: [...prevTopology.nodes, ...filteredNewNodes],
+          edges: prevTopology.edges
+        };
       });
     } finally {
       setLoadingTopology(false);
