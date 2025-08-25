@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useMemo, useRef, memo } from 'react';
 import {
   ReactFlow,
   Controls,
@@ -89,7 +89,7 @@ const getStatusColors = (status: string) => {
   }
 };
 
-const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected: boolean }) => {
+const ProfessionalDeviceNode = memo(({ data, selected }: { data: any; selected: boolean }) => {
   const { label, type, status, ip } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
@@ -131,9 +131,10 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected: boole
           cursor: 'grab',
           outline: isHovered ? '2px solid rgba(59, 130, 246, 0.3)' : 'none',
           outlineOffset: '2px',
-          willChange: 'auto',
+          willChange: 'transform',
           backfaceVisibility: 'hidden',
-          transform: 'translateZ(0)',
+          transform: 'translate3d(0, 0, 0)', // Force GPU acceleration
+          position: 'relative',
         }}
       >
         {/* Status indicator */}
@@ -183,7 +184,7 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected: boole
       />
     </>
   );
-};
+});
 
 // Layout algorithms
 const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]): Node[] => {
@@ -275,17 +276,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const reactFlowInstance = useReactFlow();
   const updateNodeInternals = useUpdateNodeInternals();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, originalOnEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     visible: false,
     x: 0,
     y: 0,
   });
-  
-  // Immediate edge change handler - let React Flow handle the optimization
-  const onEdgesChange = useCallback((changes: any[]) => {
-    originalOnEdgesChange(changes);
-  }, [originalOnEdgesChange]);
 
   // Handle node dragging to prevent drift
   const onNodeDrag = useCallback((event: React.MouseEvent, _node: Node) => {
@@ -608,10 +604,16 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       deviceNames: devices.map(d => d.name)
     });
     
-    // Simply place devices on canvas - no topology loading
-    updateCanvasFromChipArea(devices);
+    // Only update if devices actually changed
+    const currentDeviceIds = devices.map(d => d.id).sort().join(',');
+    const previousDeviceIds = nodes.map(n => n.id).sort().join(',');
     
-  }, [devices, updateCanvasFromChipArea]);
+    if (currentDeviceIds !== previousDeviceIds) {
+      // Simply place devices on canvas - no topology loading
+      updateCanvasFromChipArea(devices);
+    }
+    
+  }, [devices, nodes, updateCanvasFromChipArea]);
 
   // Handle topology data changes - process relationship loading results
   useEffect(() => {
@@ -670,6 +672,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
+        nodeOrigin={[0, 0]} // Fix drift by setting explicit origin
         connectionMode={ConnectionMode.Loose}
         fitView
         minZoom={0.5}
