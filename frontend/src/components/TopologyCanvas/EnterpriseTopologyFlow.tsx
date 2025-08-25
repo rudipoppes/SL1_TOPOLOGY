@@ -304,8 +304,11 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       
       // This will trigger the parent component to load topology data for this specific device
       if (onDirectionChange) {
-        onDirectionChange(mappedDirection, deviceId);
+        await onDirectionChange(mappedDirection, deviceId);
       }
+      
+      // Reset loading state after successful completion
+      setIsUpdatingTopology(false);
     } catch (error) {
       console.error('Failed to load relationships:', error);
       setIsUpdatingTopology(false);
@@ -479,6 +482,14 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     updateCanvasFromChipArea(devices);
     
   }, [devices, updateCanvasFromChipArea]);
+
+  // Reset loading state when topology data changes (safeguard against infinite loading)
+  useEffect(() => {
+    if (isUpdatingTopology) {
+      console.log('🛡️ Topology data changed - resetting loading state');
+      setIsUpdatingTopology(false);
+    }
+  }, [nodes.length, edges.length, isUpdatingTopology]);
 
   // Event handlers
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
