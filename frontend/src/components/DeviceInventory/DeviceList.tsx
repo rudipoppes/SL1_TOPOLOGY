@@ -120,7 +120,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       <div style={style}>
         <DeviceItem
           device={device}
-          isSelected={selectedDevices.has(device.id)}
           onSelect={handleDeviceSelect}
         />
       </div>

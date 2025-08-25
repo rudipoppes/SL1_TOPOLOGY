@@ -3,7 +3,6 @@ import { Device } from '../../services/api';
 
 interface DeviceItemProps {
   device: Device;
-  isSelected?: boolean;
   onSelect?: (device: Device) => void;
 }
 
@@ -16,20 +15,16 @@ const statusIcons = {
 
 export const DeviceItem: React.FC<DeviceItemProps> = ({
   device,
-  isSelected,
   onSelect,
 }) => {
   return (
     <div
       onClick={() => onSelect?.(device)}
-      className={`
+      className="
         group relative flex items-center justify-between p-2 mx-3 mb-1 rounded-lg cursor-pointer
         transition-all duration-200 ease-out transform hover:scale-[1.01]
-        ${isSelected 
-          ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-400 shadow-lg ring-2 ring-blue-100' 
-          : 'bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md'
-        }
-      `}
+        bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md
+      "
     >
       {/* Status indicator and content */}
       <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -61,15 +56,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       
       {/* Device type badge */}
       <div className="flex flex-col items-end space-y-0.5">
-        <div 
-          className={`
-            text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm border
-            ${isSelected 
-              ? 'bg-blue-100 text-blue-700 border-blue-200' 
-              : 'bg-gray-100 text-gray-600 border-gray-200'
-            }
-          `}
-        >
+        <div className="text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm border bg-gray-100 text-gray-600 border-gray-200">
           {device.type}
         </div>
         
@@ -81,14 +68,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
         </div>
       </div>
       
-      {/* Selection indicator */}
-      {isSelected && (
-        <div className="absolute -top-0.5 -right-0.5">
-          <div className="w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-md">
-            <span className="text-xs">✓</span>
-          </div>
-        </div>
-      )}
+      {/* No selection indicator - selection is invisible in main list */}
     </div>
   );
 };
