@@ -539,12 +539,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       canvasStateRef.current.nodePositions.set(node.id, node.position);
     });
 
-    // Fit view only on first load
+    // Fit view only on first load (but don't set isFirstLoad to false yet - wait for topology data)
     if (canvasStateRef.current.isFirstLoad && newNodes.length > 0) {
-      console.log('🎯 Fitting view (first load)');
+      console.log('🎯 Fitting view (device selection - keeping isFirstLoad true for hierarchical layout)');
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
-        canvasStateRef.current.isFirstLoad = false;
+        // DON'T set isFirstLoad to false here - wait for topology data to apply hierarchical layout
       }, 100);
     }
 
@@ -675,9 +675,19 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     });
 
     // Apply hierarchical layout if this is the initial topology load and not manual locked
+    console.log('🔍 Hierarchical layout check:', {
+      allNodesCount: allNodes.length,
+      manualLayoutLocked,
+      isFirstLoad: canvasStateRef.current.isFirstLoad,
+      validEdgesCount: validEdges.length,
+      shouldApplyLayout: allNodes.length > 1 && !manualLayoutLocked && canvasStateRef.current.isFirstLoad
+    });
+    
     if (allNodes.length > 1 && !manualLayoutLocked && canvasStateRef.current.isFirstLoad) {
       console.log('🎯 Applying initial hierarchical layout to', allNodes.length, 'nodes with', validEdges.length, 'edges');
       const layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
+      
+      console.log('📍 Hierarchical layout positions:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
       
       // Update canvas with layouted nodes
       setNodes(layoutedNodes);
@@ -699,7 +709,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setNodes(allNodes);
       setEdges(validEdges);
       
-      console.log('🔒 Preserving view during relationship update');
+      console.log('🔒 Preserving view during relationship update (no hierarchical layout)');
     }
   }, [nodes, deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance]);
 
