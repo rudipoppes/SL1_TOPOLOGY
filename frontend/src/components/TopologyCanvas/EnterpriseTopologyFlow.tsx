@@ -689,9 +689,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       preserveView: canvasStateRef.current.preserveView
     });
 
-    // Apply current layout ONLY if this is the very first load (never after manual positioning)
+    // Apply layout on first load OR when adding devices (but not if user has manually positioned nodes)
     const shouldApplyLayout = allNodes.length > 1 && !manualLayoutLocked && 
-      canvasStateRef.current.isFirstLoad && nodes.length === 0;
+      (canvasStateRef.current.isFirstLoad || allNodes.length > nodes.length);
     
     console.log('🔍 Layout check:', {
       allNodesCount: allNodes.length,
