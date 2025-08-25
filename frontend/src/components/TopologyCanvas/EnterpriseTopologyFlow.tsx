@@ -17,6 +17,7 @@ import {
   Handle,
   Position,
   BackgroundVariant,
+  useUpdateNodeInternals,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
@@ -214,8 +215,8 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   );
 };
 
-// Layout algorithms for the new architecture
-const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]) => {
+// Layout algorithms for the new architecture - CREATE NEW OBJECTS
+const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]): Node[] => {
   if (nodes.length === 0) return nodes;
   
   // Find root nodes (no incoming edges)
@@ -250,39 +251,47 @@ const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]) => {
     assignLevel(nodes[0].id, 0);
   }
   
-  // Position nodes by level
-  const levelGroups = new Map<number, Node[]>();
+  // Group nodes by level
+  const levelGroups = new Map<number, string[]>();
   nodes.forEach(node => {
     const level = levels.get(node.id) || 0;
     if (!levelGroups.has(level)) levelGroups.set(level, []);
-    levelGroups.get(level)!.push(node);
+    levelGroups.get(level)!.push(node.id);
   });
   
+  // Calculate positions for each level
+  const positions = new Map<string, { x: number; y: number }>();
   let yPos = 100;
   const levelHeight = 120;
   
-  levelGroups.forEach((levelNodes, _level) => {
-    const totalWidth = levelNodes.length * 150;
+  levelGroups.forEach((nodeIds, _level) => {
+    const totalWidth = nodeIds.length * 150;
     const startX = Math.max(100, (800 - totalWidth) / 2);
     
-    levelNodes.forEach((node, index) => {
-      node.position = {
+    nodeIds.forEach((nodeId, index) => {
+      positions.set(nodeId, {
         x: startX + (index * 150),
         y: yPos
-      };
+      });
     });
     yPos += levelHeight;
   });
   
-  return nodes;
+  // Return NEW node objects with updated positions
+  return nodes.map(node => ({
+    ...node,
+    position: positions.get(node.id) || node.position
+  }));
 };
 
-const applyRadialLayout = (nodes: Node[], edges: Edge[]) => {
+const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
   if (nodes.length === 0) return nodes;
   
   if (nodes.length === 1) {
-    nodes[0].position = { x: 400, y: 300 };
-    return nodes;
+    return nodes.map(node => ({
+      ...node,
+      position: { x: 400, y: 300 }
+    }));
   }
   
   // Find central node (most connections)
@@ -292,47 +301,56 @@ const applyRadialLayout = (nodes: Node[], edges: Edge[]) => {
     connectionCount.set(edge.target, (connectionCount.get(edge.target) || 0) + 1);
   });
   
-  const centralNode = nodes.reduce((max, node) => 
+  const centralNodeId = nodes.reduce((max, node) => 
     (connectionCount.get(node.id) || 0) > (connectionCount.get(max.id) || 0) ? node : max
-  );
+  ).id;
+  
+  // Calculate positions
+  const positions = new Map<string, { x: number; y: number }>();
+  const otherNodeIds = nodes.filter(n => n.id !== centralNodeId).map(n => n.id);
   
   // Place central node at center
-  centralNode.position = { x: 400, y: 300 };
+  positions.set(centralNodeId, { x: 400, y: 300 });
   
   // Place other nodes in concentric circles
-  const otherNodes = nodes.filter(n => n.id !== centralNode.id);
-  if (otherNodes.length === 0) return nodes;
+  if (otherNodeIds.length > 0) {
+    const radius = Math.max(200, Math.min(300, otherNodeIds.length * 20));
+    const angleStep = (2 * Math.PI) / otherNodeIds.length;
+    
+    otherNodeIds.forEach((nodeId, index) => {
+      const angle = index * angleStep;
+      positions.set(nodeId, {
+        x: 400 + radius * Math.cos(angle),
+        y: 300 + radius * Math.sin(angle)
+      });
+    });
+  }
   
-  const radius = Math.max(200, Math.min(300, otherNodes.length * 20));
-  const angleStep = (2 * Math.PI) / otherNodes.length;
-  
-  otherNodes.forEach((node, index) => {
-    const angle = index * angleStep;
-    node.position = {
-      x: 400 + radius * Math.cos(angle),
-      y: 300 + radius * Math.sin(angle)
-    };
-  });
-  
-  return nodes;
+  // Return NEW node objects with updated positions
+  return nodes.map(node => ({
+    ...node,
+    position: positions.get(node.id) || node.position
+  }));
 };
 
-const applyGridLayout = (nodes: Node[]) => {
+const applyGridLayout = (nodes: Node[]): Node[] => {
   if (nodes.length === 0) return nodes;
   
   const cols = Math.ceil(Math.sqrt(nodes.length));
   const cellSize = 150;
   
-  nodes.forEach((node, index) => {
+  // Return NEW node objects with updated positions
+  return nodes.map((node, index) => {
     const row = Math.floor(index / cols);
     const col = index % cols;
-    node.position = {
-      x: 100 + col * cellSize,
-      y: 100 + row * cellSize
+    return {
+      ...node,
+      position: {
+        x: 100 + col * cellSize,
+        y: 100 + row * cellSize
+      }
     };
   });
-  
-  return nodes;
 };
 
 // Main component
@@ -348,6 +366,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
+  const updateNodeInternals = useUpdateNodeInternals();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, originalOnEdgesChange] = useEdgesState<Edge>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -375,41 +394,54 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Apply layout to current nodes
   const applyLayoutToNodes = useCallback((layoutType: string) => {
-    if (nodes.length === 0) return;
+    if (nodes.length === 0) {
+      console.log('⚠️ No nodes to layout');
+      return;
+    }
 
     console.log('🎯 Applying layout:', layoutType, 'to', nodes.length, 'nodes');
+    console.log('📍 Before layout:', nodes.map(n => ({ id: n.id, pos: n.position })));
     
-    let layoutedNodes = [...nodes];
-    
-    switch (layoutType) {
-      case 'hierarchical':
-        layoutedNodes = applyHierarchicalLayout(layoutedNodes, edges);
-        break;
-      case 'radial':
-        layoutedNodes = applyRadialLayout(layoutedNodes, edges);
-        break;
-      case 'grid':
-        layoutedNodes = applyGridLayout(layoutedNodes);
-        break;
-      default:
-        layoutedNodes = applyHierarchicalLayout(layoutedNodes, edges);
-    }
-    
-    // Update nodes with new positions
-    setNodes(layoutedNodes);
-    
-    // Update position cache
-    layoutedNodes.forEach(node => {
-      canvasStateRef.current.nodePositions.set(node.id, node.position);
+    // Use React Flow's proper update pattern to create new objects
+    setNodes((currentNodes) => {
+      let layoutedNodes: Node[];
+      
+      switch (layoutType) {
+        case 'hierarchical':
+          layoutedNodes = applyHierarchicalLayout(currentNodes, edges);
+          break;
+        case 'radial':
+          layoutedNodes = applyRadialLayout(currentNodes, edges);
+          break;
+        case 'grid':
+          layoutedNodes = applyGridLayout(currentNodes);
+          break;
+        default:
+          layoutedNodes = applyHierarchicalLayout(currentNodes, edges);
+      }
+      
+      console.log('✅ After layout:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
+      
+      // Update position cache with NEW position objects
+      layoutedNodes.forEach(node => {
+        canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
+      });
+      
+      return layoutedNodes;
     });
     
-    // Fit view to show the new layout
+    // Force React Flow to update node internals immediately
     setTimeout(() => {
+      nodes.forEach(node => {
+        updateNodeInternals(node.id);
+      });
+      
+      // Fit view to show the new layout
       reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
-    }, 100);
+      console.log('🎯 Layout update completed with fitView');
+    }, 50); // Reduced delay for faster response
     
-    console.log('✅ Layout applied successfully');
-  }, [nodes, edges, setNodes, reactFlowInstance]);
+  }, [nodes, edges, setNodes, reactFlowInstance, updateNodeInternals]);
 
   // Fresh React Flow architecture with proper state management
   const lastTopologyRef = useRef<any>(null);
