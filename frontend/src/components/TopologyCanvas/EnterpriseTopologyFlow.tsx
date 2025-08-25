@@ -999,73 +999,88 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           showFitView={true}
           showInteractive={false}
           position="bottom-right"
+          className="glass-panel backdrop-blur-md border-white/30 rounded-xl shadow-lg"
         />
         
-        {/* Context Menu */}
+        {/* Enhanced Context Menu */}
         {contextMenu.visible && (
           <div
-            className="absolute bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50"
+            className="absolute glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl py-2 z-50"
             style={{
               left: contextMenu.x,
               top: contextMenu.y,
-              minWidth: '200px',
+              minWidth: '220px',
             }}
           >
-            <div className="px-3 py-2 text-xs font-semibold text-gray-500 border-b border-gray-100">
-              {contextMenu.nodeName}
+            <div className="px-4 py-3 border-b border-white/20">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wide">Device Actions</div>
+              <div className="text-sm font-medium text-emphasis mt-1" style={{ fontSize: 'var(--text-sm)' }}>{contextMenu.nodeName}</div>
             </div>
             <button
               onClick={() => handleContextMenuAction('parents')}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
                 (() => {
                   const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
                   const deviceId = topologyNode?.id || contextMenu.nodeId;
                   const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'parents' ? 'bg-blue-100 text-blue-800' : '';
+                  return deviceDirection === 'parents' 
+                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
+                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
                 })()
               }`}
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              👆 Show parent(s)
+              <span className="text-base">👆</span>
+              <span className="font-medium">Show parent(s)</span>
             </button>
             <button
               onClick={() => handleContextMenuAction('children')}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
                 (() => {
                   const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
                   const deviceId = topologyNode?.id || contextMenu.nodeId;
                   const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'children' ? 'bg-blue-100 text-blue-800' : '';
+                  return deviceDirection === 'children' 
+                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
+                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
                 })()
               }`}
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              👇 Show child(ren)
+              <span className="text-base">👇</span>
+              <span className="font-medium">Show child(ren)</span>
             </button>
             <button
               onClick={() => handleContextMenuAction('both')}
-              className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
+              className={`w-full text-left px-4 py-3 transition-all duration-300 flex items-center space-x-3 ${
                 (() => {
                   const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
                   const deviceId = topologyNode?.id || contextMenu.nodeId;
                   const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  return deviceDirection === 'both' ? 'bg-blue-100 text-blue-800' : '';
+                  return deviceDirection === 'both' 
+                    ? 'bg-gradient-to-r from-blue-100/80 to-blue-200/80 text-primary border-l-2 border-blue-500' 
+                    : 'hover:bg-white/50 hover:backdrop-blur-sm text-secondary';
                 })()
               }`}
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              ↕️ Show both
+              <span className="text-base">↕️</span>
+              <span className="font-medium">Show both</span>
             </button>
-            <div className="border-t border-gray-100 mt-2 pt-2">
+            <div className="border-t border-white/20 mt-2 pt-2">
               <button
                 onClick={() => {
-                  // Refresh topology for this device with its current direction
                   const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
                   const deviceId = topologyNode?.id || contextMenu.nodeId;
                   const deviceDirection = deviceDirections.get(deviceId) || 'children';
                   onDirectionChange?.(deviceDirection, deviceId);
                   setContextMenu({ visible: false, x: 0, y: 0 });
                 }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 transition-colors"
+                className="w-full text-left px-4 py-3 text-muted hover:bg-white/40 transition-all duration-300 flex items-center space-x-3 hover:text-emphasis"
+                style={{ fontSize: 'var(--text-sm)' }}
               >
-                🔄 Refresh Relationships
+                <span className="text-base">🔄</span>
+                <span className="font-medium">Refresh Relationships</span>
               </button>
             </div>
           </div>
@@ -1080,14 +1095,15 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           nodeStrokeWidth={2}
           pannable
           zoomable
+          className="glass-panel border-white/30 backdrop-blur-md shadow-lg"
           style={{
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
+            backgroundColor: 'rgba(248, 250, 252, 0.6)',
+            border: 'none',
           }}
         />
         
-        <Panel position="top-left" className="bg-white rounded-lg shadow-lg p-3 space-y-2">
-          <div className="text-xs font-semibold text-gray-700 mb-2">Layout</div>
+        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl p-4 space-y-3">
+          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3" style={{ fontSize: 'var(--text-xs)' }}>Layout Controls</div>
           
           {['hierarchical', 'radial', 'grid'].map((layout) => (
             <button
@@ -1095,31 +1111,35 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               onClick={() => {
                 console.log('🎯 Layout button clicked:', layout);
                 setCurrentLayout(layout);
-                setManualLayoutLocked(false); // Unlock manual layout
-                applyLayoutToNodes(layout); // Apply the layout immediately
+                setManualLayoutLocked(false);
+                applyLayoutToNodes(layout);
               }}
-              className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
+              className={`block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 ${
                 currentLayout === layout && !manualLayoutLocked
-                  ? 'bg-blue-100 text-blue-800 font-medium' 
-                  : 'bg-gray-50 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-blue-100/90 to-blue-200/90 text-primary border-l-2 border-blue-500 font-semibold shadow-sm' 
+                  : 'bg-white/40 hover:bg-white/60 text-secondary hover:text-emphasis backdrop-blur-sm border border-transparent hover:border-white/40'
               }`}
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              {layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'} {layout.charAt(0).toUpperCase() + layout.slice(1)}
+              <span className="text-base">{layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'}</span>
+              <span>{layout.charAt(0).toUpperCase() + layout.slice(1)}</span>
             </button>
           ))}
           
-          <div className="border-t pt-2 mt-2">
+          <div className="border-t border-white/20 pt-3 mt-3 space-y-2">
             <button
               onClick={() => {
                 setManualLayoutLocked(!manualLayoutLocked);
               }}
-              className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
+              className={`block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 ${
                 manualLayoutLocked
-                  ? 'bg-green-100 text-green-800 font-medium' 
-                  : 'bg-gray-50 hover:bg-gray-100'
+                  ? 'bg-gradient-to-r from-green-100/90 to-green-200/90 text-green-800 border-l-2 border-green-500 font-semibold' 
+                  : 'bg-white/40 hover:bg-white/60 text-secondary hover:text-emphasis backdrop-blur-sm border border-transparent hover:border-white/40'
               }`}
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              {manualLayoutLocked ? '🔒' : '🔓'} Manual Layout
+              <span className="text-base">{manualLayoutLocked ? '🔒' : '🔓'}</span>
+              <span>Manual Layout</span>
             </button>
             
             <button
@@ -1127,12 +1147,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 console.log('🔄 Reset layout clicked');
                 setManualLayoutLocked(false);
                 canvasStateRef.current.nodePositions.clear();
-                // Re-apply the current layout
                 applyLayoutToNodes(currentLayout);
               }}
-              className="block w-full text-left px-3 py-1.5 text-xs bg-orange-50 hover:bg-orange-100 text-orange-700 rounded transition-colors mt-1"
+              className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 bg-gradient-to-r from-orange-100/90 to-orange-200/90 hover:from-orange-200/90 hover:to-orange-300/90 text-orange-700 border-l-2 border-orange-500 backdrop-blur-sm"
+              style={{ fontSize: 'var(--text-sm)' }}
             >
-              🔄 Reset Layout
+              <span className="text-base">🔄</span>
+              <span className="font-medium">Reset Layout</span>
             </button>
           </div>
           
@@ -1165,53 +1186,67 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             
             {nodes.length > 0 && (
               <>
-                <div className="border-t pt-2">
-                  <div className="text-xs font-semibold text-gray-700 mb-2">Export</div>
+                <div className="border-t border-white/20 pt-3 mt-3">
+                  <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3" style={{ fontSize: 'var(--text-xs)' }}>Export Options</div>
                   <button
                     onClick={exportAsPNG}
-                    className="block w-full text-left px-3 py-1.5 text-xs bg-green-50 hover:bg-green-100 text-green-700 rounded transition-colors mb-1"
+                    className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 mb-2 bg-gradient-to-r from-green-100/90 to-green-200/90 hover:from-green-200/90 hover:to-green-300/90 text-green-700 border-l-2 border-green-500 backdrop-blur-sm flex items-center space-x-3"
+                    style={{ fontSize: 'var(--text-sm)' }}
                   >
-                    📷 PNG
+                    <span className="text-base">📷</span>
+                    <span className="font-medium">Export PNG</span>
                   </button>
                   <button
                     onClick={exportAsHTML}
-                    className="block w-full text-left px-3 py-1.5 text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 rounded transition-colors"
+                    className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 bg-gradient-to-r from-blue-100/90 to-blue-200/90 hover:from-blue-200/90 hover:to-blue-300/90 text-blue-700 border-l-2 border-blue-500 backdrop-blur-sm flex items-center space-x-3"
+                    style={{ fontSize: 'var(--text-sm)' }}
                   >
-                    📄 HTML Report
+                    <span className="text-base">📄</span>
+                    <span className="font-medium">HTML Report</span>
                   </button>
                 </div>
                 
                 <button
                   onClick={() => {
-                    // Clear all state
                     setNodes([]);
                     setEdges([]);
                     canvasStateRef.current.nodePositions.clear();
                     canvasStateRef.current.isFirstLoad = true;
                     canvasStateRef.current.preserveView = false;
                     setManualLayoutLocked(false);
-                    // Notify parent to clear its state too
                     if (onClearAll) {
                       onClearAll();
                     }
                   }}
-                  className="block w-full text-left px-3 py-1.5 text-xs bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors mt-2"
+                  className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 mt-3 bg-gradient-to-r from-red-100/90 to-red-200/90 hover:from-red-200/90 hover:to-red-300/90 text-red-600 border-l-2 border-red-500 backdrop-blur-sm flex items-center space-x-3"
+                  style={{ fontSize: 'var(--text-sm)' }}
                 >
-                  🗑️ Clear
+                  <span className="text-base">🗑️</span>
+                  <span className="font-medium">Clear All</span>
                 </button>
               </>
             )}
           </div>
         </Panel>
         
-        <Panel position="top-right" className="bg-white rounded-lg shadow-lg px-4 py-2">
-          <div className="text-xs text-gray-600">
-            <span className="font-semibold">{nodes.length}</span> devices • 
-            <span className="font-semibold ml-1">{edges.length}</span> connections
+        <Panel position="top-right" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl px-5 py-3">
+          <div className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-1">
+                <span className="w-2 h-2 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full"></span>
+                <span className="text-emphasis font-semibold">{nodes.length}</span>
+                <span>devices</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <span className="w-2 h-2 bg-gradient-to-br from-green-400 to-green-500 rounded-full"></span>
+                <span className="text-emphasis font-semibold">{edges.length}</span>
+                <span>connections</span>
+              </div>
+            </div>
             {isUpdatingTopology && (
-              <div className="text-blue-600 mt-1 flex items-center">
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
-                Updating...
+              <div className="text-primary mt-2 flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                <span className="font-medium">Updating topology...</span>
               </div>
             )}
           </div>

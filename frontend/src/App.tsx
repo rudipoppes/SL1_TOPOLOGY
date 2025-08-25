@@ -347,10 +347,10 @@ function App() {
   }, [isResizing]);
 
   return (
-    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+    <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30">
       {/* Resizable Left Panel - Device Inventory */}
       <div 
-        className="bg-white shadow-xl border-r border-gray-200 flex-shrink-0"
+        className="glass-panel flex-shrink-0 border-r border-white/20 animate-slide-in"
         style={{ width: `${leftPanelWidth}px` }}
       >
         <DeviceList
@@ -360,45 +360,59 @@ function App() {
         />
       </div>
 
-      {/* Resize Handle */}
+      {/* Modern Resize Handle */}
       <div
         onMouseDown={handleMouseDown}
         className={`
-          w-1 hover:w-2 bg-gray-300 hover:bg-blue-400 cursor-col-resize transition-all duration-150
-          ${isResizing ? 'w-2 bg-blue-500' : ''}
+          w-1 hover:w-2 bg-gradient-to-b from-slate-200/60 to-slate-300/60 
+          hover:from-blue-400/80 hover:to-blue-500/80 cursor-col-resize 
+          transition-all duration-300 ease-out backdrop-blur-sm
+          ${isResizing ? 'w-2 from-blue-500/90 to-blue-600/90 shadow-lg shadow-blue-500/20' : ''}
         `}
         style={{
-          backgroundColor: isResizing ? '#3b82f6' : undefined,
+          background: isResizing 
+            ? 'linear-gradient(to bottom, rgb(59 130 246 / 0.9), rgb(37 99 235 / 0.9))' 
+            : undefined,
         }}
       />
 
       {/* Right Panel - Topology Canvas */}
-      <div className="flex-1 p-6 bg-gradient-to-br from-gray-50 via-white to-blue-50">
+      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 animate-slide-in" style={{ animationDelay: '100ms' }}>
         {topologyDevices.length === 0 ? (
-          <div className="h-full bg-white/80 backdrop-blur-sm rounded-xl shadow-xl border border-gray-200/50 flex items-center justify-center">
-            <div className="text-center text-gray-500">
-              <svg
-                className="w-16 h-16 mx-auto mb-4 text-gray-300"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
-              <p className="text-lg font-medium mb-2">Select a device to build topology</p>
-              <p className="text-sm">Click on devices in the inventory to add them to the topology</p>
+          <div className="h-full glass-panel rounded-2xl flex items-center justify-center border border-white/30 animate-scale-in hover-lift" style={{ animationDelay: '200ms' }}>
+            <div className="text-center text-slate-600">
+              <div className="relative mb-6">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-indigo-400/20 rounded-full blur-2xl animate-pulse-subtle"></div>
+                <svg
+                  className="relative w-20 h-20 mx-auto text-slate-400 transition-transform duration-300 hover:scale-110"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold mb-3 bg-gradient-to-r from-slate-700 to-slate-600 bg-clip-text text-transparent transition-all duration-300 hover:from-blue-600 hover:to-indigo-600">
+                Select a device to build topology
+              </h3>
+              <p className="text-sm text-slate-500 max-w-md mx-auto leading-relaxed transition-colors duration-300 hover:text-slate-600">
+                Click on devices in the inventory to add them to the topology visualization
+              </p>
             </div>
           </div>
         ) : (
-          <div className="relative h-full">
+          <div className="relative h-full animate-scale-in" style={{ animationDelay: '200ms' }}>
             {loadingTopology && (
-              <div className="absolute top-4 left-4 z-10 bg-blue-100 text-blue-800 px-3 py-2 rounded-lg shadow-md">
-                🔄 Loading topology...
+              <div className="absolute top-6 left-6 z-10 glass-panel px-4 py-3 rounded-xl border border-blue-200/50 backdrop-blur-md animate-slide-in animate-glow">
+                <div className="flex items-center space-x-3 text-blue-700">
+                  <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="font-medium">Loading topology...</span>
+                </div>
               </div>
             )}
             <EnterpriseTopologyFlow 

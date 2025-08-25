@@ -21,50 +21,60 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
     <div
       onClick={() => onSelect?.(device)}
       className="
-        group relative flex items-center justify-between p-2 mx-3 mb-1 rounded-lg cursor-pointer
-        transition-all duration-200 ease-out transform hover:scale-[1.01]
-        bg-white hover:bg-gray-50 border border-gray-200 hover:border-gray-300 shadow-sm hover:shadow-md
+        group relative flex items-center justify-between cursor-pointer
+        mx-3 mb-3 p-4 rounded-xl transition-all duration-300 ease-out
+        glass-panel border-white/30 hover:border-white/50
+        transform hover:scale-[1.02] hover:shadow-xl
+        backdrop-blur-md
       "
     >
       {/* Status indicator and content */}
       <div className="flex items-center space-x-3 min-w-0 flex-1">
-        {/* Status with enhanced styling */}
-        <div className="relative flex-shrink-0">
-          <span className="text-lg drop-shadow-sm">{statusIcons[device.status]}</span>
+        {/* Enhanced status indicator */}
+        <div className="relative flex-shrink-0 p-2 rounded-lg bg-white/40 backdrop-blur-sm border border-white/20">
+          <span className="text-lg filter drop-shadow-md">{statusIcons[device.status]}</span>
           {device.status === 'online' && (
-            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-green-400 to-green-500 rounded-full animate-pulse shadow-lg"></div>
           )}
         </div>
         
-        {/* Device info with proper truncation */}
-        <div className="min-w-0 flex-1">
-          {/* Device name with tooltip */}
+        {/* Enhanced device info */}
+        <div className="min-w-0 flex-1 ml-4">
+          {/* Modern device name */}
           <div 
-            className="font-semibold text-gray-900 text-sm truncate group-hover:text-blue-700 transition-colors"
+            className="font-semibold text-base text-emphasis truncate group-hover:text-gradient-primary transition-all duration-300"
             title={device.name}
+            style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-semibold)' }}
           >
-            {device.name.length > 45 ? `${device.name.substring(0, 45)}...` : device.name}
+            {device.name.length > 40 ? `${device.name.substring(0, 40)}...` : device.name}
           </div>
           
-          {/* IP address */}
-          <div className="text-xs text-gray-600 font-mono mt-0.5 flex items-center space-x-1.5">
-            <span className="inline-block w-1.5 h-1.5 bg-gray-400 rounded-full"></span>
-            <span>{device.ip}</span>
+          {/* Enhanced IP address */}
+          <div className="flex items-center mt-2 text-muted font-mono" style={{ fontSize: 'var(--text-sm)' }}>
+            <div className="w-2 h-2 bg-gradient-to-br from-blue-400/60 to-blue-500/60 rounded-full mr-2 shadow-sm"></div>
+            <span className="tracking-wide">{device.ip}</span>
           </div>
         </div>
       </div>
       
-      {/* Device type badge */}
-      <div className="flex flex-col items-end space-y-0.5">
-        <div className="text-xs font-semibold px-2.5 py-1 rounded-md shadow-sm border bg-gray-100 text-gray-600 border-gray-200">
+      {/* Modern device type badge */}
+      <div className="flex flex-col items-end space-y-2">
+        <div className="
+          px-3 py-1.5 rounded-lg backdrop-blur-sm border
+          bg-gradient-to-r from-blue-50/80 to-indigo-50/80
+          border-blue-200/50 text-primary shadow-sm
+          font-medium transition-all duration-300
+          group-hover:from-blue-100/90 group-hover:to-indigo-100/90
+          group-hover:border-blue-300/60 group-hover:shadow-md
+        " style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' }}>
           {device.type}
         </div>
         
-        {/* Selection indicator dots */}
-        <div className="flex space-x-0.5 opacity-20 group-hover:opacity-40 transition-opacity mt-1">
-          <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
-          <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
-          <div className="w-0.5 h-0.5 bg-gray-400 rounded-full"></div>
+        {/* Modern interaction indicator */}
+        <div className="flex space-x-1 opacity-30 group-hover:opacity-60 transition-all duration-300">
+          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110"></div>
+          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110 transition-transform delay-75"></div>
+          <div className="w-1 h-1 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full transform group-hover:scale-110 transition-transform delay-150"></div>
         </div>
       </div>
       
