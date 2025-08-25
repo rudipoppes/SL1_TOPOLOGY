@@ -380,6 +380,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
+  const [isUpdatingTopology, setIsUpdatingTopology] = useState<boolean>(false);
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -489,38 +490,61 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       };
     });
 
-    // Apply layout only to nodes without positions
+    // Apply hierarchical layout to new nodes by default
     const nodesNeedingLayout = newNodes.filter(n => n.position.x === 0 && n.position.y === 0);
     if (nodesNeedingLayout.length > 0 && !manualLayoutLocked) {
-      console.log('📍 Applying layout to', nodesNeedingLayout.length, 'new nodes');
+      console.log('📍 Applying default hierarchical layout to', nodesNeedingLayout.length, 'new nodes');
       
-      // Simple incremental positioning
-      const existingPositions = newNodes
-        .filter(n => n.position.x !== 0 || n.position.y !== 0)
-        .map(n => n.position);
+      // If this is the first set of nodes, apply hierarchical layout
+      const existingNodes = newNodes.filter(n => n.position.x !== 0 || n.position.y !== 0);
       
-      let startX = 100;
-      let startY = 100;
-      
-      if (existingPositions.length > 0) {
-        // Place new nodes to the right of existing ones
-        const maxX = Math.max(...existingPositions.map(p => p.x), 100);
-        const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
-        startX = maxX + 150;
-        startY = avgY;
+      if (existingNodes.length === 0 && nodesNeedingLayout.length > 1) {
+        // First time adding multiple nodes - apply hierarchical layout to all
+        console.log('🎯 Applying hierarchical layout to all new nodes');
+        const layoutedNodes = applyHierarchicalLayout(newNodes, []); // No edges yet
+        layoutedNodes.forEach(layoutedNode => {
+          const targetNode = newNodes.find(n => n.id === layoutedNode.id);
+          if (targetNode) {
+            targetNode.position = layoutedNode.position;
+          }
+        });
+      } else {
+        // Incremental positioning for single nodes or when existing nodes present
+        const existingPositions = existingNodes.map(n => n.position);
+        
+        let startX = 100;
+        let startY = 100;
+        
+        if (existingPositions.length > 0) {
+          // Place new nodes to the right of existing ones
+          const maxX = Math.max(...existingPositions.map(p => p.x), 100);
+          const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
+          startX = maxX + 150;
+          startY = avgY;
+        }
+        
+        nodesNeedingLayout.forEach((node, index) => {
+          node.position = {
+            x: startX + (index % 3) * 150,
+            y: startY + Math.floor(index / 3) * 120
+          };
+        });
       }
-      
-      nodesNeedingLayout.forEach((node, index) => {
-        node.position = {
-          x: startX + (index % 3) * 120,
-          y: startY + Math.floor(index / 3) * 120
-        };
-      });
     }
 
-    // Update canvas with just the device nodes (no relationships yet)
+    // Update canvas with device nodes - preserve existing edges if possible
     setNodes(newNodes);
-    setEdges([]); // Clear edges until topology data arrives
+    
+    // Only clear edges if we're starting fresh, otherwise preserve existing ones
+    const selectedDeviceIds = new Set(selectedDevices.map(d => d.id));
+    if (edges.length > 0) {
+      // Keep edges that are still valid for current devices
+      const validEdges = edges.filter(edge => 
+        selectedDeviceIds.has(edge.source) && selectedDeviceIds.has(edge.target)
+      );
+      setEdges(validEdges);
+      console.log('🔗 Preserved', validEdges.length, 'existing edges during device update');
+    }
     
     // Save positions
     newNodes.forEach(node => {
@@ -677,7 +701,16 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       deviceNames: devices.map(d => d.name)
     });
     
+    // Show updating indicator when devices change
+    setIsUpdatingTopology(true);
     updateCanvasFromChipArea(devices);
+    
+    // Hide indicator after a short delay (topology data will arrive soon)
+    const timeoutId = setTimeout(() => {
+      setIsUpdatingTopology(false);
+    }, 2000); // Hide after 2 seconds if no topology data arrives
+    
+    return () => clearTimeout(timeoutId);
   }, [devices, updateCanvasFromChipArea]);
 
   // Handle topology data changes (relationships)
@@ -697,7 +730,28 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     
     lastTopologyRef.current = topologyData;
     updateCanvasRelationships(topologyData);
+    
+    // Hide updating indicator when topology data arrives
+    setIsUpdatingTopology(false);
   }, [topologyData, updateCanvasRelationships, devices.length]);
+
+  // Handle edge style changes - update existing edges with new style
+  useEffect(() => {
+    if (edges.length === 0) return;
+    
+    console.log('🎨 Updating edge styles to:', edgeType);
+    
+    setEdges(currentEdges => 
+      currentEdges.map(edge => ({
+        ...edge,
+        type: edgeType,
+        style: {
+          ...edge.style,
+          // Preserve existing style properties but ensure type is updated
+        }
+      }))
+    );
+  }, [edgeType, setEdges]);
 
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -1116,8 +1170,27 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           <div className="text-xs text-gray-600">
             <span className="font-semibold">{nodes.length}</span> devices • 
             <span className="font-semibold ml-1">{edges.length}</span> connections
+            {isUpdatingTopology && (
+              <div className="text-blue-600 mt-1 flex items-center">
+                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-600 mr-1"></div>
+                Updating...
+              </div>
+            )}
           </div>
         </Panel>
+        
+        {/* Center loading overlay when updating topology */}
+        {isUpdatingTopology && (
+          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-40">
+            <div className="bg-white rounded-lg shadow-xl p-4 flex items-center space-x-3 border">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+              <div className="text-sm text-gray-700">
+                <div className="font-medium">Updating Topology</div>
+                <div className="text-xs text-gray-500">Loading relationships...</div>
+              </div>
+            </div>
+          </div>
+        )}
       </ReactFlow>
     </div>
   );
