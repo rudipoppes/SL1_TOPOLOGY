@@ -306,7 +306,35 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 }) => {
   const reactFlowInstance = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+  const [edges, setEdges, originalOnEdgesChange] = useEdgesState<Edge>([]);
+  
+  // Custom edge change handler with phantom detection
+  const onEdgesChange = useCallback((changes: any) => {
+    console.log('🔗 Edge changes detected:', changes);
+    
+    // Allow the original changes
+    originalOnEdgesChange(changes);
+    
+    // After changes, validate for phantoms
+    setTimeout(() => {
+      setEdges(currentEdges => {
+        const nodeIds = new Set(nodes.map(n => n.id));
+        const validEdges = currentEdges.filter(edge => 
+          nodeIds.has(edge.source) && nodeIds.has(edge.target)
+        );
+        
+        if (validEdges.length !== currentEdges.length) {
+          console.log('🧹 Cleaning phantom edges in onEdgesChange:', {
+            before: currentEdges.length,
+            after: validEdges.length,
+            removed: currentEdges.length - validEdges.length
+          });
+        }
+        
+        return validEdges;
+      });
+    }, 0);
+  }, [originalOnEdgesChange, nodes, setEdges]);
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [preservePositions, setPreservePositions] = useState<boolean>(false);
   const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -328,12 +356,23 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Clear nodes and edges when topology data is cleared
   useEffect(() => {
-    console.log('🔄 TopologyFlow effect triggered:', { topologyData: !!topologyData, devicesLength: devices.length });
+    console.log('🔄 TopologyFlow effect triggered:', { 
+      topologyData: !!topologyData, 
+      devicesLength: devices.length,
+      topologyNodes: topologyData?.nodes?.length || 0,
+      topologyEdges: topologyData?.edges?.length || 0,
+      deviceNames: devices.map(d => d.name),
+      edgeType: edgeType,
+      currentLayout: currentLayout
+    });
+    
+    // CRITICAL: Always clear edges first to prevent phantom connections
+    console.log('🧹 Force clearing all edges at start of effect to prevent phantoms');
+    setEdges([]);
     
     if (!topologyData && devices.length === 0) {
       console.log('🧹 Clearing all nodes and edges');
       setNodes([]);
-      setEdges([]);
       setPreservePositions(false);
       setSavedPositions(new Map());
       setManualLayoutLocked(false);
@@ -552,6 +591,32 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setEdges([]);
     }
   }, [topologyData, devices, currentLayout, edgeType, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
+
+  // Additional phantom edge detection - watch for edges that shouldn't exist
+  useEffect(() => {
+    if (edges.length > 0 && nodes.length > 0) {
+      const nodeIds = new Set(nodes.map(n => n.id));
+      const phantomEdges = edges.filter(edge => 
+        !nodeIds.has(edge.source) || !nodeIds.has(edge.target)
+      );
+      
+      if (phantomEdges.length > 0) {
+        console.error('🚨 PHANTOM EDGES DETECTED after state update:', {
+          phantomEdges: phantomEdges.map(e => `${e.source} → ${e.target}`),
+          totalEdges: edges.length,
+          availableNodes: Array.from(nodeIds),
+          timestamp: new Date().toISOString()
+        });
+        
+        // Immediately remove phantom edges
+        const cleanEdges = edges.filter(edge => 
+          nodeIds.has(edge.source) && nodeIds.has(edge.target)
+        );
+        console.log('🧹 Removing phantom edges immediately:', cleanEdges.length, 'remaining');
+        setEdges(cleanEdges);
+      }
+    }
+  }, [edges, nodes, setEdges]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
