@@ -23,6 +23,7 @@ import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 
 interface TopologyFlowProps {
   devices?: Device[];
+  selectedDevices?: Device[];
   topologyData?: {
     nodes: TopologyNode[];
     edges: TopologyEdge[];
@@ -32,6 +33,7 @@ interface TopologyFlowProps {
   onClearAll?: () => void;
   currentDirection?: 'parents' | 'children' | 'both';
   onDirectionChange?: (direction: 'parents' | 'children' | 'both') => void;
+  onAddDeviceToSelection?: (device: Device) => void;
   className?: string;
 }
 
@@ -308,12 +310,14 @@ const applyGridLayout = (nodes: Node[]) => {
 // Main component
 const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   devices = [],
+  selectedDevices = [],
   topologyData,
   onDeviceClick,
   onRemoveDevice,
   onClearAll,
   currentDirection = 'both',
   onDirectionChange,
+  onAddDeviceToSelection,
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
@@ -675,6 +679,41 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     setContextMenu({ visible: false, x: 0, y: 0 });
   }, []);
 
+  const handleContextMenuAction = useCallback((direction: 'parents' | 'children' | 'both') => {
+    if (!contextMenu.nodeId) return;
+    
+    // Check if clicked device is already in selected devices (chip area)
+    // Note: contextMenu.nodeId is the node label (device name), not the ID
+    const isDeviceInChipArea = selectedDevices.some(d => d.name === contextMenu.nodeId);
+    
+    if (!isDeviceInChipArea && onAddDeviceToSelection) {
+      // Device is NOT in chip area - need to add it first
+      // We need to find the actual device from topologyData to get proper ID and info
+      const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
+      
+      const clickedDevice: Device = {
+        id: topologyNode?.id || contextMenu.nodeId, // Use topology ID if available
+        name: contextMenu.nodeName || 'Unknown',
+        type: topologyNode?.type || 'Unknown',
+        status: (topologyNode?.status || 'unknown') as Device['status'],
+        ip: topologyNode?.ip || 'N/A',
+      };
+      
+      console.log('🎯 Adding device to selection and changing direction:', {
+        device: clickedDevice.name,
+        direction,
+        isInChipArea: isDeviceInChipArea
+      });
+      
+      // Add to chip area first, then change direction will be triggered
+      onAddDeviceToSelection(clickedDevice);
+    }
+    
+    // Change direction (this will trigger topology refresh)
+    onDirectionChange?.(direction);
+    setContextMenu({ visible: false, x: 0, y: 0 });
+  }, [contextMenu.nodeId, contextMenu.nodeName, selectedDevices, topologyData?.nodes, onAddDeviceToSelection, onDirectionChange]);
+
   // Export functions
   const exportAsPNG = useCallback(() => {
     // For now, use a simple screenshot approach
@@ -821,37 +860,28 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               {contextMenu.nodeName}
             </div>
             <button
-              onClick={() => {
-                onDirectionChange?.('parents');
-                setContextMenu({ visible: false, x: 0, y: 0 });
-              }}
+              onClick={() => handleContextMenuAction('parents')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
                 currentDirection === 'parents' ? 'bg-blue-100 text-blue-800' : ''
               }`}
             >
-              👆 Show Parents Only
+              👆 Show parent(s)
             </button>
             <button
-              onClick={() => {
-                onDirectionChange?.('children');
-                setContextMenu({ visible: false, x: 0, y: 0 });
-              }}
+              onClick={() => handleContextMenuAction('children')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
                 currentDirection === 'children' ? 'bg-blue-100 text-blue-800' : ''
               }`}
             >
-              👇 Show Children Only
+              👇 Show child(ren)
             </button>
             <button
-              onClick={() => {
-                onDirectionChange?.('both');
-                setContextMenu({ visible: false, x: 0, y: 0 });
-              }}
+              onClick={() => handleContextMenuAction('both')}
               className={`w-full text-left px-3 py-2 text-sm hover:bg-blue-50 transition-colors ${
                 currentDirection === 'both' ? 'bg-blue-100 text-blue-800' : ''
               }`}
             >
-              ↕️ Show Both
+              ↕️ Show both
             </button>
             <div className="border-t border-gray-100 mt-2 pt-2">
               <button
@@ -956,8 +986,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             <div className="border-t pt-2">
               <div className="text-xs font-semibold text-gray-700 mb-2">Relationship Direction</div>
               <div className="bg-blue-50 border border-blue-200 rounded px-2 py-1 text-xs">
-                {currentDirection === 'parents' && '👆 Parents Only'}
-                {currentDirection === 'children' && '👇 Children Only'}
+                {currentDirection === 'parents' && '👆 Parent(s)'}
+                {currentDirection === 'children' && '👇 Child(ren)'}
                 {currentDirection === 'both' && '↕️ Both'}
                 <span className="text-gray-500 ml-1">(Right-click node to change)</span>
               </div>

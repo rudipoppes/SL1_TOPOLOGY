@@ -45,6 +45,25 @@ function App() {
     }
   };
 
+  const handleAddDeviceToSelection = async (device: Device) => {
+    console.log('🎯 Adding device to selection from context menu:', device.name);
+    
+    // Check if device is already selected
+    const isAlreadySelected = selectedDevices.some(d => d.name === device.name);
+    if (isAlreadySelected) {
+      console.log('Device already in chip area, skipping add');
+      return;
+    }
+    
+    // Add device to selected devices
+    const updatedDevices = [...selectedDevices, device];
+    setSelectedDevices(updatedDevices);
+    setTopologyDevices(updatedDevices);
+    
+    // Fetch topology data for all devices including the new one
+    await fetchTopologyData(updatedDevices, topologyDirection);
+  };
+
   const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
     if (devices.length === 0) {
       setTopologyData(null);
@@ -176,10 +195,12 @@ function App() {
             )}
             <EnterpriseTopologyFlow 
               devices={topologyDevices}
+              selectedDevices={selectedDevices}
               topologyData={topologyData || undefined}
               onClearAll={handleClearAll}
               currentDirection={topologyDirection}
               onDirectionChange={handleDirectionChange}
+              onAddDeviceToSelection={handleAddDeviceToSelection}
               className="h-full"
             />
           </div>
