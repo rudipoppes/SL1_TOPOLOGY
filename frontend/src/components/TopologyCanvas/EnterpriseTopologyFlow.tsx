@@ -220,8 +220,8 @@ const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]): Node[] => {
     return {
       ...node,
       position: {
-        x: startX + positionInLevel * (totalWidth / levelWidth),
-        y: 100 + levelIndex * 120
+        x: Math.round(startX + positionInLevel * (totalWidth / levelWidth)),
+        y: Math.round(100 + levelIndex * 120)
       }
     };
   });
@@ -233,8 +233,8 @@ const applyGridLayout = (nodes: Node[]): Node[] => {
   return nodes.map((node, index) => ({
     ...node,
     position: {
-      x: 100 + (index % cols) * 200,
-      y: 100 + Math.floor(index / cols) * 120
+      x: Math.round(100 + (index % cols) * 200),
+      y: Math.round(100 + Math.floor(index / cols) * 120)
     }
   }));
 };
@@ -249,7 +249,7 @@ const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
   
   return nodes.map((node, index) => {
     if (node.id === rootNode.id) {
-      return { ...node, position: { x: centerX, y: centerY } };
+      return { ...node, position: { x: Math.round(centerX), y: Math.round(centerY) } };
     }
     
     const angle = (index * 2 * Math.PI) / (nodes.length - 1);
@@ -258,8 +258,8 @@ const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
     return {
       ...node,
       position: {
-        x: centerX + radius * Math.cos(angle),
-        y: centerY + radius * Math.sin(angle)
+        x: Math.round(centerX + radius * Math.cos(angle)),
+        y: Math.round(centerY + radius * Math.sin(angle))
       }
     };
   });
@@ -287,11 +287,36 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     originalOnEdgesChange(changes);
   }, [originalOnEdgesChange]);
 
-  // Lock manual layout when user drags nodes
-  const onNodeDragStop = useCallback(() => {
+  // Handle node dragging to prevent drift
+  const onNodeDrag = useCallback((event: React.MouseEvent, _node: Node) => {
+    // Prevent default to avoid potential conflicts
+    event.preventDefault();
+  }, []);
+
+  // Lock manual layout when user drags nodes and round positions
+  const onNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log('🔒 User dragged node - locking manual layout');
     setManualLayoutLocked(true);
-  }, []);
+    
+    // Round the node position to prevent sub-pixel rendering issues
+    const roundedPosition = {
+      x: Math.round(node.position.x),
+      y: Math.round(node.position.y)
+    };
+    
+    // Update the node with rounded position
+    setNodes((nds) =>
+      nds.map((n) => {
+        if (n.id === node.id) {
+          return { ...n, position: roundedPosition };
+        }
+        return n;
+      })
+    );
+    
+    // Save rounded position
+    canvasStateRef.current.nodePositions.set(node.id, roundedPosition);
+  }, [setNodes]);
 
   // Load relationships for a specific device in specified direction
   const loadDeviceRelationships = useCallback(async (deviceId: string, direction: 'up' | 'down' | 'both') => {
@@ -396,7 +421,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       return {
         id: node.id,
         type: 'professional',
-        position: existingPosition || { x: 0, y: 0 },
+        position: existingPosition 
+          ? { x: Math.round(existingPosition.x), y: Math.round(existingPosition.y) }  // Round to integers
+          : { x: 0, y: 0 },
         draggable: true,
         data: {
           label: node.label,
@@ -437,8 +464,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       nodesNeedingLayout.forEach((node, index) => {
         const angle = (index * 2 * Math.PI) / nodesNeedingLayout.length;
         node.position = {
-          x: centerX + radius * Math.cos(angle),
-          y: centerY + radius * Math.sin(angle)
+          x: Math.round(centerX + radius * Math.cos(angle)),
+          y: Math.round(centerY + radius * Math.sin(angle))
         };
       });
     }
@@ -505,7 +532,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       return {
         id: device.id,
         type: 'professional',
-        position: existingPosition || { x: 0, y: 0 }, // Will be positioned if no position
+        position: existingPosition 
+          ? { x: Math.round(existingPosition.x), y: Math.round(existingPosition.y) }  // Round to integers
+          : { x: 0, y: 0 }, // Will be positioned if no position
         draggable: true,
         data: {
           label: device.name,
@@ -541,8 +570,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Grid positioning for devices only
       nodesNeedingLayout.forEach((node, index) => {
         node.position = {
-          x: startX + (index % 4) * 200,
-          y: startY + Math.floor(index / 4) * 150
+          x: Math.round(startX + (index % 4) * 200),
+          y: Math.round(startY + Math.floor(index / 4) * 150)
         };
       });
     }
@@ -637,6 +666,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         onEdgesChange={onEdgesChange}
         onNodeClick={onNodeClick}
         onNodeContextMenu={onNodeContextMenu}
+        onNodeDrag={onNodeDrag}
         onNodeDragStop={onNodeDragStop}
         onPaneClick={onPaneClick}
         nodeTypes={nodeTypes}
@@ -655,7 +685,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           strokeOpacity: 0.6 
         }}
         connectionLineType={ConnectionLineType.Bezier}
-        panOnDrag={[1, 2]}
+        panOnDrag={true}
+        panOnScroll={false}
         selectionOnDrag={false}
         selectNodesOnDrag={false}
         defaultEdgeOptions={{
@@ -673,6 +704,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         disableKeyboardA11y={false}
         autoPanOnConnect={false}
         autoPanOnNodeDrag={false}
+        panActivationKeyCode={null} // Disable key-based pan
         // Additional performance settings
         onlyRenderVisibleElements={true}
         translateExtent={[[-2000, -2000], [2000, 2000]]}
