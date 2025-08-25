@@ -213,11 +213,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               <>Showing <span className="font-semibold text-gray-900">{devices.length}</span> of <span className="font-semibold text-gray-900">{total}</span> devices</>
             )}
           </div>
-          {selectedDevices.size > 0 && (
-            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-medium">
-              {selectedDevices.size} selected
-            </div>
-          )}
         </div>
       </div>
 
