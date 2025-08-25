@@ -381,6 +381,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
   const [isUpdatingTopology, setIsUpdatingTopology] = useState<boolean>(false);
+  const [isControlsOpen, setIsControlsOpen] = useState<boolean>(false);  // Start collapsed
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -1108,8 +1109,36 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           }}
         />
         
-        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg p-2 space-y-2">
-          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2" style={{ fontSize: 'var(--text-xs)' }}>Controls</div>
+        {/* Collapsible Controls */}
+        <Panel position="top-left">
+          {!isControlsOpen ? (
+            /* Collapsed State - Show Toggle Button */
+            <button
+              onClick={() => setIsControlsOpen(true)}
+              className="
+                glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg
+                p-3 transition-all duration-300 hover:shadow-xl hover:scale-110
+                flex items-center justify-center
+                bg-white/70 dark:bg-gray-800/70 hover:bg-white/90 dark:hover:bg-gray-700/90
+                border-2
+              "
+              title="Open Controls"
+            >
+              <span className="text-xl">⚙️</span>
+            </button>
+          ) : (
+            /* Expanded State - Show Full Panel */
+            <div className="glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg p-2 space-y-2 animate-scale-in min-w-[140px]">
+              <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 flex items-center justify-between" style={{ fontSize: 'var(--text-xs)' }}>
+                Controls
+                <button 
+                  onClick={() => setIsControlsOpen(false)}
+                  className="text-muted hover:text-emphasis transition-colors p-0.5 rounded hover:bg-white/20 dark:hover:bg-white/10 -mr-1"
+                  title="Close Controls"
+                >
+                  ✕
+                </button>
+              </div>
           
           {['hierarchical', 'radial', 'grid'].map((layout) => (
             <button
@@ -1220,6 +1249,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               </>
             )}
           </div>
+            </div>
+          )}
         </Panel>
         
         <Panel position="top-right" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl px-5 py-3">
