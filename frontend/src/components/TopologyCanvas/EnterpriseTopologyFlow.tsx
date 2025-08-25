@@ -9,6 +9,7 @@ import {
   useNodesState,
   useEdgesState,
   ConnectionMode,
+  ConnectionLineType,
   MarkerType,
   Panel,
   useReactFlow,
@@ -31,6 +32,34 @@ interface TopologyFlowProps {
   onClearAll?: () => void;
   className?: string;
 }
+
+// Enhanced edge styling based on relationship type/importance
+const getEdgeStyle = (sourceType?: string, targetType?: string) => {
+  // Could be enhanced with actual relationship types from SL1
+  const baseStyle = {
+    stroke: '#3B82F6',
+    strokeWidth: 2,
+    strokeOpacity: 0.8,
+  };
+
+  // Add visual hierarchy based on device types
+  if (sourceType?.toLowerCase().includes('router') || targetType?.toLowerCase().includes('router')) {
+    return {
+      ...baseStyle,
+      stroke: '#EF4444', // Red for router connections
+      strokeWidth: 2.5,
+    };
+  }
+  
+  if (sourceType?.toLowerCase().includes('server') || targetType?.toLowerCase().includes('server')) {
+    return {
+      ...baseStyle,
+      stroke: '#10B981', // Green for server connections
+    };
+  }
+
+  return baseStyle;
+};
 
 // Professional device icons (more compact)
 const getDeviceIcon = (type: string, deviceName: string) => {
@@ -282,6 +311,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [preservePositions, setPreservePositions] = useState<boolean>(false);
   const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
+  const [edgeType, setEdgeType] = useState<string>('bezier');
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -347,22 +377,23 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
             const sourceId = sourceNode.label || String(edge.source);
             const targetId = targetNode.label || String(edge.target);
             
+            const edgeStyle = getEdgeStyle(sourceNode.type, targetNode.type);
+            
             return {
               id: `${sourceId}-${targetId}`,
               source: sourceId,
               target: targetId,
-              type: 'smoothstep',
+              type: edgeType, // Dynamic edge type
               animated: false,
-              style: {
-                stroke: '#64748B',
-                strokeWidth: 1,
-              },
+              style: edgeStyle,
               markerEnd: {
                 type: MarkerType.ArrowClosed,
-                width: 12,
-                height: 12,
-                color: '#64748B',
+                width: 14,
+                height: 14,
+                color: edgeStyle.stroke,
               },
+              // Improve interaction
+              interactionWidth: 10, // Wider invisible clickable area
             };
           });
       } else {
@@ -457,7 +488,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setNodes([]);
       setEdges([]);
     }
-  }, [topologyData, devices, currentLayout, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
+  }, [topologyData, devices, currentLayout, edgeType, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
@@ -567,12 +598,24 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         nodesConnectable={false}
         elementsSelectable={true}
         deleteKeyCode={null} // Disable default delete key to use custom removal only
+        // Improve edge interaction and connection behavior
+        connectionLineStyle={{ 
+          strokeWidth: 2, 
+          stroke: '#3B82F6', 
+          strokeOpacity: 0.6 
+        }}
+        connectionLineType={ConnectionLineType.Bezier}
         panOnDrag={[1, 2]}
         selectionOnDrag={false}
         selectNodesOnDrag={false}
         defaultEdgeOptions={{
-          type: 'smoothstep',
+          type: edgeType as any,
           animated: false,
+          style: {
+            strokeWidth: 2,
+            stroke: '#3B82F6',
+            strokeOpacity: 0.8,
+          },
         }}
         // Disable animations that can cause blur
         zoomOnScroll={true}
@@ -658,6 +701,24 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           </div>
           
           <div className="border-t pt-2">
+            <div className="mb-2">
+              <div className="text-xs font-semibold text-gray-700 mb-2">Edge Style</div>
+              {['straight', 'bezier', 'smoothstep', 'step'].map((type) => (
+                <button
+                  key={type}
+                  onClick={() => setEdgeType(type)}
+                  className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors mb-1 ${
+                    edgeType === type 
+                      ? 'bg-blue-100 text-blue-800' 
+                      : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  {type === 'straight' && '📏'} {type === 'bezier' && '〰️'} 
+                  {type === 'smoothstep' && '⚡'} {type === 'step' && '📐'} {type}
+                </button>
+              ))}
+            </div>
+            
             <button
               onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 500 })}
               className="block w-full text-left px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 rounded transition-colors"
