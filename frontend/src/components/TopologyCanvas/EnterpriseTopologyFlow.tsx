@@ -561,7 +561,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           if (existingPositions.length > 0) {
             // Calculate smart positioning for new nodes
             const maxX = Math.max(...existingPositions.map(p => p.x), 200);
-            const maxY = Math.max(...existingPositions.map(p => p.y), 100);
             const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
             
             newNodes.forEach((node, index) => {
