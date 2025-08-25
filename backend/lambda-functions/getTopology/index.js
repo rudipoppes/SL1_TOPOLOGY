@@ -28,6 +28,7 @@ exports.handler = async (event) => {
     const deviceIds = body.deviceIds || [];
     const depth = body.depth || 1;
     const direction = body.direction || 'both';
+    const deviceDirections = body.deviceDirections || {}; // Map of deviceId -> direction
 
     if (!deviceIds.length) {
       return {
@@ -40,8 +41,10 @@ exports.handler = async (event) => {
       };
     }
 
-    // Create cache key
-    const cacheKey = `topology:${deviceIds.join(',')}:${depth}:${direction}`;
+    // Create cache key - include device directions if provided
+    const hasDeviceDirections = Object.keys(deviceDirections).length > 0;
+    const directionsStr = hasDeviceDirections ? JSON.stringify(deviceDirections) : direction;
+    const cacheKey = `topology:${deviceIds.join(',')}:${depth}:${directionsStr}`;
     
     // Check cache
     const cachedData = await checkCache(cacheKey);
@@ -71,20 +74,45 @@ exports.handler = async (event) => {
         const parentId = edge.node.parentDevice?.id;
         const childId = edge.node.childDevice?.id;
         
-        // Apply direction-based filtering
-        if (direction === 'parents') {
-          // Only include relationships where our devices are children (to see their parents)
-          return deviceIds.includes(childId);
-        } else if (direction === 'children') {
-          // Only include relationships where our devices are parents (to see their children)
-          return deviceIds.includes(parentId);
+        // Apply direction-based filtering (per-device or global)
+        if (hasDeviceDirections) {
+          // Per-device direction filtering
+          let includeEdge = false;
+          
+          // Check if any of our devices want to see this relationship
+          for (const deviceId of deviceIds) {
+            const deviceDirection = deviceDirections[deviceId] || 'both';
+            
+            if (deviceDirection === 'parents' && deviceId === childId) {
+              // Device wants to see parents and is the child in this relationship
+              includeEdge = true;
+              break;
+            } else if (deviceDirection === 'children' && deviceId === parentId) {
+              // Device wants to see children and is the parent in this relationship
+              includeEdge = true;
+              break;
+            } else if (deviceDirection === 'both' && (deviceId === parentId || deviceId === childId)) {
+              // Device wants to see both and is involved in this relationship
+              includeEdge = true;
+              break;
+            }
+          }
+          
+          return includeEdge;
         } else {
-          // 'both' - include any relationship involving our devices
-          return deviceIds.includes(parentId) || deviceIds.includes(childId);
+          // Global direction filtering (legacy)
+          if (direction === 'parents') {
+            return deviceIds.includes(childId);
+          } else if (direction === 'children') {
+            return deviceIds.includes(parentId);
+          } else {
+            return deviceIds.includes(parentId) || deviceIds.includes(childId);
+          }
         }
       });
       
-      console.log(`Direction: ${direction} - Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
+      const directionInfo = hasDeviceDirections ? `Per-device: ${JSON.stringify(deviceDirections)}` : `Global: ${direction}`;
+      console.log(`${directionInfo} - Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
     }
     
     console.log(`Total relationships found: ${allRelationships.length}`);
