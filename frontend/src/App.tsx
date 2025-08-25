@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
-import { EnterpriseTopologyFlow } from './components/TopologyCanvas/EnterpriseTopologyFlow';
+import { StableTopologyFlow } from './components/TopologyCanvas/StableTopologyFlow';
 import { configService } from './services/config';
 import { useTheme } from './hooks/useTheme';
 import './App.css';
@@ -68,27 +68,6 @@ function App() {
     }
   };
 
-  const handleAddDeviceToSelection = async (device: Device) => {
-    console.log('🎯 Adding device to selection from context menu:', device.name);
-    
-    // Check if device is already selected
-    const isAlreadySelected = selectedDevices.some(d => d.name === device.name);
-    if (isAlreadySelected) {
-      console.log('Device already in chip area, skipping add');
-      return;
-    }
-    
-    // Add device to selected devices
-    const updatedDevices = [...selectedDevices, device];
-    setSelectedDevices(updatedDevices);
-    setTopologyDevices(updatedDevices);
-    
-    // Set default direction for new device
-    setDeviceDirections(prev => new Map(prev.set(device.id, defaultDirection)));
-    
-    // Fetch incremental topology data for ONLY the new device
-    await fetchIncrementalTopologyDataWithDirections([device]);
-  };
 
   const fetchTopologyDataWithDeviceDirections = async (devices: Device[]) => {
     if (devices.length === 0) {
@@ -431,14 +410,10 @@ function App() {
                 </div>
               </div>
             )}
-            <EnterpriseTopologyFlow 
+            <StableTopologyFlow 
               devices={topologyDevices}
-              selectedDevices={selectedDevices}
               topologyData={topologyData || undefined}
-              onClearAll={handleClearAll}
-              deviceDirections={deviceDirections}
               onDirectionChange={handleDirectionChange}
-              onAddDeviceToSelection={handleAddDeviceToSelection}
               className="h-full"
             />
           </div>
