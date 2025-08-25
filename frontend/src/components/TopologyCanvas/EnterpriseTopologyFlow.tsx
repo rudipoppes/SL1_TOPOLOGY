@@ -363,19 +363,57 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
         };
       });
 
-      // Create edges if they exist
+      // Create edges if they exist - with enhanced filtering
       if (topologyData.edges && topologyData.edges.length > 0) {
+        // Get all valid node IDs for edge validation
+        const validNodeIds = new Set(topologyData.nodes.map(n => n.id));
+        const validNodeLabels = new Set(topologyData.nodes.map(n => n.label || String(n.id)));
+        
+        console.log('🔗 Validating edges against nodes:', {
+          totalEdges: topologyData.edges.length,
+          validNodeIds: Array.from(validNodeIds),
+          validNodeLabels: Array.from(validNodeLabels)
+        });
+        
         flowEdges = topologyData.edges
           .filter((edge) => {
             const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
             const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-            return sourceNode && targetNode;
+            
+            // Enhanced validation: both nodes must exist in current topology data
+            const isValid = sourceNode && targetNode && 
+                           validNodeIds.has(edge.source) && 
+                           validNodeIds.has(edge.target);
+            
+            if (!isValid) {
+              console.log('🚫 Filtering out invalid edge:', {
+                edge: `${edge.source} → ${edge.target}`,
+                sourceExists: !!sourceNode,
+                targetExists: !!targetNode,
+                sourceInSet: validNodeIds.has(edge.source),
+                targetInSet: validNodeIds.has(edge.target)
+              });
+            }
+            
+            return isValid;
           })
           .map((edge) => {
             const sourceNode = topologyData.nodes.find(n => n.id === edge.source)!;
             const targetNode = topologyData.nodes.find(n => n.id === edge.target)!;
             const sourceId = sourceNode.label || String(edge.source);
             const targetId = targetNode.label || String(edge.target);
+            
+            // Double-check that both nodes exist in the flowNodes we're creating
+            const sourceFlowNode = flowNodes.find(n => n.id === sourceId);
+            const targetFlowNode = flowNodes.find(n => n.id === targetId);
+            
+            if (!sourceFlowNode || !targetFlowNode) {
+              console.warn('⚠️ Edge references non-existent flow node:', {
+                edge: `${sourceId} → ${targetId}`,
+                sourceNodeExists: !!sourceFlowNode,
+                targetNodeExists: !!targetFlowNode
+              });
+            }
             
             const edgeStyle = getEdgeStyle(sourceNode.type, targetNode.type);
             
@@ -401,6 +439,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       }
     } else if (devices.length > 0) {
       // Fallback for device list - simple nodes
+      console.log('📍 Showing devices without topology data');
       flowNodes = devices.map((device) => ({
         id: device.id,
         type: 'professional',
@@ -412,6 +451,12 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           status: device.status,
         },
       }));
+      
+      flowEdges = []; // Ensure no edges for device-only view
+      
+      // Explicitly clear any existing edges to prevent phantom connections
+      console.log('🧹 Explicitly clearing edges for devices-only view');
+      setEdges([]);
     }
 
     if (flowNodes.length > 0) {
@@ -468,8 +513,26 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       }
       
       console.log('🎯 Setting nodes:', layoutedNodes.length, 'edges:', flowEdges.length);
+      
+      // Final validation: ensure all edges reference existing nodes
+      const nodeIds = new Set(layoutedNodes.map(n => n.id));
+      const validatedEdges = flowEdges.filter(edge => {
+        const isValid = nodeIds.has(edge.source) && nodeIds.has(edge.target);
+        if (!isValid) {
+          console.error('🚫 Removing phantom edge at final validation:', {
+            edge: `${edge.source} → ${edge.target}`,
+            sourceExists: nodeIds.has(edge.source),
+            targetExists: nodeIds.has(edge.target),
+            availableNodes: Array.from(nodeIds)
+          });
+        }
+        return isValid;
+      });
+      
+      console.log('✅ Final edge count after phantom cleanup:', validatedEdges.length, 'vs original:', flowEdges.length);
+      
       setNodes(layoutedNodes);
-      setEdges(flowEdges);
+      setEdges(validatedEdges);
       
       // Enable position preservation after first layout
       if (!preservePositions && !manualLayoutLocked) {
