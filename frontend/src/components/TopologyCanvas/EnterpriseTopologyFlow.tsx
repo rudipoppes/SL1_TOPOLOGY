@@ -341,33 +341,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     y: 0,
   });
   
-  // Custom edge change handler with phantom detection
-  const onEdgesChange = useCallback((changes: any) => {
-    console.log('🔗 Edge changes detected:', changes);
-    
-    // Allow the original changes
-    originalOnEdgesChange(changes);
-    
-    // After changes, validate for phantoms
-    setTimeout(() => {
-      setEdges(currentEdges => {
-        const nodeIds = new Set(nodes.map(n => n.id));
-        const validEdges = currentEdges.filter(edge => 
-          nodeIds.has(edge.source) && nodeIds.has(edge.target)
-        );
-        
-        if (validEdges.length !== currentEdges.length) {
-          console.log('🧹 Cleaning phantom edges in onEdgesChange:', {
-            before: currentEdges.length,
-            after: validEdges.length,
-            removed: currentEdges.length - validEdges.length
-          });
-        }
-        
-        return validEdges;
-      });
-    }, 0);
-  }, [originalOnEdgesChange, nodes, setEdges]);
+  // Use original edge change handler without phantom detection to avoid race conditions
+  const onEdgesChange = originalOnEdgesChange;
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [preservePositions, setPreservePositions] = useState<boolean>(false);
   const [savedPositions, setSavedPositions] = useState<Map<string, { x: number; y: number }>>(new Map());
@@ -425,10 +400,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       
       flowNodes = topologyData.nodes.map((node) => {
         const nodeLabel = node.label || String(node.id);
-        const existingNode = existingNodes.get(nodeLabel);
+        const existingNode = existingNodes.get(node.id); // Look up by device ID, not label
         
         return {
-          id: nodeLabel,
+          id: node.id, // Use device ID consistently, not label!
           type: 'professional',
           // Preserve existing position if node exists, otherwise use default
           position: existingNode ? existingNode.position : { x: 0, y: 0 },
@@ -479,19 +454,23 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           .map((edge) => {
             const sourceNode = topologyData.nodes.find(n => n.id === edge.source)!;
             const targetNode = topologyData.nodes.find(n => n.id === edge.target)!;
-            const sourceId = sourceNode.label || String(edge.source);
-            const targetId = targetNode.label || String(edge.target);
+            
+            // CRITICAL FIX: Use device IDs directly, no conversion to labels
+            const sourceId = edge.source;
+            const targetId = edge.target;
             
             // Double-check that both nodes exist in the flowNodes we're creating
             const sourceFlowNode = flowNodes.find(n => n.id === sourceId);
             const targetFlowNode = flowNodes.find(n => n.id === targetId);
             
             if (!sourceFlowNode || !targetFlowNode) {
-              console.warn('⚠️ Edge references non-existent flow node:', {
+              console.error('🚨 CRITICAL: Edge references non-existent flow node:', {
                 edge: `${sourceId} → ${targetId}`,
                 sourceNodeExists: !!sourceFlowNode,
-                targetNodeExists: !!targetFlowNode
+                targetNodeExists: !!targetFlowNode,
+                availableFlowNodes: flowNodes.map(n => n.id)
               });
+              return null; // Return null for invalid edges
             }
             
             const edgeStyle = getEdgeStyle(sourceNode.type, targetNode.type);
@@ -512,7 +491,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               // Improve interaction
               interactionWidth: 10, // Wider invisible clickable area
             };
-          });
+          })
+          .filter(edge => edge !== null); // Remove null edges
       } else {
         flowEdges = [];
       }
@@ -520,7 +500,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Fallback for device list - simple nodes
       console.log('📍 Showing devices without topology data');
       flowNodes = devices.map((device) => ({
-        id: device.id,
+        id: device.id, // Consistent device ID usage
         type: 'professional',
         position: { x: 0, y: 0 },
         draggable: true,
@@ -710,31 +690,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
   }, [topologyData, devices, currentLayout, edgeType, setNodes, setEdges, reactFlowInstance, onRemoveDevice]);
 
-  // Additional phantom edge detection - watch for edges that shouldn't exist
-  useEffect(() => {
-    if (edges.length > 0 && nodes.length > 0) {
-      const nodeIds = new Set(nodes.map(n => n.id));
-      const phantomEdges = edges.filter(edge => 
-        !nodeIds.has(edge.source) || !nodeIds.has(edge.target)
-      );
-      
-      if (phantomEdges.length > 0) {
-        console.error('🚨 PHANTOM EDGES DETECTED after state update:', {
-          phantomEdges: phantomEdges.map(e => `${e.source} → ${e.target}`),
-          totalEdges: edges.length,
-          availableNodes: Array.from(nodeIds),
-          timestamp: new Date().toISOString()
-        });
-        
-        // Immediately remove phantom edges
-        const cleanEdges = edges.filter(edge => 
-          nodeIds.has(edge.source) && nodeIds.has(edge.target)
-        );
-        console.log('🧹 Removing phantom edges immediately:', cleanEdges.length, 'remaining');
-        setEdges(cleanEdges);
-      }
-    }
-  }, [edges, nodes, setEdges]);
+  // REMOVED: Additional phantom edge detection useEffect 
+  // This was causing race conditions with the main topology useEffect
+  // Phantom edge prevention is now handled entirely within the main topology processing logic
 
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
     console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
