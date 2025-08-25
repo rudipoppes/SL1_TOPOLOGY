@@ -381,7 +381,6 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
   const [edgeType, setEdgeType] = useState<string>('bezier');
   const [isUpdatingTopology, setIsUpdatingTopology] = useState<boolean>(false);
-  const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   
   const nodeTypes = useMemo(() => ({
     professional: ProfessionalDeviceNode,
@@ -1103,8 +1102,8 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
           }}
         />
         
-        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl p-4 space-y-3">
-          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3" style={{ fontSize: 'var(--text-xs)' }}>Layout Controls</div>
+        <Panel position="top-left" className="glass-panel backdrop-blur-lg border-white/30 rounded-lg shadow-lg p-2 space-y-2">
+          <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2" style={{ fontSize: 'var(--text-xs)' }}>Controls</div>
           
           {['hierarchical', 'radial', 'grid'].map((layout) => (
             <button
@@ -1115,32 +1114,28 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 setManualLayoutLocked(false);
                 applyLayoutToNodes(layout);
               }}
-              className={`block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 ${
+              className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
                 currentLayout === layout && !manualLayoutLocked
-                  ? 'bg-gradient-to-r from-blue-100/90 to-blue-200/90 text-primary border-l-2 border-blue-500 font-semibold shadow-sm' 
-                  : 'bg-white/40 hover:bg-white/60 text-secondary hover:text-emphasis backdrop-blur-sm border border-transparent hover:border-white/40'
+                  ? 'bg-blue-100 text-blue-800 font-medium' 
+                  : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
               }`}
-              style={{ fontSize: 'var(--text-sm)' }}
             >
-              <span className="text-base">{layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'}</span>
-              <span>{layout.charAt(0).toUpperCase() + layout.slice(1)}</span>
+              {layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'} {layout.charAt(0).toUpperCase() + layout.slice(1)}
             </button>
           ))}
           
-          <div className="border-t border-white/20 pt-3 mt-3 space-y-2">
+          <div className="border-t border-white/20 pt-2 mt-2 space-y-1">
             <button
               onClick={() => {
                 setManualLayoutLocked(!manualLayoutLocked);
               }}
-              className={`block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 ${
+              className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
                 manualLayoutLocked
-                  ? 'bg-gradient-to-r from-green-100/90 to-green-200/90 text-green-800 border-l-2 border-green-500 font-semibold' 
-                  : 'bg-white/40 hover:bg-white/60 text-secondary hover:text-emphasis backdrop-blur-sm border border-transparent hover:border-white/40'
+                  ? 'bg-green-100 text-green-800 font-medium' 
+                  : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
               }`}
-              style={{ fontSize: 'var(--text-sm)' }}
             >
-              <span className="text-base">{manualLayoutLocked ? '🔒' : '🔓'}</span>
-              <span>Manual Layout</span>
+              {manualLayoutLocked ? '🔒' : '🔓'} Manual
             </button>
             
             <button
@@ -1150,25 +1145,23 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                 canvasStateRef.current.nodePositions.clear();
                 applyLayoutToNodes(currentLayout);
               }}
-              className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 flex items-center space-x-3 bg-gradient-to-r from-orange-100/90 to-orange-200/90 hover:from-orange-200/90 hover:to-orange-300/90 text-orange-700 border-l-2 border-orange-500 backdrop-blur-sm"
-              style={{ fontSize: 'var(--text-sm)' }}
+              className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700"
             >
-              <span className="text-base">🔄</span>
-              <span className="font-medium">Reset Layout</span>
+              🔄 Reset
             </button>
           </div>
           
-          <div className="border-t pt-2">
+          <div className="border-t border-white/20 pt-2 mt-2">
             <div className="mb-2">
-              <div className="text-xs font-semibold text-gray-700 mb-2">Edge Style</div>
+              <div className="text-xs font-semibold text-muted mb-1">Edges</div>
               {['straight', 'bezier', 'smoothstep', 'step'].map((type) => (
                 <button
                   key={type}
                   onClick={() => setEdgeType(type)}
-                  className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors mb-1 ${
+                  className={`block w-full text-left px-2 py-1 text-xs rounded-md transition-colors mb-1 ${
                     edgeType === type 
                       ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-gray-50 hover:bg-gray-100'
+                      : 'bg-white/50 hover:bg-white/70'
                   }`}
                 >
                   {type === 'straight' && '📏'} {type === 'bezier' && '〰️'} 
@@ -1177,33 +1170,28 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               ))}
             </div>
             
-            
             <button
               onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 500 })}
-              className="block w-full text-left px-3 py-1.5 text-xs bg-gray-50 hover:bg-gray-100 rounded transition-colors mt-2"
+              className="block w-full text-left px-2 py-1 text-xs bg-white/50 hover:bg-white/70 rounded-md transition-colors"
             >
               🎯 Fit View
             </button>
             
             {nodes.length > 0 && (
               <>
-                <div className="border-t border-white/20 pt-3 mt-3">
-                  <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-3" style={{ fontSize: 'var(--text-xs)' }}>Export Options</div>
+                <div className="border-t border-white/20 pt-2 mt-2">
+                  <div className="text-xs font-semibold text-muted mb-1">Export</div>
                   <button
                     onClick={exportAsPNG}
-                    className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 mb-2 bg-gradient-to-r from-green-100/90 to-green-200/90 hover:from-green-200/90 hover:to-green-300/90 text-green-700 border-l-2 border-green-500 backdrop-blur-sm flex items-center space-x-3"
-                    style={{ fontSize: 'var(--text-sm)' }}
+                    className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 mb-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs"
                   >
-                    <span className="text-base">📷</span>
-                    <span className="font-medium">Export PNG</span>
+                    📷 PNG
                   </button>
                   <button
                     onClick={exportAsHTML}
-                    className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 bg-gradient-to-r from-blue-100/90 to-blue-200/90 hover:from-blue-200/90 hover:to-blue-300/90 text-blue-700 border-l-2 border-blue-500 backdrop-blur-sm flex items-center space-x-3"
-                    style={{ fontSize: 'var(--text-sm)' }}
+                    className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs"
                   >
-                    <span className="text-base">📄</span>
-                    <span className="font-medium">HTML Report</span>
+                    📄 HTML
                   </button>
                 </div>
                 
@@ -1219,16 +1207,13 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
                       onClearAll();
                     }
                   }}
-                  className="block w-full text-left px-4 py-2.5 rounded-lg transition-all duration-300 mt-3 bg-gradient-to-r from-red-100/90 to-red-200/90 hover:from-red-200/90 hover:to-red-300/90 text-red-600 border-l-2 border-red-500 backdrop-blur-sm flex items-center space-x-3"
-                  style={{ fontSize: 'var(--text-sm)' }}
+                  className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 mt-2 bg-red-100 hover:bg-red-200 text-red-600 text-xs"
                 >
-                  <span className="text-base">🗑️</span>
-                  <span className="font-medium">Clear All</span>
+                  🗑️ Clear All
                 </button>
               </>
             )}
-            </div>
-          )}
+          </div>
         </Panel>
         
         <Panel position="top-right" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl px-5 py-3">
