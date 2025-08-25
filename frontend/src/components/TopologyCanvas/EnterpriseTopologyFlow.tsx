@@ -490,46 +490,34 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       };
     });
 
-    // Apply hierarchical layout to new nodes by default
+    // Apply simple positioning to new nodes (hierarchical layout will happen after topology data arrives)
     const nodesNeedingLayout = newNodes.filter(n => n.position.x === 0 && n.position.y === 0);
     if (nodesNeedingLayout.length > 0 && !manualLayoutLocked) {
-      console.log('📍 Applying default hierarchical layout to', nodesNeedingLayout.length, 'new nodes');
+      console.log('📍 Applying temporary positioning to', nodesNeedingLayout.length, 'new nodes (hierarchical layout will apply after relationships load)');
       
-      // If this is the first set of nodes, apply hierarchical layout
-      const existingNodes = newNodes.filter(n => n.position.x !== 0 || n.position.y !== 0);
+      // Simple positioning - hierarchical layout will be applied when topology data arrives
+      const existingPositions = newNodes
+        .filter(n => n.position.x !== 0 || n.position.y !== 0)
+        .map(n => n.position);
       
-      if (existingNodes.length === 0 && nodesNeedingLayout.length > 1) {
-        // First time adding multiple nodes - apply hierarchical layout to all
-        console.log('🎯 Applying hierarchical layout to all new nodes');
-        const layoutedNodes = applyHierarchicalLayout(newNodes, []); // No edges yet
-        layoutedNodes.forEach(layoutedNode => {
-          const targetNode = newNodes.find(n => n.id === layoutedNode.id);
-          if (targetNode) {
-            targetNode.position = layoutedNode.position;
-          }
-        });
-      } else {
-        // Incremental positioning for single nodes or when existing nodes present
-        const existingPositions = existingNodes.map(n => n.position);
-        
-        let startX = 100;
-        let startY = 100;
-        
-        if (existingPositions.length > 0) {
-          // Place new nodes to the right of existing ones
-          const maxX = Math.max(...existingPositions.map(p => p.x), 100);
-          const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
-          startX = maxX + 150;
-          startY = avgY;
-        }
-        
-        nodesNeedingLayout.forEach((node, index) => {
-          node.position = {
-            x: startX + (index % 3) * 150,
-            y: startY + Math.floor(index / 3) * 120
-          };
-        });
+      let startX = 100;
+      let startY = 100;
+      
+      if (existingPositions.length > 0) {
+        // Place new nodes to the right of existing ones
+        const maxX = Math.max(...existingPositions.map(p => p.x), 100);
+        const avgY = existingPositions.reduce((sum, p) => sum + p.y, 0) / existingPositions.length;
+        startX = maxX + 150;
+        startY = avgY;
       }
+      
+      // Simple grid positioning - will be replaced by hierarchical when relationships arrive
+      nodesNeedingLayout.forEach((node, index) => {
+        node.position = {
+          x: startX + (index % 3) * 150,
+          y: startY + Math.floor(index / 3) * 120
+        };
+      });
     }
 
     // Update canvas with device nodes - preserve existing edges if possible
@@ -686,13 +674,34 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       preserveView: canvasStateRef.current.preserveView
     });
 
-    // Update canvas
-    setNodes(allNodes);
-    setEdges(validEdges);
-
-    // Never fit view during relationship updates - preserves user's current view
-    console.log('🔒 Preserving view during relationship update');
-  }, [nodes, deviceDirections, edgeType, setNodes, setEdges]);
+    // Apply hierarchical layout if this is the initial topology load and not manual locked
+    if (allNodes.length > 1 && !manualLayoutLocked && canvasStateRef.current.isFirstLoad) {
+      console.log('🎯 Applying initial hierarchical layout to', allNodes.length, 'nodes with', validEdges.length, 'edges');
+      const layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
+      
+      // Update canvas with layouted nodes
+      setNodes(layoutedNodes);
+      setEdges(validEdges);
+      
+      // Update position cache
+      layoutedNodes.forEach(node => {
+        canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
+      });
+      
+      // Set first load to false and fit view
+      canvasStateRef.current.isFirstLoad = false;
+      setTimeout(() => {
+        reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
+        console.log('🎯 Initial hierarchical layout applied with fitView');
+      }, 100);
+    } else {
+      // Update canvas normally without layout
+      setNodes(allNodes);
+      setEdges(validEdges);
+      
+      console.log('🔒 Preserving view during relationship update');
+    }
+  }, [nodes, deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance]);
 
   // Handle device selection changes from chip area
   useEffect(() => {
