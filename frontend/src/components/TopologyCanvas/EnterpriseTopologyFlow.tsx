@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState, useMemo, useRef } from 'react';
 import {
   ReactFlow,
-  MiniMap,
   Controls,
   Background,
   Node,
@@ -10,7 +9,6 @@ import {
   useEdgesState,
   ConnectionMode,
   ConnectionLineType,
-  MarkerType,
   Panel,
   useReactFlow,
   ReactFlowProvider,
@@ -29,11 +27,10 @@ interface TopologyFlowProps {
     nodes: TopologyNode[];
     edges: TopologyEdge[];
   };
-  onDeviceClick?: (device: Device) => void;
-  onClearAll?: () => void;
   deviceDirections?: Map<string, 'parents' | 'children' | 'both'>;
-  onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId?: string) => void;
+  onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
+  onClearAll?: () => void;
   className?: string;
 }
 
@@ -45,71 +42,59 @@ interface ContextMenuState {
   nodeName?: string;
 }
 
-// Enhanced edge styling based on relationship type/importance
-const getEdgeStyle = (sourceType?: string, targetType?: string) => {
-  // Could be enhanced with actual relationship types from SL1
-  const baseStyle = {
-    stroke: '#3B82F6',
-    strokeWidth: 2,
-    strokeOpacity: 0.8,
-  };
+const getDeviceIcon = (type: string, label: string) => {
+  const lowerType = type.toLowerCase();
+  const lowerLabel = label.toLowerCase();
 
-  // Add visual hierarchy based on device types
-  if (sourceType?.toLowerCase().includes('router') || targetType?.toLowerCase().includes('router')) {
-    return {
-      ...baseStyle,
-      stroke: '#EF4444', // Red for router connections
-      strokeWidth: 2.5,
-    };
-  }
+  if (lowerType.includes('router') || lowerLabel.includes('router')) return '🔀';
+  if (lowerType.includes('switch') || lowerLabel.includes('switch')) return '🔌';
+  if (lowerType.includes('server') || lowerLabel.includes('server')) return '🖥️';
+  if (lowerType.includes('firewall') || lowerLabel.includes('firewall')) return '🛡️';
+  if (lowerType.includes('load') && lowerType.includes('balancer')) return '⚖️';
+  if (lowerType.includes('storage') || lowerLabel.includes('storage')) return '💾';
+  if (lowerType.includes('database') || lowerLabel.includes('database')) return '🗄️';
   
-  if (sourceType?.toLowerCase().includes('server') || targetType?.toLowerCase().includes('server')) {
-    return {
-      ...baseStyle,
-      stroke: '#10B981', // Green for server connections
-    };
-  }
-
-  return baseStyle;
+  return '📡';
 };
 
-// Professional device icons (more compact)
-const getDeviceIcon = (type: string, deviceName: string) => {
-  const name = deviceName.toLowerCase();
-  const typeStr = type.toLowerCase();
-  
-  if (name.includes('kubernetes') || name.includes('k8s')) return '☸️';
-  if (name.includes('docker')) return '🐳';
-  if (name.includes('office') || name.includes('building')) return '🏢';
-  if (name.includes('pam') || name.includes('auth')) return '🔐';
-  if (name.includes('router') || typeStr.includes('router')) return '📡';
-  if (name.includes('switch') || typeStr.includes('switch')) return '🔌';
-  if (name.includes('firewall')) return '🛡️';
-  if (name.includes('load') || name.includes('balance')) return '⚖️';
-  if (name.includes('worker')) return '⚙️';
-  if (name.includes('server') || typeStr.includes('server')) return '🖥️';
-  if (name.includes('cluster')) return '🔷';
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(name)) return '🌐';
-  return '💻';
-};
-
-// Status colors
-const getStatusColors = (status: string = 'unknown') => {
-  switch (status) {
-    case 'online': return { bg: '#10B981', shadow: '0 0 8px rgba(16, 185, 129, 0.4)' };
-    case 'offline': return { bg: '#EF4444', shadow: '0 0 8px rgba(239, 68, 68, 0.4)' };
-    case 'warning': return { bg: '#F59E0B', shadow: '0 0 8px rgba(245, 158, 11, 0.4)' };
-    default: return { bg: '#6B7280', shadow: '0 0 8px rgba(107, 114, 128, 0.3)' };
+const getStatusColors = (status: string) => {
+  switch (status?.toLowerCase()) {
+    case 'online':
+    case 'up':
+      return {
+        bg: 'bg-green-500',
+        border: 'border-green-600',
+        shadow: '0 0 10px rgba(34, 197, 94, 0.5)'
+      };
+    case 'offline':
+    case 'down':
+      return {
+        bg: 'bg-red-500',
+        border: 'border-red-600', 
+        shadow: '0 0 10px rgba(239, 68, 68, 0.5)'
+      };
+    case 'warning':
+    case 'degraded':
+      return {
+        bg: 'bg-yellow-500',
+        border: 'border-yellow-600',
+        shadow: '0 0 10px rgba(234, 179, 8, 0.5)'
+      };
+    default:
+      return {
+        bg: 'bg-gray-400',
+        border: 'border-gray-500',
+        shadow: '0 0 10px rgba(107, 114, 128, 0.5)'
+      };
   }
 };
 
-// Simple Device Node - no removal controls needed
-const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
-  const { label, type, status, direction } = data;
+const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected: boolean }) => {
+  const { label, type, status, ip } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
-  
+
   return (
     <>
       <Handle
@@ -144,58 +129,37 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
             : isHovered ? colors.shadow : '0 2px 4px rgba(0,0,0,0.05)',
           cursor: 'grab',
-          // Remove transform to prevent blurriness
-          // transform: isHovered ? 'scale(1.05)' : 'scale(1)',
-          // Use outline for hover effect instead
           outline: isHovered ? '2px solid rgba(59, 130, 246, 0.3)' : 'none',
           outlineOffset: '2px',
-          // Disable transition to prevent flickering
-          // transition: 'all 0.2s ease',
-          // Force GPU acceleration and prevent blurriness
           willChange: 'auto',
           backfaceVisibility: 'hidden',
           transform: 'translateZ(0)',
         }}
       >
-        {/* No removal controls - selection manages topology */}
-        
-        {/* Status dot */}
-        <div
-          className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white"
-          style={{ background: colors.bg }}
+        {/* Status indicator */}
+        <div 
+          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full ${colors.bg} ${colors.border} border-2`}
+          title={status}
         />
         
-        {/* Direction indicator */}
-        {direction && (
-          <div
-            className="absolute -top-1 -left-1 w-4 h-4 bg-blue-600 rounded-full flex items-center justify-center border-2 border-white text-xs"
-            title={`Showing ${direction === 'parents' ? 'parent(s)' : direction === 'children' ? 'child(ren)' : 'both'}`}
-          >
-            {direction === 'parents' && '👆'}
-            {direction === 'children' && '👇'}  
-            {direction === 'both' && '↕️'}
-          </div>
-        )}
-        
         {/* Device icon */}
-        <div className="text-lg mb-1">{icon}</div>
+        <div className="text-2xl mb-1" style={{ lineHeight: 1 }}>
+          {icon}
+        </div>
         
         {/* Device name */}
-        <div 
-          className="text-[10px] font-semibold text-center text-gray-800 leading-tight"
-          style={{ 
-            wordBreak: 'break-word',
-            hyphens: 'auto',
-            maxWidth: '100%',
-            // Improve text rendering
-            WebkitFontSmoothing: 'antialiased',
-            MozOsxFontSmoothing: 'grayscale',
-          }}
-        >
+        <div className="text-xs font-medium text-gray-700 text-center truncate max-w-full" style={{ fontSize: '10px', lineHeight: '12px' }}>
           {label}
         </div>
         
-        {/* Device type (on hover) */}
+        {/* IP address */}
+        {ip && (
+          <div className="text-[8px] text-gray-500 text-center mt-1 truncate max-w-full">
+            {ip}
+          </div>
+        )}
+        
+        {/* Type on hover */}
         {isHovered && type && (
           <div className="text-[10px] text-gray-500 text-center mt-1 truncate max-w-full">
             {type}
@@ -221,154 +185,90 @@ const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: bool
   );
 };
 
-// Layout algorithms for the new architecture - CREATE NEW OBJECTS
+// Layout algorithms
 const applyHierarchicalLayout = (nodes: Node[], edges: Edge[]): Node[] => {
   if (nodes.length === 0) return nodes;
   
-  // Find root nodes (no incoming edges)
   const hasIncomingEdge = new Set(edges.map(e => e.target));
   const rootNodes = nodes.filter(n => !hasIncomingEdge.has(n.id));
   
-  // Build adjacency list
-  const adjacency = new Map<string, string[]>();
-  edges.forEach(edge => {
-    if (!adjacency.has(edge.source)) adjacency.set(edge.source, []);
-    adjacency.get(edge.source)!.push(edge.target);
-  });
+  if (rootNodes.length === 0) return nodes.map((n, i) => ({ ...n, position: { x: i * 150, y: 100 } }));
   
-  // Level-based positioning
-  const levels = new Map<string, number>();
+  const levels: string[][] = [];
   const visited = new Set<string>();
+  const queue: Array<{id: string, level: number}> = rootNodes.map(n => ({ id: n.id, level: 0 }));
   
-  const assignLevel = (nodeId: string, level: number) => {
-    if (visited.has(nodeId)) return;
-    visited.add(nodeId);
-    levels.set(nodeId, Math.max(levels.get(nodeId) || 0, level));
+  while (queue.length > 0) {
+    const { id, level } = queue.shift()!;
+    if (visited.has(id)) continue;
     
-    const children = adjacency.get(nodeId) || [];
-    children.forEach(child => assignLevel(child, level + 1));
-  };
-  
-  // Start from root nodes or first node if no clear hierarchy
-  if (rootNodes.length > 0) {
-    rootNodes.forEach(node => assignLevel(node.id, 0));
-  } else {
-    // Fallback: start from first node if no clear hierarchy
-    assignLevel(nodes[0].id, 0);
+    visited.add(id);
+    if (!levels[level]) levels[level] = [];
+    levels[level].push(id);
+    
+    const children = edges.filter(e => e.source === id && !visited.has(e.target));
+    children.forEach(e => queue.push({ id: e.target, level: level + 1 }));
   }
   
-  // Group nodes by level
-  const levelGroups = new Map<number, string[]>();
-  nodes.forEach(node => {
-    const level = levels.get(node.id) || 0;
-    if (!levelGroups.has(level)) levelGroups.set(level, []);
-    levelGroups.get(level)!.push(node.id);
-  });
-  
-  // Calculate positions for each level
-  const positions = new Map<string, { x: number; y: number }>();
-  let yPos = 100;
-  const levelHeight = 120;
-  
-  levelGroups.forEach((nodeIds, _level) => {
-    const totalWidth = nodeIds.length * 150;
-    const startX = Math.max(100, (800 - totalWidth) / 2);
+  return nodes.map(node => {
+    const levelIndex = levels.findIndex(level => level.includes(node.id));
+    const positionInLevel = levels[levelIndex]?.indexOf(node.id) || 0;
+    const levelWidth = levels[levelIndex]?.length || 1;
+    const totalWidth = Math.max(1200, levelWidth * 150);
+    const startX = (window.innerWidth - totalWidth) / 2;
     
-    nodeIds.forEach((nodeId, index) => {
-      positions.set(nodeId, {
-        x: startX + (index * 150),
-        y: yPos
-      });
-    });
-    yPos += levelHeight;
-  });
-  
-  // Return NEW node objects with updated positions
-  return nodes.map(node => ({
-    ...node,
-    position: positions.get(node.id) || node.position
-  }));
-};
-
-const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
-  if (nodes.length === 0) return nodes;
-  
-  if (nodes.length === 1) {
-    return nodes.map(node => ({
-      ...node,
-      position: { x: 400, y: 300 }
-    }));
-  }
-  
-  // Find central node (most connections)
-  const connectionCount = new Map<string, number>();
-  edges.forEach(edge => {
-    connectionCount.set(edge.source, (connectionCount.get(edge.source) || 0) + 1);
-    connectionCount.set(edge.target, (connectionCount.get(edge.target) || 0) + 1);
-  });
-  
-  const centralNodeId = nodes.reduce((max, node) => 
-    (connectionCount.get(node.id) || 0) > (connectionCount.get(max.id) || 0) ? node : max
-  ).id;
-  
-  // Calculate positions
-  const positions = new Map<string, { x: number; y: number }>();
-  const otherNodeIds = nodes.filter(n => n.id !== centralNodeId).map(n => n.id);
-  
-  // Place central node at center
-  positions.set(centralNodeId, { x: 400, y: 300 });
-  
-  // Place other nodes in concentric circles
-  if (otherNodeIds.length > 0) {
-    const radius = Math.max(200, Math.min(300, otherNodeIds.length * 20));
-    const angleStep = (2 * Math.PI) / otherNodeIds.length;
-    
-    otherNodeIds.forEach((nodeId, index) => {
-      const angle = index * angleStep;
-      positions.set(nodeId, {
-        x: 400 + radius * Math.cos(angle),
-        y: 300 + radius * Math.sin(angle)
-      });
-    });
-  }
-  
-  // Return NEW node objects with updated positions
-  return nodes.map(node => ({
-    ...node,
-    position: positions.get(node.id) || node.position
-  }));
-};
-
-const applyGridLayout = (nodes: Node[]): Node[] => {
-  if (nodes.length === 0) return nodes;
-  
-  const cols = Math.ceil(Math.sqrt(nodes.length));
-  const cellSize = 150;
-  
-  // Return NEW node objects with updated positions
-  return nodes.map((node, index) => {
-    const row = Math.floor(index / cols);
-    const col = index % cols;
     return {
       ...node,
       position: {
-        x: 100 + col * cellSize,
-        y: 100 + row * cellSize
+        x: startX + positionInLevel * (totalWidth / levelWidth),
+        y: 100 + levelIndex * 120
       }
     };
   });
 };
 
-// Main component
+const applyGridLayout = (nodes: Node[]): Node[] => {
+  const cols = Math.ceil(Math.sqrt(nodes.length));
+  
+  return nodes.map((node, index) => ({
+    ...node,
+    position: {
+      x: 100 + (index % cols) * 200,
+      y: 100 + Math.floor(index / cols) * 120
+    }
+  }));
+};
+
+const applyRadialLayout = (nodes: Node[], edges: Edge[]): Node[] => {
+  if (nodes.length <= 1) return nodes;
+  
+  const hasIncomingEdge = new Set(edges.map(e => e.target));
+  const rootNode = nodes.find(n => !hasIncomingEdge.has(n.id)) || nodes[0];
+  const centerX = window.innerWidth / 2;
+  const centerY = window.innerHeight / 2;
+  
+  return nodes.map((node, index) => {
+    if (node.id === rootNode.id) {
+      return { ...node, position: { x: centerX, y: centerY } };
+    }
+    
+    const angle = (index * 2 * Math.PI) / (nodes.length - 1);
+    const radius = 200;
+    
+    return {
+      ...node,
+      position: {
+        x: centerX + radius * Math.cos(angle),
+        y: centerY + radius * Math.sin(angle)
+      }
+    };
+  });
+};
+
 const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
   devices = [],
-  selectedDevices = [],
-  topologyData,
-  onDeviceClick,
-  onClearAll,
   deviceDirections = new Map(),
   onDirectionChange,
-  onAddDeviceToSelection,
   className = '',
 }) => {
   const reactFlowInstance = useReactFlow();
@@ -411,9 +311,9 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       setIsUpdatingTopology(false);
     }
   }, [onDirectionChange]);
+
   const [currentLayout, setCurrentLayout] = useState<string>('hierarchical');
   const [manualLayoutLocked, setManualLayoutLocked] = useState<boolean>(false);
-  const [edgeType, setEdgeType] = useState<string>('bezier');
   const [isUpdatingTopology, setIsUpdatingTopology] = useState<boolean>(false);
   const [isControlsOpen, setIsControlsOpen] = useState<boolean>(false);  // Start collapsed
   
@@ -436,51 +336,40 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
 
     console.log('🎯 Applying layout:', layoutType, 'to', nodes.length, 'nodes');
-    console.log('📍 Before layout:', nodes.map(n => ({ id: n.id, pos: n.position })));
     
-    // Use React Flow's proper update pattern to create new objects
-    setNodes((currentNodes) => {
-      let layoutedNodes: Node[];
-      
-      switch (layoutType) {
-        case 'hierarchical':
-          layoutedNodes = applyHierarchicalLayout(currentNodes, edges);
-          break;
-        case 'radial':
-          layoutedNodes = applyRadialLayout(currentNodes, edges);
-          break;
-        case 'grid':
-          layoutedNodes = applyGridLayout(currentNodes);
-          break;
-        default:
-          layoutedNodes = applyHierarchicalLayout(currentNodes, edges);
-      }
-      
-      console.log('✅ After layout:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
-      
-      // Update position cache with NEW position objects
-      layoutedNodes.forEach(node => {
-        canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
-      });
-      
-      return layoutedNodes;
+    let layoutedNodes: Node[];
+    switch (layoutType) {
+      case 'hierarchical':
+        layoutedNodes = applyHierarchicalLayout(nodes, edges);
+        break;
+      case 'radial':
+        layoutedNodes = applyRadialLayout(nodes, edges);
+        break;
+      case 'grid':
+        layoutedNodes = applyGridLayout(nodes);
+        break;
+      default:
+        layoutedNodes = applyHierarchicalLayout(nodes, edges);
+    }
+    
+    console.log('✅ After layout:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
+    
+    // Update position cache with NEW position objects
+    layoutedNodes.forEach(node => {
+      canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
     });
     
-    // Force React Flow to update node internals immediately
+    setNodes(layoutedNodes);
+    
     setTimeout(() => {
-      nodes.forEach(node => {
-        updateNodeInternals(node.id);
-      });
-      
       // Fit view to show the new layout
       reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
       console.log('🎯 Layout update completed with fitView');
-    }, 50); // Reduced delay for faster response
+    }, 50);
     
   }, [nodes, edges, setNodes, reactFlowInstance, updateNodeInternals]);
 
-  // Fresh React Flow architecture with proper state management
-  const lastTopologyRef = useRef<any>(null);
+  // Canvas state management
   const canvasStateRef = useRef({
     nodePositions: new Map<string, { x: number; y: number }>(),
     isFirstLoad: true,
@@ -489,7 +378,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
 
   // Core canvas management - handles device chip area changes
   const updateCanvasFromChipArea = useCallback((selectedDevices: Device[]) => {
-    console.log('🎯 FRESH ARCHITECTURE: Updating canvas from chip area', {
+    console.log('🎯 Updating canvas from chip area - DEVICE ONLY', {
       deviceCount: selectedDevices.length,
       deviceNames: selectedDevices.map(d => d.name)
     });
@@ -512,7 +401,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       return {
         id: device.id,
         type: 'professional',
-        position: existingPosition || { x: 0, y: 0 }, // Will be layouted if no position
+        position: existingPosition || { x: 0, y: 0 }, // Will be positioned if no position
         draggable: true,
         data: {
           label: device.name,
@@ -566,339 +455,18 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       canvasStateRef.current.nodePositions.set(node.id, node.position);
     });
 
-    // Fit view only on first load (but don't set isFirstLoad to false yet - wait for topology data)
+    // Apply first-time layout
     if (canvasStateRef.current.isFirstLoad && newNodes.length > 0) {
-      console.log('🎯 Fitting view (device selection - keeping isFirstLoad true for hierarchical layout)');
+      console.log('🎯 Fitting view (device selection)');
       setTimeout(() => {
         reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
-        // DON'T set isFirstLoad to false here - wait for topology data to apply hierarchical layout
+        canvasStateRef.current.isFirstLoad = false;
       }, 100);
     }
 
     canvasStateRef.current.preserveView = true;
-  }, [deviceDirections, manualLayoutLocked, reactFlowInstance, setNodes, setEdges]); */
+  }, [deviceDirections, setNodes, setEdges, reactFlowInstance]);
 
-  // Add relationships to existing canvas (smart positioning for new relationship nodes)
-  const addRelationshipsToCanvas = useCallback((topologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
-    console.log('🎯 Adding relationships to existing canvas');
-    
-    const currentNodeMap = new Map(nodes.map(n => [n.id, n]));
-    const newNodes: Node[] = [...nodes]; // Start with existing nodes
-    const newRelationshipNodes: Node[] = [];
-    
-    // Process topology nodes - only add NEW relationship nodes
-    topologyData.nodes.forEach((apiNode, index) => {
-      const existingNode = currentNodeMap.get(apiNode.id);
-      
-      if (existingNode) {
-        // Update existing node data, preserve position
-        const nodeIndex = newNodes.findIndex(n => n.id === apiNode.id);
-        if (nodeIndex !== -1) {
-          newNodes[nodeIndex] = {
-            ...existingNode,
-            data: {
-              ...existingNode.data,
-              label: apiNode.label,
-              type: apiNode.type,
-              status: apiNode.status,
-              ip: apiNode.ip
-            }
-          };
-        }
-      } else {
-        // New relationship node - use smart positioning
-        let newPosition = { x: 0, y: 0 };
-        
-        // Find connected nodes for smart positioning
-        const connectedEdges = topologyData.edges.filter(e => e.source === apiNode.id || e.target === apiNode.id);
-        const connectedNodeIds = connectedEdges.flatMap(e => [e.source, e.target]).filter(id => id !== apiNode.id);
-        const connectedPositions = connectedNodeIds
-          .map(id => canvasStateRef.current.nodePositions.get(id) || currentNodeMap.get(id)?.position)
-          .filter(pos => pos !== undefined);
-        
-        if (connectedPositions.length > 0) {
-          // Position around connected nodes using radial placement
-          const avgX = connectedPositions.reduce((sum, pos) => sum + pos!.x, 0) / connectedPositions.length;
-          const avgY = connectedPositions.reduce((sum, pos) => sum + pos!.y, 0) / connectedPositions.length;
-          
-          // Use hierarchical positioning based on relationship direction
-          const angle = (index * 60) % 360; // 60 degree increments for better spread
-          const radius = 180 + (index % 2) * 80; // Varying distances
-          const radians = (angle * Math.PI) / 180;
-          
-          newPosition = {
-            x: avgX + Math.cos(radians) * radius,
-            y: avgY + Math.sin(radians) * radius
-          };
-        } else {
-          // Default grid positioning for orphaned nodes
-          const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
-          if (existingPositions.length > 0) {
-            const maxX = Math.max(...existingPositions.map(p => p.x), 200);
-            newPosition = { 
-              x: maxX + 200 + (index % 3) * 180, 
-              y: 200 + Math.floor(index / 3) * 150 
-            };
-          } else {
-            newPosition = { 
-              x: 400 + (index % 4) * 180, 
-              y: 200 + Math.floor(index / 4) * 150 
-            };
-          }
-        }
-        
-        const relationshipNode: Node = {
-          id: apiNode.id,
-          type: 'professional',
-          position: newPosition,
-          draggable: true,
-          data: {
-            label: apiNode.label,
-            type: apiNode.type,
-            status: apiNode.status,
-            ip: apiNode.ip
-          }
-        };
-        
-        newNodes.push(relationshipNode);
-        newRelationshipNodes.push(relationshipNode);
-      }
-    });
-    
-    // Create edges
-    const validEdges = topologyData.edges
-      .filter(edge => {
-        const sourceExists = newNodes.some(n => n.id === edge.source);
-        const targetExists = newNodes.some(n => n.id === edge.target);
-        return sourceExists && targetExists;
-      })
-      .map(edge => {
-        return {
-          id: `${edge.source}-${edge.target}`,
-          source: edge.source,
-          target: edge.target,
-          type: 'straight',
-          animated: false,
-          style: {
-            strokeWidth: 2,
-            stroke: '#3B82F6',
-            strokeOpacity: 0.8,
-          },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 14,
-            height: 14,
-            color: '#3B82F6'
-          }
-        };
-      });
-    
-    console.log('✅ Adding relationships to canvas:', {
-      totalNodes: newNodes.length,
-      newRelationshipNodes: newRelationshipNodes.length,
-      edges: validEdges.length
-    });
-    
-    // Update canvas
-    setNodes(newNodes);
-    setEdges(validEdges);
-    
-    // Save all positions
-    newNodes.forEach(node => {
-      canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
-    });
-    
-  }, [nodes, setNodes, setEdges]);
-
-  // Handle device selection changes from chip area - DEVICE ONLY (no auto relationships)
-
-    // Get current nodes to merge with topology nodes
-    const currentNodeMap = new Map(nodes.map(n => [n.id, n]));
-    const allNodes: Node[] = [];
-
-    // Process topology nodes
-    topologyData.nodes.forEach(apiNode => {
-      const existingNode = currentNodeMap.get(apiNode.id);
-      
-      if (existingNode) {
-        // Update existing node data, preserve position
-        allNodes.push({
-          ...existingNode,
-          data: {
-            ...existingNode.data,
-            label: apiNode.label,
-            type: apiNode.type,
-            status: apiNode.status,
-            ip: apiNode.ip,
-            direction: deviceDirections.get(apiNode.id) || existingNode.data.direction
-          }
-        });
-      } else {
-        // New node from relationships - position it near related nodes
-        const savedPosition = canvasStateRef.current.nodePositions.get(apiNode.id);
-        let newPosition = savedPosition || { x: 0, y: 0 };
-        
-        if (!savedPosition) {
-          // Find connected nodes to position near them
-          const connectedEdges = topologyData.edges.filter(e => e.source === apiNode.id || e.target === apiNode.id);
-          const connectedNodeIds = connectedEdges.flatMap(e => [e.source, e.target]).filter(id => id !== apiNode.id);
-          const connectedPositions = connectedNodeIds
-            .map(id => canvasStateRef.current.nodePositions.get(id))
-            .filter(pos => pos !== undefined);
-          
-          if (connectedPositions.length > 0) {
-            // Position near connected nodes with better spacing
-            const avgX = connectedPositions.reduce((sum, pos) => sum + pos.x, 0) / connectedPositions.length;
-            const avgY = connectedPositions.reduce((sum, pos) => sum + pos.y, 0) / connectedPositions.length;
-            
-            // Create a unique offset for each new node to prevent stacking
-            const nodeIndex = topologyData.nodes.findIndex(n => n.id === apiNode.id);
-            const angle = (nodeIndex * 45) % 360; // 45 degree increments
-            const radius = 120 + (nodeIndex % 3) * 50; // Varying distance
-            const radians = (angle * Math.PI) / 180;
-            
-            newPosition = {
-              x: avgX + Math.cos(radians) * radius,
-              y: avgY + Math.sin(radians) * radius
-            };
-          } else {
-            // Default positioning for orphaned nodes with better spacing
-            const existingPositions = Array.from(canvasStateRef.current.nodePositions.values());
-            const nodeIndex = topologyData.nodes.findIndex(n => n.id === apiNode.id);
-            
-            if (existingPositions.length > 0) {
-              const maxX = Math.max(...existingPositions.map((p: { x: number; y: number }) => p.x), 200);
-              newPosition = { 
-                x: maxX + 150 + (nodeIndex % 3) * 150, 
-                y: 200 + Math.floor(nodeIndex / 3) * 120 
-              };
-            } else {
-              newPosition = { 
-                x: 300 + (nodeIndex % 4) * 150, 
-                y: 300 + Math.floor(nodeIndex / 4) * 120 
-              };
-            }
-          }
-        }
-        
-        allNodes.push({
-          id: apiNode.id,
-          type: 'professional',
-          position: newPosition,
-          draggable: true,
-          data: {
-            label: apiNode.label,
-            type: apiNode.type,
-            status: apiNode.status,
-            direction: deviceDirections.get(apiNode.id) || 'children',
-            ip: apiNode.ip
-          }
-        });
-        
-        canvasStateRef.current.nodePositions.set(apiNode.id, newPosition);
-      }
-    });
-
-    // Create valid edges - strict validation
-    const nodeIdSet = new Set(allNodes.map(n => n.id));
-    const validEdges: Edge[] = topologyData.edges
-      .filter(edge => {
-        const sourceExists = nodeIdSet.has(edge.source);
-        const targetExists = nodeIdSet.has(edge.target);
-        
-        if (!sourceExists || !targetExists) {
-          console.log('🚫 Filtering invalid edge:', edge, {
-            sourceExists,
-            targetExists,
-            availableNodes: Array.from(nodeIdSet)
-          });
-        }
-        
-        return sourceExists && targetExists;
-      })
-      .map(edge => {
-        const sourceNode = topologyData.nodes.find(n => n.id === edge.source);
-        const targetNode = topologyData.nodes.find(n => n.id === edge.target);
-        const edgeStyle = getEdgeStyle(sourceNode?.type, targetNode?.type);
-        
-        return {
-          id: `${edge.source}-${edge.target}`,
-          source: edge.source,
-          target: edge.target,
-          type: edgeType,
-          animated: false,
-          style: edgeStyle,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 14,
-            height: 14,
-            color: edgeStyle.stroke
-          }
-        };
-      });
-
-    console.log('✅ Canvas update complete:', {
-      totalNodes: allNodes.length,
-      validEdges: validEdges.length,
-      preserveView: canvasStateRef.current.preserveView
-    });
-
-    // Apply layout ONLY on very first load - never when adding to existing canvas
-    const shouldApplyLayout = allNodes.length > 1 && canvasStateRef.current.isFirstLoad;
-    
-    console.log('🔍 Layout check:', {
-      allNodesCount: allNodes.length,
-      currentNodesCount: nodes.length,
-      manualLayoutLocked,
-      isFirstLoad: canvasStateRef.current.isFirstLoad,
-      validEdgesCount: validEdges.length,
-      currentLayout,
-      shouldApplyLayout
-    });
-    
-    if (shouldApplyLayout) {
-      console.log('🎯 Applying', currentLayout, 'layout to', allNodes.length, 'nodes with', validEdges.length, 'edges');
-      
-      let layoutedNodes: Node[];
-      switch (currentLayout) {
-        case 'hierarchical':
-          layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
-          break;
-        case 'radial':
-          layoutedNodes = applyRadialLayout(allNodes, validEdges);
-          break;
-        case 'grid':
-          layoutedNodes = applyGridLayout(allNodes);
-          break;
-        default:
-          layoutedNodes = applyHierarchicalLayout(allNodes, validEdges);
-      }
-      
-      console.log('📍', currentLayout, 'layout positions:', layoutedNodes.map(n => ({ id: n.id, pos: n.position })));
-      
-      // Update canvas with layouted nodes
-      setNodes(layoutedNodes);
-      setEdges(validEdges);
-      
-      // Update position cache
-      layoutedNodes.forEach(node => {
-        canvasStateRef.current.nodePositions.set(node.id, { ...node.position });
-      });
-      
-      // Set first load to false and fit view
-      canvasStateRef.current.isFirstLoad = false;
-      setTimeout(() => {
-        reactFlowInstance.fitView({ padding: 0.1, duration: 800 });
-        console.log('🎯', currentLayout, 'layout applied with fitView');
-      }, 100);
-    } else {
-      // Update canvas normally without layout
-      setNodes(allNodes);
-      setEdges(validEdges);
-      
-      console.log('🔒 Preserving view during relationship update (no layout change)');
-    }
-  }, [deviceDirections, edgeType, setNodes, setEdges, manualLayoutLocked, reactFlowInstance, currentLayout]);
 
   // Handle device selection changes from chip area - DEVICE ONLY (no auto relationships)
   useEffect(() => {
@@ -912,203 +480,29 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     
   }, [devices, updateCanvasFromChipArea]);
 
-  // UNUSED: Manual relationship loading - will be implemented via props later
-  /* const handleManualTopologyData = useCallback((newTopologyData: { nodes: TopologyNode[], edges: TopologyEdge[] }) => {
-    console.log('🔗 Manual relationship loading:', {
-      nodes: newTopologyData.nodes.length,
-      edges: newTopologyData.edges.length
-    });
-    
-    // Skip if topology data hasn't changed
-    if (JSON.stringify(newTopologyData) === JSON.stringify(lastTopologyRef.current)) {
-      console.log('🔒 Skipping topology update - data unchanged');
-      setIsUpdatingTopology(false);
-      return;
-    }
-    
-    lastTopologyRef.current = newTopologyData;
-    
-    // Add relationships to existing canvas without resetting device positions
-    addRelationshipsToCanvas(newTopologyData);
-    
-    // Hide updating indicator
-    setIsUpdatingTopology(false);
-  }, []); */
-
-  // Manual topology loading will be handled via props in future iterations
-
-  // Handle edge style changes - update existing edges with new style
-  useEffect(() => {
-    if (edges.length === 0) return;
-    
-    console.log('🎨 Updating edge styles to:', edgeType);
-    
-    setEdges(currentEdges => 
-      currentEdges.map(edge => ({
-        ...edge,
-        type: edgeType,
-        style: {
-          ...edge.style,
-          // Preserve existing style properties but ensure type is updated
-        }
-      }))
-    );
-  }, [edgeType, setEdges]);
-
-
+  // Event handlers
   const onNodeClick = useCallback((_event: React.MouseEvent, node: Node) => {
-    console.log(`Clicked node: ${node.data.label}, deletable: ${node.deletable}`);
-    // Hide context menu on regular click
+    console.log('🖱️ Node clicked:', node.data.label);
     setContextMenu({ visible: false, x: 0, y: 0 });
-    if (onDeviceClick) {
-      const device: Device = {
-        id: node.id,
-        name: String(node.data.label || 'Unknown'),
-        type: String(node.data.type || 'unknown'),
-        status: (node.data.status || 'unknown') as Device['status'],
-        ip: String(node.data.ip || 'N/A'),
-      };
-      onDeviceClick(device);
-    }
-  }, [onDeviceClick]);
+  }, []);
 
-  const onNodeContextMenu = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      event.preventDefault();
-      
-      // Calculate position relative to the viewport
-      const bounds = (event.target as HTMLElement).closest('.react-flow')?.getBoundingClientRect();
-      if (!bounds) return;
-      
-      setContextMenu({
-        visible: true,
-        x: event.clientX - bounds.left,
-        y: event.clientY - bounds.top,
-        nodeId: node.id,
-        nodeName: String(node.data.label || 'Unknown'),
-      });
-    },
-    []
-  );
+  const onNodeContextMenu = useCallback((event: React.MouseEvent, node: Node) => {
+    event.preventDefault();
+    setContextMenu({
+      visible: true,
+      x: event.clientX,
+      y: event.clientY,
+      nodeId: node.id,
+      nodeName: node.data.label as string
+    });
+    console.log('🖱️ Context menu opened for:', node.data.label);
+  }, []);
 
   const onPaneClick = useCallback(() => {
     // Hide context menu when clicking on the pane
     setContextMenu({ visible: false, x: 0, y: 0 });
   }, []);
 
-  /* const handleContextMenuAction = useCallback((direction: 'parents' | 'children' | 'both') => {
-    if (!contextMenu.nodeId) return;
-    
-    // Find the device ID for the clicked node
-    const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-    const deviceId = topologyNode?.id || contextMenu.nodeId;
-    
-    // Check if clicked device is already in selected devices (chip area)
-    const isDeviceInChipArea = selectedDevices.some(d => d.name === contextMenu.nodeId);
-    
-    if (!isDeviceInChipArea && onAddDeviceToSelection) {
-      // Device is NOT in chip area - need to add it first
-      const clickedDevice: Device = {
-        id: deviceId,
-        name: contextMenu.nodeName || 'Unknown',
-        type: topologyNode?.type || 'Unknown',
-        status: (topologyNode?.status || 'unknown') as Device['status'],
-        ip: topologyNode?.ip || 'N/A',
-      };
-      
-      console.log('🎯 Adding device to selection and changing direction:', {
-        device: clickedDevice.name,
-        deviceId,
-        direction,
-        isInChipArea: isDeviceInChipArea
-      });
-      
-      // Add to chip area first, then change direction will be triggered
-      onAddDeviceToSelection(clickedDevice);
-    }
-    
-    // Change direction for THIS SPECIFIC device only
-    console.log('🎯 Changing direction for device:', deviceId, 'to:', direction);
-    onDirectionChange?.(direction, deviceId);
-    setContextMenu({ visible: false, x: 0, y: 0 });
-  }, [contextMenu.nodeId, contextMenu.nodeName, selectedDevices, topologyData?.nodes, onAddDeviceToSelection, onDirectionChange]); */
-
-  // Export functions
-  const exportAsPNG = useCallback(() => {
-    // For now, use a simple screenshot approach
-    // In production, you'd use a library like html2canvas or react-flow's toObject/toSvg
-    
-    // Create a temporary canvas
-    const canvas = document.createElement('canvas');
-    canvas.width = 1920;
-    canvas.height = 1080;
-    const ctx = canvas.getContext('2d');
-    
-    if (ctx) {
-      // White background
-      ctx.fillStyle = 'white';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      
-      // Export as PNG
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `topology-${new Date().toISOString().split('T')[0]}.png`;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      });
-    }
-  }, [nodes]);
-
-  const exportAsHTML = useCallback(() => {
-    const htmlContent = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Network Topology - ${new Date().toLocaleDateString()}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .header { border-bottom: 2px solid #3B82F6; padding-bottom: 10px; margin-bottom: 20px; }
-        .device { margin: 10px 0; padding: 10px; border: 1px solid #E5E7EB; border-radius: 8px; }
-        .connections { margin-top: 20px; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>Network Topology Report</h1>
-        <p>Generated: ${new Date().toLocaleDateString()}</p>
-        <p>Devices: ${nodes.length} | Connections: ${edges.length}</p>
-    </div>
-    
-    <h2>Devices</h2>
-    ${nodes.map(node => `
-        <div class="device">
-            <strong>${node.data.label}</strong><br>
-            Type: ${node.data.type || 'Unknown'}<br>
-            Status: ${node.data.status || 'Unknown'}
-        </div>
-    `).join('')}
-    
-    <div class="connections">
-        <h2>Connections</h2>
-        ${edges.map(edge => `
-            <div>${edge.source} → ${edge.target}</div>
-        `).join('')}
-    </div>
-</body>
-</html>`;
-
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `topology-${new Date().toISOString().split('T')[0]}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, [nodes, edges]);
 
   return (
     <div className={`w-full h-full ${className}`}>
@@ -1225,217 +619,97 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
               <span className="text-base">🔄</span>
               <span className="font-medium">Load Both Directions</span>
             </button>
-            <div className="border-t border-white/20 mt-2 pt-2">
-              <button
-                onClick={() => {
-                  const topologyNode = topologyData?.nodes.find(n => n.label === contextMenu.nodeId);
-                  const deviceId = topologyNode?.id || contextMenu.nodeId;
-                  const deviceDirection = deviceDirections.get(deviceId) || 'children';
-                  onDirectionChange?.(deviceDirection, deviceId);
-                  setContextMenu({ visible: false, x: 0, y: 0 });
-                }}
-                className="w-full text-left px-4 py-3 text-muted hover:bg-white/40 transition-all duration-300 flex items-center space-x-3 hover:text-emphasis"
-                style={{ fontSize: 'var(--text-sm)' }}
-              >
-                <span className="text-base">🔄</span>
-                <span className="font-medium">Refresh Relationships</span>
-              </button>
-            </div>
           </div>
         )}
-        
-        <MiniMap 
-          nodeColor={(node) => {
-            const status = String(node.data?.status || 'unknown');
-            const colors = getStatusColors(status);
-            return colors.bg;
-          }}
-          nodeStrokeWidth={2}
-          pannable
-          zoomable
-          className="glass-panel border-white/30 backdrop-blur-md shadow-lg"
-          style={{
-            backgroundColor: 'rgba(248, 250, 252, 0.6)',
-            border: 'none',
-          }}
-        />
-        
-        {/* Collapsible Controls */}
-        <Panel position="top-left">
+
+        {/* Collapsible Layout Controls Panel */}
+        <Panel position="top-left" className="glass-panel backdrop-blur-md border-white/30 rounded-xl shadow-lg">
           {!isControlsOpen ? (
-            /* Collapsed State - Show Toggle Button */
             <button
               onClick={() => setIsControlsOpen(true)}
-              className="
-                glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg
-                p-3 transition-all duration-300 hover:shadow-xl hover:scale-110
-                flex items-center justify-center
-                bg-white/70 dark:bg-gray-800/70 hover:bg-white/90 dark:hover:bg-gray-700/90
-                border-2
-              "
-              title="Open Controls"
+              className="p-2 text-primary hover:text-primary-600 transition-colors duration-300"
+              title="Show layout controls"
             >
-              <span className="text-xl">⚙️</span>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
+              </svg>
             </button>
           ) : (
-            /* Expanded State - Show Full Panel */
-            <div className="glass-panel backdrop-blur-lg border-white/30 dark:border-gray-600 rounded-lg shadow-lg p-2 space-y-2 animate-scale-in min-w-[140px]">
-              <div className="text-xs font-semibold text-muted uppercase tracking-wide mb-2 flex items-center justify-between" style={{ fontSize: 'var(--text-xs)' }}>
-                Controls
-                <button 
+            <div className="p-4" style={{ minWidth: '200px' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-primary">Layout Controls</h3>
+                <button
                   onClick={() => setIsControlsOpen(false)}
-                  className="text-muted hover:text-emphasis transition-colors p-0.5 rounded hover:bg-white/20 dark:hover:bg-white/10 -mr-1"
-                  title="Close Controls"
+                  className="text-muted hover:text-primary transition-colors duration-300"
                 >
-                  ✕
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-          
-          {['hierarchical', 'radial', 'grid'].map((layout) => (
-            <button
-              key={layout}
-              onClick={() => {
-                console.log('🎯 Layout button clicked:', layout);
-                setCurrentLayout(layout);
-                setManualLayoutLocked(false);
-                applyLayoutToNodes(layout);
-              }}
-              className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
-                currentLayout === layout && !manualLayoutLocked
-                  ? 'bg-blue-100 text-blue-800 font-medium' 
-                  : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
-              }`}
-            >
-              {layout === 'hierarchical' && '📊'} {layout === 'radial' && '🎯'} {layout === 'grid' && '⊞'} {layout.charAt(0).toUpperCase() + layout.slice(1)}
-            </button>
-          ))}
-          
-          <div className="border-t border-white/20 pt-2 mt-2 space-y-1">
-            <button
-              onClick={() => {
-                setManualLayoutLocked(!manualLayoutLocked);
-              }}
-              className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
-                manualLayoutLocked
-                  ? 'bg-green-100 text-green-800 font-medium' 
-                  : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
-              }`}
-            >
-              {manualLayoutLocked ? '🔒' : '🔓'} Manual
-            </button>
-            
-            <button
-              onClick={() => {
-                console.log('🔄 Reset layout clicked');
-                setManualLayoutLocked(false);
-                canvasStateRef.current.nodePositions.clear();
-                applyLayoutToNodes(currentLayout);
-              }}
-              className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700"
-            >
-              🔄 Reset
-            </button>
-          </div>
-          
-          <div className="border-t border-white/20 pt-2 mt-2">
-            <div className="mb-2">
-              <div className="text-xs font-semibold text-muted mb-1">Edges</div>
-              {['straight', 'bezier', 'smoothstep', 'step'].map((type) => (
-                <button
-                  key={type}
-                  onClick={() => setEdgeType(type)}
-                  className={`block w-full text-left px-2 py-1 text-xs rounded-md transition-colors mb-1 ${
-                    edgeType === type 
-                      ? 'bg-blue-100 text-blue-800' 
-                      : 'bg-white/50 hover:bg-white/70'
-                  }`}
-                >
-                  {type === 'straight' && '📏'} {type === 'bezier' && '〰️'} 
-                  {type === 'smoothstep' && '⚡'} {type === 'step' && '📐'} {type}
-                </button>
-              ))}
-            </div>
-            
-            <button
-              onClick={() => reactFlowInstance.fitView({ padding: 0.1, duration: 500 })}
-              className="block w-full text-left px-2 py-1 text-xs bg-white/50 hover:bg-white/70 rounded-md transition-colors"
-            >
-              🎯 Fit View
-            </button>
-            
-            {nodes.length > 0 && (
-              <>
-                <div className="border-t border-white/20 pt-2 mt-2">
-                  <div className="text-xs font-semibold text-muted mb-1">Export</div>
-                  <button
-                    onClick={exportAsPNG}
-                    className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 mb-1 bg-green-100 hover:bg-green-200 text-green-700 text-xs"
-                  >
-                    📷 PNG
-                  </button>
-                  <button
-                    onClick={exportAsHTML}
-                    className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs"
-                  >
-                    📄 HTML
-                  </button>
+              
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs font-medium text-muted uppercase tracking-wide block mb-2">Layout Algorithm</label>
+                  <div className="space-y-1">
+                    {['hierarchical', 'radial', 'grid'].map((layout) => (
+                      <button
+                        key={layout}
+                        onClick={() => {
+                          console.log('🎯 Layout button clicked:', layout);
+                          setCurrentLayout(layout);
+                          setManualLayoutLocked(false);
+                          applyLayoutToNodes(layout);
+                        }}
+                        className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
+                          currentLayout === layout && !manualLayoutLocked
+                            ? 'bg-blue-100 text-blue-800 font-medium' 
+                            : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
+                        }`}
+                      >
+                        {layout.charAt(0).toUpperCase() + layout.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 
-                <button
-                  onClick={() => {
-                    setNodes([]);
-                    setEdges([]);
-                    canvasStateRef.current.nodePositions.clear();
-                    canvasStateRef.current.isFirstLoad = true;
-                    canvasStateRef.current.preserveView = false;
-                    setManualLayoutLocked(false);
-                    if (onClearAll) {
-                      onClearAll();
-                    }
-                  }}
-                  className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 mt-2 bg-red-100 hover:bg-red-200 text-red-600 text-xs"
-                >
-                  🗑️ Clear All
-                </button>
-              </>
-            )}
-          </div>
+                <div className="border-t border-white/20 pt-2 mt-2 space-y-1">
+                  <button
+                    onClick={() => {
+                      setManualLayoutLocked(!manualLayoutLocked);
+                    }}
+                    className={`block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs ${
+                      manualLayoutLocked
+                        ? 'bg-green-100 text-green-800 font-medium' 
+                        : 'bg-white/50 hover:bg-white/70 text-secondary hover:text-emphasis'
+                    }`}
+                  >
+                    🔒 Manual Layout {manualLayoutLocked ? 'Locked' : 'Unlocked'}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      console.log('🔄 Reset layout clicked');
+                      setManualLayoutLocked(false);
+                      canvasStateRef.current.nodePositions.clear();
+                      applyLayoutToNodes(currentLayout);
+                    }}
+                    className="block w-full text-left px-2 py-1 rounded-md transition-all duration-300 text-xs bg-orange-100 hover:bg-orange-200 text-orange-700"
+                  >
+                    🔄 Reset Positions
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </Panel>
-        
-        <Panel position="top-right" className="glass-panel backdrop-blur-lg border-white/30 rounded-xl shadow-xl px-5 py-3">
-          <div className="text-muted" style={{ fontSize: 'var(--text-sm)' }}>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-1">
-                <span className="w-2 h-2 bg-gradient-to-br from-blue-400 to-blue-500 rounded-full"></span>
-                <span className="text-emphasis font-semibold">{nodes.length}</span>
-                <span>devices</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <span className="w-2 h-2 bg-gradient-to-br from-green-400 to-green-500 rounded-full"></span>
-                <span className="text-emphasis font-semibold">{edges.length}</span>
-                <span>connections</span>
-              </div>
-            </div>
-            {isUpdatingTopology && (
-              <div className="text-primary mt-2 flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                <span className="font-medium">Updating topology...</span>
-              </div>
-            )}
-          </div>
-        </Panel>
-        
-        {/* Center loading overlay when updating topology */}
+
+        {/* Loading indicator */}
         {isUpdatingTopology && (
-          <div className="absolute inset-0 flex items-center justify-center bg-white bg-opacity-75 z-40">
-            <div className="bg-white rounded-lg shadow-xl p-4 flex items-center space-x-3 border">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <div className="text-sm text-gray-700">
-                <div className="font-medium">Updating Topology</div>
-                <div className="text-xs text-gray-500">Loading relationships...</div>
-              </div>
+          <div className="absolute top-4 right-4 glass-panel backdrop-blur-md border-white/30 rounded-xl p-4 z-40">
+            <div className="flex items-center space-x-3 text-primary">
+              <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <span className="font-medium text-sm">Loading relationships...</span>
             </div>
           </div>
         )}
