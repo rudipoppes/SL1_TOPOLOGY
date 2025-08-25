@@ -20,7 +20,7 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
-import dagre from 'dagre';
+// import dagre from 'dagre'; // Not used anymore
 
 // CRITICAL: Define node types OUTSIDE component to prevent re-renders
 const DeviceNode = React.memo(({ data }: { data: any }) => {
@@ -88,32 +88,22 @@ const nodeTypes = {
   device: DeviceNode,
 };
 
-// Dagre layout for automatic positioning
-const dagreGraph = new dagre.graphlib.Graph();
-dagreGraph.setDefaultEdgeLabel(() => ({}));
+// Dagre layout for automatic positioning - DISABLED
+// const dagreGraph = new dagre.graphlib.Graph();
+// dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-const nodeWidth = 150;
-const nodeHeight = 60;
+// const nodeWidth = 150;
+// const nodeHeight = 60;
 
-const getLayoutedElements = (nodes: Node[], edges: Edge[], direction = 'TB') => {
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 100, nodesep: 80 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  // CRITICAL: Round all positions to integers
-  nodes.forEach((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
+const getLayoutedElements = (nodes: Node[], edges: Edge[], _direction = 'TB') => {
+  // Simple grid layout instead of dagre
+  nodes.forEach((node, index) => {
+    const cols = Math.ceil(Math.sqrt(nodes.length));
+    const col = index % cols;
+    const row = Math.floor(index / cols);
     node.position = {
-      x: Math.round(nodeWithPosition.x - nodeWidth / 2),
-      y: Math.round(nodeWithPosition.y - nodeHeight / 2),
+      x: Math.round(100 + col * 200),
+      y: Math.round(100 + row * 150),
     };
   });
 
