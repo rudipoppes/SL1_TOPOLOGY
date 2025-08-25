@@ -399,13 +399,10 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       currentLayout: currentLayout
     });
     
-    // CRITICAL: Always clear edges at the start to prevent phantom connections
-    console.log('🧹 PHANTOM PREVENTION: Clearing all edges at start of topology effect');
-    setEdges([]);
-    
     if (!topologyData && devices.length === 0) {
       console.log('🧹 Clearing all nodes and edges (no topology data)');
       setNodes([]);
+      setEdges([]);
       setPreservePositions(false);
       setSavedPositions(new Map());
       setManualLayoutLocked(false);
@@ -413,7 +410,7 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
     }
     
     if (!topologyData) {
-      console.log('🧹 No topology data but have devices - clearing edges only');
+      console.log('🧹 No topology data - preserving existing state');
       return;
     }
     
@@ -682,18 +679,28 @@ const EnterpriseTopologyFlowInner: React.FC<TopologyFlowProps> = ({
       // Log for debugging deletable state
       console.log('Node deletable states:', flowNodes.map(n => `${n.data.label}: ${n.deletable}`));
       
-      // Fit view logic: initial load, layout changes, or manual layout unlock
+      // Fit view logic: ONLY on initial load or explicit layout algorithm changes
       const isInitialLoad = nodes.length === 0;
-      const isLayoutChangeOrUnlock = !shouldPreservePositions || manualLayoutLocked === false;
-      const isIncrementalOnly = shouldPreservePositions && hasNewNodes && existingNodeIds.size > 0;
+      const isExplicitLayoutChange = !shouldPreservePositions && !manualLayoutLocked;
       
-      if (isInitialLoad || (isLayoutChangeOrUnlock && !isIncrementalOnly)) {
-        console.log('🎯 Fitting view (initial load or layout change)');
+      // Only fit view for true initial loads or when user explicitly changes layout algorithm
+      if (isInitialLoad && layoutedNodes.length > 0) {
+        console.log('🎯 Fitting view (initial load)');
+        setTimeout(() => {
+          reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
+        }, 100);
+      } else if (isExplicitLayoutChange) {
+        console.log('🎯 Fitting view (explicit layout change)');
         setTimeout(() => {
           reactFlowInstance.fitView({ padding: 0.1, duration: 500 });
         }, 100);
       } else {
-        console.log('🔒 PRESERVING VIEW: Skipping fitView for incremental update');
+        console.log('🔒 PRESERVING VIEW: Skipping fitView (incremental update or preserved positions)', {
+          shouldPreservePositions,
+          manualLayoutLocked,
+          hasNewNodes,
+          existingNodeIds: existingNodeIds.size
+        });
       }
     } else {
       // Clear everything when no nodes

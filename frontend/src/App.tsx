@@ -50,14 +50,7 @@ function App() {
       console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
       setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
       
-      // CRITICAL: Clear topology data first to prevent phantom edges
-      console.log('🧹 Clearing topology data to prevent phantom edges during direction change');
-      setTopologyData(null);
-      
-      // Small delay to ensure React state updates are processed
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
-      // Refresh topology with updated per-device directions
+      // Refresh topology with updated per-device directions (no clearing needed with proper merge logic)
       await fetchTopologyDataWithDeviceDirections(topologyDevices);
     } else {
       // Global direction change (fallback for compatibility)
@@ -68,13 +61,7 @@ function App() {
       });
       setDeviceDirections(newDirections);
       
-      // CRITICAL: Clear topology data first to prevent phantom edges
-      console.log('🧹 Clearing topology data to prevent phantom edges during global direction change');
-      setTopologyData(null);
-      
-      // Small delay to ensure React state updates are processed  
-      await new Promise(resolve => setTimeout(resolve, 50));
-      
+      // Refresh topology with updated global directions (no clearing needed with proper merge logic)
       await fetchTopologyDataWithDeviceDirections(topologyDevices);
     }
   };
@@ -144,7 +131,17 @@ function App() {
       };
       
       console.log('📊 Complete topology with per-device directions:', completeTopology);
-      setTopologyData(completeTopology);
+      
+      // Use merging logic to prevent canvas view resets and phantom edges
+      setTopologyData(prevTopology => {
+        if (!prevTopology) {
+          return completeTopology;
+        }
+        
+        // For direction changes, we want to REPLACE edges but preserve node positions
+        // The new completeTopology already contains all devices that should be visible
+        return completeTopology;
+      });
     } catch (error) {
       console.error('❌ Failed to fetch topology with device directions:', error);
       // Create simple topology with just the devices (no relationships)
@@ -213,10 +210,32 @@ function App() {
         
         const mergedNodes = [...prevTopology.nodes, ...allNewNodes];
         
-        // Merge edges (avoid duplicates)
-        const existingEdgeKeys = new Set(prevTopology.edges.map(e => `${e.source}-${e.target}`));
-        const newEdges = response.topology.edges.filter(e => !existingEdgeKeys.has(`${e.source}-${e.target}`));
-        const mergedEdges = [...prevTopology.edges, ...newEdges];
+        // Merge edges with STRICT validation against current node set
+        const mergedNodeIds = new Set([...prevTopology.nodes.map(n => n.id), ...allNewNodes.map(n => n.id)]);
+        
+        // CRITICAL: Filter existing edges to only include those with valid nodes in current set
+        const validExistingEdges = prevTopology.edges.filter(edge => 
+          mergedNodeIds.has(edge.source) && mergedNodeIds.has(edge.target)
+        );
+        
+        // Filter new edges for duplicates and validate against current node set  
+        const existingEdgeKeys = new Set(validExistingEdges.map(e => `${e.source}-${e.target}`));
+        const validNewEdges = response.topology.edges.filter(e => {
+          const hasValidNodes = mergedNodeIds.has(e.source) && mergedNodeIds.has(e.target);
+          const isNotDuplicate = !existingEdgeKeys.has(`${e.source}-${e.target}`);
+          return hasValidNodes && isNotDuplicate;
+        });
+        
+        const mergedEdges = [...validExistingEdges, ...validNewEdges];
+        
+        console.log('🔍 PHANTOM PREVENTION in merge:', {
+          prevEdges: prevTopology.edges.length,
+          validExistingEdges: validExistingEdges.length,
+          newApiEdges: response.topology.edges.length,
+          validNewEdges: validNewEdges.length,
+          finalMergedEdges: mergedEdges.length,
+          removedInvalidEdges: prevTopology.edges.length - validExistingEdges.length
+        });
         
         console.log('🔄 Merged topology with per-device directions:', {
           prevNodes: prevTopology.nodes.length,
@@ -224,7 +243,7 @@ function App() {
           newDeviceNodes: allNewNodes.length,
           totalNodes: mergedNodes.length,
           prevEdges: prevTopology.edges.length,
-          newEdges: newEdges.length,
+          newEdges: validNewEdges.length,
           totalEdges: mergedEdges.length
         });
         
