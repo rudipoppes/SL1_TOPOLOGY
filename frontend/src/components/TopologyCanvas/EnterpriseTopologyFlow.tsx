@@ -63,14 +63,14 @@ const getStatusColors = (status: string = 'unknown') => {
 };
 
 // Professional Device Node with proper deletable handling
-const ProfessionalDeviceNode = ({ data, selected, deletable }: { data: any; selected?: boolean; deletable?: boolean }) => {
-  const { label, type, status, onRemove } = data;
+const ProfessionalDeviceNode = ({ data, selected }: { data: any; selected?: boolean }) => {
+  const { label, type, status, onRemove, wasDropped } = data;
   const icon = getDeviceIcon(type || '', label);
   const colors = getStatusColors(status);
   const [isHovered, setIsHovered] = useState(false);
   
-  // Use React Flow's deletable property (passed from node definition)
-  const canRemove = Boolean(deletable);
+  // ONLY show P and X if this exact device was dropped (not related devices)
+  const showRemoveControls = Boolean(wasDropped);
   
   return (
     <>
@@ -93,17 +93,17 @@ const ProfessionalDeviceNode = ({ data, selected, deletable }: { data: any; sele
         style={{
           minWidth: '80px',
           maxWidth: '90px',
-          background: canRemove ? '#EBF8FF' : '#F8FAFC',
+          background: showRemoveControls ? '#EBF8FF' : '#F8FAFC',
           border: selected 
             ? '2px solid #3B82F6' 
-            : canRemove 
+            : showRemoveControls 
             ? '2px solid #2563EB' 
             : '1px solid #CBD5E0',
           borderRadius: '8px',
           padding: '6px',
           boxShadow: selected 
             ? '0 0 15px rgba(59, 130, 246, 0.5)' 
-            : canRemove
+            : showRemoveControls
             ? '0 2px 8px rgba(37, 99, 235, 0.2)'
             : isHovered ? colors.shadow : '0 2px 4px rgba(0,0,0,0.05)',
           cursor: 'grab',
@@ -121,7 +121,7 @@ const ProfessionalDeviceNode = ({ data, selected, deletable }: { data: any; sele
         }}
       >
         {/* Remove button - only show for deletable nodes */}
-        {canRemove && onRemove && isHovered && (
+        {showRemoveControls && onRemove && isHovered && (
           <button
             onClick={(e) => {
               e.stopPropagation();
@@ -137,7 +137,7 @@ const ProfessionalDeviceNode = ({ data, selected, deletable }: { data: any; sele
         )}
         
         {/* Primary device indicator - only for deletable nodes */}
-        {canRemove && (
+        {showRemoveControls && (
           <div 
             className="absolute -top-2 -left-2 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center"
             title="Primary device (removable)"
