@@ -14,16 +14,17 @@ const statusIcons = {
 };
 
 interface DeviceListProps {
-  onDeviceSelect: (devices: Device[]) => void;
+  onDeviceSelect: (device: Device) => void;
+  onClearSelection: () => void;
   selectedDevices: Device[];
 }
 
 export const DeviceList: React.FC<DeviceListProps> = ({
   onDeviceSelect,
+  onClearSelection,
   selectedDevices: parentSelectedDevices,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
-  const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -96,18 +97,11 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     fetchDevices(true);
   }, [searchTerm]);
 
-  // Handle device selection
+  // Handle device selection - single device only
   const handleDeviceSelect = (device: Device) => {
-    const newSelected = new Set(selectedDevices);
-    if (newSelected.has(device.id)) {
-      newSelected.delete(device.id);
-    } else {
-      newSelected.add(device.id);
-    }
-    setSelectedDevices(newSelected);
-    
-    const selectedDeviceList = devices.filter((d) => newSelected.has(d.id));
-    onDeviceSelect(selectedDeviceList);
+    // Notify parent with the single selected device
+    // Parent will manage the selection state
+    onDeviceSelect(device);
   };
 
   // Clear filters
@@ -164,11 +158,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                 <span className="truncate max-w-32">{device.name}</span>
                 <button
                   onClick={() => {
-                    const newSelected = new Set(selectedDevices);
-                    newSelected.delete(device.id);
-                    setSelectedDevices(newSelected);
-                    const newList = devices.filter(d => newSelected.has(d.id));
-                    onDeviceSelect(newList);
+                    // Clear selection completely via parent
+                    onClearSelection();
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
                 >

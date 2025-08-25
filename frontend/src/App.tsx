@@ -13,24 +13,19 @@ function App() {
   const [loadingTopology, setLoadingTopology] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDeviceSelect = async (devices: Device[]) => {
+  const handleDeviceSelect = async (device: Device) => {
+    // Only allow single device selection - replace current selection
+    const devices = [device];
     setSelectedDevices(devices);
-    console.log('Selected devices changed:', devices.map(d => d.name));
+    console.log('Selected device changed to:', device.name);
     
-    // Immediately update topology when selection changes
+    // Update topology to match chip area (selected devices)
     setTopologyDevices(devices);
     
-    // Fetch topology data for selected devices
+    // Fetch topology data for the selected device
     await fetchTopologyData(devices);
   };
 
-  // Remove drag functionality
-  // const handleDeviceDrag = (device: Device) => {
-  //   setDraggedDevice(device);
-  // };
-
-  // Remove drop functionality - selection handles topology now
-  // const handleDrop = async (e: React.DragEvent) => { ... };
 
   const handleClearAll = () => {
     console.log('Clearing all topology data');
@@ -74,28 +69,6 @@ function App() {
     }
   };
 
-  const handleDeviceClick = async (device: Device) => {
-    console.log('🎯 Clicked device in topology:', device);
-    
-    // Check if device already exists in topology
-    const deviceExists = topologyDevices.some(d => d.id === device.id);
-    
-    if (!deviceExists) {
-      // Add the clicked device if it's not already there
-      const updatedDevices = [...topologyDevices, device];
-      setTopologyDevices(updatedDevices);
-      await fetchTopologyData(updatedDevices);
-    } else {
-      // Device already exists - could expand its relationships
-      console.log('🔍 Expanding relationships for:', device.name);
-      // For now, just refetch with current devices
-      // In future, this could fetch deeper relationships or specific parent/child
-      await fetchTopologyData(topologyDevices);
-    }
-  };
-
-  // Remove drag over - no longer needed
-  // const handleDragOver = (e: React.DragEvent) => { ... };
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -143,6 +116,7 @@ function App() {
       >
         <DeviceList
           onDeviceSelect={handleDeviceSelect}
+          onClearSelection={handleClearAll}
           selectedDevices={selectedDevices}
         />
       </div>
@@ -177,8 +151,8 @@ function App() {
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                 />
               </svg>
-              <p className="text-lg font-medium mb-2">Drag devices here to build topology</p>
-              <p className="text-sm">Select devices from the inventory and drag them onto this canvas</p>
+              <p className="text-lg font-medium mb-2">Select a device to build topology</p>
+              <p className="text-sm">Click on devices in the inventory to add them to the topology</p>
             </div>
           </div>
         ) : (
@@ -191,7 +165,6 @@ function App() {
             <EnterpriseTopologyFlow 
               devices={topologyDevices}
               topologyData={topologyData || undefined}
-              onDeviceClick={handleDeviceClick}
               onClearAll={handleClearAll}
               className="h-full"
             />
