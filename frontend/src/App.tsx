@@ -13,16 +13,14 @@ function App() {
   const [loadingTopology, setLoadingTopology] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const handleDeviceSelect = async (device: Device) => {
-    // Only allow single device selection - replace current selection
-    const devices = [device];
+  const handleDeviceSelect = async (devices: Device[]) => {
     setSelectedDevices(devices);
-    console.log('Selected device changed to:', device.name);
+    console.log('Selected devices changed:', devices.map(d => d.name));
     
     // Update topology to match chip area (selected devices)
     setTopologyDevices(devices);
     
-    // Fetch topology data for the selected device
+    // Fetch topology data for selected devices
     await fetchTopologyData(devices);
   };
 

@@ -14,7 +14,7 @@ const statusIcons = {
 };
 
 interface DeviceListProps {
-  onDeviceSelect: (device: Device) => void;
+  onDeviceSelect: (devices: Device[]) => void;
   onClearSelection: () => void;
   selectedDevices: Device[];
 }
@@ -25,6 +25,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   selectedDevices: parentSelectedDevices,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
+  const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -97,11 +98,19 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     fetchDevices(true);
   }, [searchTerm]);
 
-  // Handle device selection - single device only
+  // Handle device selection - toggle add/remove from chip area
   const handleDeviceSelect = (device: Device) => {
-    // Notify parent with the single selected device
-    // Parent will manage the selection state
-    onDeviceSelect(device);
+    const newSelected = new Set(selectedDevices);
+    if (newSelected.has(device.id)) {
+      newSelected.delete(device.id);
+    } else {
+      newSelected.add(device.id);
+    }
+    setSelectedDevices(newSelected);
+    
+    // Send the updated list of selected devices to parent
+    const selectedDeviceList = devices.filter((d) => newSelected.has(d.id));
+    onDeviceSelect(selectedDeviceList);
   };
 
   // Clear filters
@@ -145,8 +154,19 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       {/* Selected Devices Area */}
       {parentSelectedDevices.length > 0 && (
         <div className="p-4 bg-blue-50 border-b border-blue-200">
-          <div className="text-sm font-medium text-blue-800 mb-2">
-            Selected for Topology
+          <div className="flex items-center justify-between mb-2">
+            <div className="text-sm font-medium text-blue-800">
+              Selected for Topology
+            </div>
+            <button
+              onClick={() => {
+                setSelectedDevices(new Set());
+                onClearSelection();
+              }}
+              className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+            >
+              Clear All
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             {parentSelectedDevices.map((device) => (
@@ -158,8 +178,12 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                 <span className="truncate max-w-32">{device.name}</span>
                 <button
                   onClick={() => {
-                    // Clear selection completely via parent
-                    onClearSelection();
+                    // Remove this specific device from selection
+                    const newSelected = new Set(selectedDevices);
+                    newSelected.delete(device.id);
+                    setSelectedDevices(newSelected);
+                    const newList = devices.filter(d => newSelected.has(d.id));
+                    onDeviceSelect(newList);
                   }}
                   className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
                 >
