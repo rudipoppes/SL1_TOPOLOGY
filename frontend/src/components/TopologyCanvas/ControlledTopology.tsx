@@ -757,25 +757,62 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    // DIRECT APPROACH: Just update the nodes immediately
+    // MOVE CHIP DEVICES AND THEIR RELATIONSHIPS TOGETHER
     const chipAreaDeviceIds = new Set(devices.map(d => d.id));
+    
+    // Calculate new positions for chip devices
+    const chipDevicePositions = new Map<string, XYPosition>();
+    devices.forEach((device, index) => {
+      const newPosition = calculatePosition(index, devices.length, layoutType);
+      chipDevicePositions.set(device.id, newPosition);
+    });
     
     const updatedNodes = nodes.map((node) => {
       if (chipAreaDeviceIds.has(node.id)) {
-        // This is a chip device - calculate new position directly
-        const chipDevices = devices;
-        const chipIndex = chipDevices.findIndex(d => d.id === node.id);
-        const newPosition = calculatePosition(chipIndex, chipDevices.length, layoutType);
-        
-        // Update position tracking
+        // This is a chip device - move to new layout position
+        const newPosition = chipDevicePositions.get(node.id)!;
         nodePositions.current.set(node.id, newPosition);
-        
         return {
           ...node,
           position: newPosition,
         };
+      } else {
+        // This is a relationship node - find its chip device and move relative to it
+        const connectedChipDevice = edges.find(edge => 
+          (edge.source === node.id && chipAreaDeviceIds.has(edge.target)) ||
+          (edge.target === node.id && chipAreaDeviceIds.has(edge.source))
+        );
+        
+        if (connectedChipDevice) {
+          const chipDeviceId = chipAreaDeviceIds.has(connectedChipDevice.source) 
+            ? connectedChipDevice.source 
+            : connectedChipDevice.target;
+          
+          const oldChipPosition = nodePositions.current.get(chipDeviceId);
+          const newChipPosition = chipDevicePositions.get(chipDeviceId);
+          
+          if (oldChipPosition && newChipPosition) {
+            // Calculate the offset of this relationship node from its chip device
+            const currentNodePos = nodePositions.current.get(node.id) || node.position;
+            const offsetX = currentNodePos.x - oldChipPosition.x;
+            const offsetY = currentNodePos.y - oldChipPosition.y;
+            
+            // Move relationship node by the same amount as its chip device moved
+            const newPosition = {
+              x: newChipPosition.x + offsetX,
+              y: newChipPosition.y + offsetY,
+            };
+            
+            nodePositions.current.set(node.id, newPosition);
+            return {
+              ...node,
+              position: newPosition,
+            };
+          }
+        }
+        
+        return node; // No connected chip device found, keep as-is
       }
-      return node; // Keep relationship nodes unchanged
     });
     
     // Update nodes directly
