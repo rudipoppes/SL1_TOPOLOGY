@@ -369,6 +369,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   // Track which devices are newly added (need relationship loading)
   const previousDeviceIds = useRef<Set<string>>(new Set());
   const newlyAddedDevices = useRef<Set<string>>(new Set());
+  const layoutChangingDevices = useRef<Set<string>>(new Set());
   
   // Auto-load relationships for newly added devices
   useEffect(() => {
@@ -448,20 +449,17 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           } else if (relatedDevices.size > 0) {
             // This device is part of a relationship - will be positioned later
             position = undefined;
-          } else if (newlyAddedDevices.current.has(device.id)) {
-            // For layout changes, use specific layout algorithm instead of random positioning
+          } else if (layoutChangingDevices.current.has(device.id)) {
+            // For layout changes, use specific layout algorithm
             const chipDeviceCount = devices.length;
             const chipDeviceIndex = devices.findIndex(d => d.id === device.id);
             position = calculatePosition(chipDeviceIndex, chipDeviceCount, currentLayout);
             
-            // But still check for conflicts and adjust if needed
-            const hasConflict = Array.from(nodePositions.current.values()).some(existingPos => 
-              Math.abs(existingPos.x - position!.x) < 300 && Math.abs(existingPos.y - position!.y) < 300
-            );
-            
-            if (hasConflict) {
-              position = findEmptyPosition(nodePositions.current, newEdges);
-            }
+            // For layout changes, we want the specific layout positioning, not conflict avoidance
+            // This ensures grid/hierarchical/radial layouts work as expected
+          } else if (newlyAddedDevices.current.has(device.id)) {
+            // For new device drops, use smart positioning to avoid conflicts
+            position = findEmptyPosition(nodePositions.current, newEdges);
           } else {
             // Standalone device - find empty position
             position = findEmptyPosition(nodePositions.current, newEdges);
@@ -581,8 +579,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     setEdges(newEdges);
     
     
-    // Auto-fit view only when there are newly added devices (not just topology updates)
-    if (newlyAddedDevices.current.size > 0 && reactFlowInstance) {
+    // Auto-fit view for newly added devices OR layout changes
+    if ((newlyAddedDevices.current.size > 0 || layoutChangingDevices.current.size > 0) && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ 
           padding: 0.25, 
@@ -590,8 +588,9 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           maxZoom: 1.2,
           minZoom: 0.1 
         });
-        // Clear newly added devices after auto-zoom
+        // Clear tracking sets after auto-zoom
         newlyAddedDevices.current.clear();
+        layoutChangingDevices.current.clear();
       }, 200);
     }
     
@@ -772,10 +771,10 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       nodePositions.current.delete(device.id);
     });
     
-    // Treat chip devices as newly added for repositioning
-    newlyAddedDevices.current.clear();
+    // Mark chip devices as layout-changing for repositioning
+    layoutChangingDevices.current.clear();
     chipDevices.forEach(device => {
-      newlyAddedDevices.current.add(device.id);
+      layoutChangingDevices.current.add(device.id);
     });
     
     // Force recalculation by clearing positions and letting the main effect handle it
