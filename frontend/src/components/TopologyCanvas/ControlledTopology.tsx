@@ -15,8 +15,10 @@ import {
 import '@xyflow/react/dist/style.css';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 
-// Professional device node with proper styling
+// Professional device node with consistent sizing
 const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
+  const [isHovered, setIsHovered] = React.useState(false);
+  
   const getStatusColor = () => {
     switch (data.status) {
       case 'online': return '#10b981';
@@ -35,11 +37,20 @@ const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
     return '📡';
   };
 
+  // Truncate long names
+  const truncateName = (name: string, maxLength: number = 12) => {
+    if (name.length <= maxLength) return name;
+    return name.substring(0, maxLength) + '...';
+  };
+
   return (
     <div
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      title={isHovered ? `${data.label}${data.ip ? ` (${data.ip})` : ''}` : ''}
       style={{
-        padding: '12px 16px',
-        borderRadius: '8px',
+        padding: '14px 18px',
+        borderRadius: '10px',
         background: '#ffffff',
         border: `3px solid ${getStatusColor()}`,
         fontSize: '12px',
@@ -47,12 +58,23 @@ const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
         textAlign: 'center',
         position: 'relative',
         userSelect: 'none',
-        minWidth: '130px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+        // FIXED CONSISTENT SIZE
+        width: '160px',
+        height: '100px',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        boxShadow: isHovered 
+          ? '0 8px 25px rgba(0,0,0,0.2)' 
+          : '0 4px 12px rgba(0,0,0,0.15)',
         cursor: 'grab',
+        transition: 'all 0.2s ease-in-out',
+        transform: isHovered ? 'scale(1.05)' : 'scale(1)',
         // Ensure solid background
         backdropFilter: 'blur(0px)',
         opacity: 1,
+        zIndex: isHovered ? 10 : 1,
       }}
     >
       <Handle
@@ -77,32 +99,42 @@ const ProfessionalDeviceNode = React.memo(({ data }: { data: any }) => {
         {getDeviceIcon()}
       </div>
       
-      {/* Device name - FORCE BLACK TEXT */}
+      {/* Device name - TRUNCATED */}
       <div style={{ 
         color: '#000000 !important', 
         fontWeight: 800, 
         marginBottom: '4px',
         textShadow: 'none',
-        fontSize: '14px',
-        lineHeight: '16px',
+        fontSize: '13px',
+        lineHeight: '15px',
         // Force text to be visible
         WebkitTextFillColor: '#000000',
         textRendering: 'optimizeLegibility',
+        // Ensure text fits in fixed width
+        maxWidth: '130px',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
       }}>
-        {data.label || 'Device'}
+        {truncateName(data.label || 'Device', 15)}
       </div>
       
-      {/* IP address - FORCE DARK GRAY TEXT */}
+      {/* IP address - TRUNCATED */}
       {data.ip && (
         <div style={{ 
-          fontSize: '12px', 
+          fontSize: '11px', 
           color: '#1f2937 !important',
           fontWeight: 600,
           textShadow: 'none',
-          lineHeight: '14px',
+          lineHeight: '13px',
           // Force text to be visible
           WebkitTextFillColor: '#1f2937',
           textRendering: 'optimizeLegibility',
+          // Ensure IP fits
+          maxWidth: '130px',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}>
           {data.ip}
         </div>
@@ -146,13 +178,14 @@ const nodeTypes = { device: ProfessionalDeviceNode };
 type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'circular';
 
 const calculatePosition = (index: number, total: number, layoutType: LayoutType): XYPosition => {
-  const SPACING_X = 200;
-  const SPACING_Y = 150;
-  const START_X = 150;
-  const START_Y = 100;
+  const SPACING_X = 280; // Increased spacing
+  const SPACING_Y = 200; // Increased spacing
+  const START_X = 200;
+  const START_Y = 150;
 
   switch (layoutType) {
     case 'grid':
+      // Perfect square grid
       const columns = Math.ceil(Math.sqrt(total));
       const col = index % columns;
       const row = Math.floor(index / columns);
@@ -162,21 +195,26 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
       };
 
     case 'hierarchical':
-      const levels = Math.ceil(total / 4);
-      const itemsPerLevel = Math.ceil(total / levels);
-      const level = Math.floor(index / itemsPerLevel);
-      const posInLevel = index % itemsPerLevel;
+      // True hierarchical: fewer items per level, more levels
+      const maxPerLevel = Math.max(2, Math.ceil(total / 3)); // Max 2-3 items per level
+      const level = Math.floor(index / maxPerLevel);
+      const posInLevel = index % maxPerLevel;
+      const levelWidth = Math.min(maxPerLevel, total - (level * maxPerLevel));
+      const levelStartX = START_X + ((maxPerLevel - levelWidth) * SPACING_X) / 2; // Center the level
       return {
-        x: START_X + (posInLevel * SPACING_X),
-        y: START_Y + (level * SPACING_Y),
+        x: levelStartX + (posInLevel * SPACING_X),
+        y: START_Y + (level * (SPACING_Y + 50)), // Extra vertical spacing
       };
 
     case 'radial':
+      if (total === 1) {
+        return { x: 400, y: 300 };
+      }
       if (index === 0) {
         return { x: 400, y: 300 }; // Center
       }
       const angle = ((index - 1) * 2 * Math.PI) / (total - 1);
-      const radius = 200;
+      const radius = Math.max(250, total * 25); // Dynamic radius
       return {
         x: 400 + radius * Math.cos(angle),
         y: 300 + radius * Math.sin(angle),
@@ -184,7 +222,7 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
 
     case 'circular':
       const circleAngle = (index * 2 * Math.PI) / total;
-      const circleRadius = Math.max(150, total * 20);
+      const circleRadius = Math.max(200, total * 30); // Bigger circle
       return {
         x: 400 + circleRadius * Math.cos(circleAngle),
         y: 300 + circleRadius * Math.sin(circleAngle),
@@ -336,14 +374,34 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     isDragging.current = true;
   }, []);
   
-  // Prevent any automatic node changes
-  const handleNodesChange = useCallback(() => {
-    // Do nothing - we control positions manually
-    return;
-  }, []);
+  // Optimized node changes - only handle position updates
+  const handleNodesChange = useCallback((changes: any[]) => {
+    // Only handle position changes for better performance
+    const positionChanges = changes.filter(change => 
+      change.type === 'position' && change.dragging
+    );
+    
+    if (positionChanges.length === 0) return;
+    
+    // Update positions directly
+    setNodes(prevNodes => 
+      prevNodes.map(node => {
+        const change = positionChanges.find(c => c.id === node.id);
+        if (change && change.position) {
+          const roundedPos = {
+            x: Math.round(change.position.x),
+            y: Math.round(change.position.y),
+          };
+          nodePositions.current.set(node.id, roundedPos);
+          return { ...node, position: roundedPos };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
   
   const handleEdgesChange = useCallback(() => {
-    // Do nothing for edges either
+    // Do nothing for edges - we control them manually
     return;
   }, []);
   
@@ -482,7 +540,13 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         nodeOrigin={[0, 0]}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
       >
-        <Background variant={BackgroundVariant.Cross} gap={25} size={0.5} color="#e2e8f0" />
+        <Background 
+          variant={BackgroundVariant.Cross} 
+          gap={30} 
+          size={0.3} 
+          color="transparent"
+          style={{ opacity: 0 }}
+        />
         <Controls position="bottom-right" />
         
         {/* Professional Layout Controls */}

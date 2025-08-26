@@ -240,14 +240,28 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             {hasMore && !loading && (
               <button
                 onClick={() => fetchDevices(false)}
-                className="
-                  px-4 py-2.5 glass-panel bg-gradient-to-r from-blue-500/90 to-blue-600/90
-                  text-white font-medium rounded-lg border border-blue-400/30
-                  hover:from-blue-600/95 hover:to-blue-700/95 hover:shadow-lg
-                  transition-all duration-300 backdrop-blur-sm
-                  transform hover:scale-105
-                "
-                style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-medium)' }}
+                style={{
+                  padding: '8px 16px',
+                  background: 'linear-gradient(to right, #3b82f6, #2563eb)',
+                  color: '#ffffff',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  borderRadius: '8px',
+                  border: '1px solid #2563eb',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
+                  e.currentTarget.style.transform = 'scale(1.05)';
+                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'linear-gradient(to right, #3b82f6, #2563eb)';
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
+                }}
               >
                 Load More
               </button>
