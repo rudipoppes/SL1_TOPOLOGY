@@ -360,6 +360,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   const [edges, setEdges] = useState<Edge[]>([]);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('grid');
   const [showControls, setShowControls] = useState(false);
+  const [layoutChangeCounter, setLayoutChangeCounter] = useState(0);
   
   // Track positions separately to ensure stability
   const nodePositions = useRef<Map<string, XYPosition>>(new Map());
@@ -440,14 +441,27 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           }
           
           if (isRootDevice && relatedDevices.size > 0) {
-            // This is a newly added device with relationships - use radial layout
-            // First, find empty position for the whole group
+            // This is a newly added device with relationships - use smart positioning
             const groupCenter = findEmptyPosition(nodePositions.current, [], 500);
             position = groupCenter;
             deviceGroups.set(device.id, relatedDevices);
           } else if (relatedDevices.size > 0) {
             // This device is part of a relationship - will be positioned later
             position = undefined;
+          } else if (newlyAddedDevices.current.has(device.id)) {
+            // For layout changes, use specific layout algorithm instead of random positioning
+            const chipDeviceCount = devices.length;
+            const chipDeviceIndex = devices.findIndex(d => d.id === device.id);
+            position = calculatePosition(chipDeviceIndex, chipDeviceCount, currentLayout);
+            
+            // But still check for conflicts and adjust if needed
+            const hasConflict = Array.from(nodePositions.current.values()).some(existingPos => 
+              Math.abs(existingPos.x - position!.x) < 300 && Math.abs(existingPos.y - position!.y) < 300
+            );
+            
+            if (hasConflict) {
+              position = findEmptyPosition(nodePositions.current, newEdges);
+            }
           } else {
             // Standalone device - find empty position
             position = findEmptyPosition(nodePositions.current, newEdges);
@@ -581,7 +595,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       }, 200);
     }
     
-  }, [devices, topologyData, currentLayout, reactFlowInstance]);
+  }, [devices, topologyData, currentLayout, layoutChangeCounter, reactFlowInstance]);
   
   // Handle node drag - update our position map
   const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -746,24 +760,43 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    const updatedNodes = nodes.map((node, index) => {
-      const newPosition = calculatePosition(index, nodes.length, layoutType);
-      nodePositions.current.set(node.id, newPosition);
-      return {
-        ...node,
-        position: newPosition,
-      };
+    // Identify chip area devices (original selected devices, not topology nodes)
+    const chipAreaDeviceIds = new Set(devices.map(d => d.id));
+    
+    // Separate chip devices from topology relationship nodes
+    const chipDevices = nodes.filter(node => chipAreaDeviceIds.has(node.id));
+    // topologyNodes will keep their radial positions relative to chip devices
+    
+    // Clear old positions for chip devices only - they'll be repositioned
+    chipDevices.forEach(device => {
+      nodePositions.current.delete(device.id);
     });
-    setNodes(updatedNodes);
+    
+    // Treat chip devices as newly added for repositioning
+    newlyAddedDevices.current.clear();
+    chipDevices.forEach(device => {
+      newlyAddedDevices.current.add(device.id);
+    });
+    
+    // Force recalculation by clearing positions and letting the main effect handle it
+    // This will trigger the smart positioning logic in the main useEffect
+    setCurrentLayout(layoutType);
+    setLayoutChangeCounter(prev => prev + 1);
     
     setTimeout(() => {
-      reactFlowInstance.fitView({ padding: 0.2 });
-    }, 100);
-  }, [nodes, reactFlowInstance]);
+      if (reactFlowInstance) {
+        reactFlowInstance.fitView({ 
+          padding: 0.25, 
+          duration: 800,
+          maxZoom: 1.2,
+          minZoom: 0.1 
+        });
+      }
+    }, 200);
+  }, [nodes, devices, reactFlowInstance]);
 
   // Change layout
   const changeLayout = useCallback((layoutType: LayoutType) => {
-    setCurrentLayout(layoutType);
     applyLayout(layoutType);
   }, [applyLayout]);
   
