@@ -178,8 +178,8 @@ const nodeTypes = { device: ProfessionalDeviceNode };
 type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'circular';
 
 const calculatePosition = (index: number, total: number, layoutType: LayoutType): XYPosition => {
-  const SPACING_X = 400; // Much wider spacing for relationship lines
-  const SPACING_Y = 300; // Much taller spacing for relationship lines
+  const SPACING_X = 600; // Extra wide spacing to prevent relationship line crowding
+  const SPACING_Y = 450; // Extra tall spacing to prevent relationship line crowding
   const START_X = 250;
   const START_Y = 200;
 
@@ -214,7 +214,7 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
         return { x: 500, y: 400 }; // Center
       }
       const angle = ((index - 1) * 2 * Math.PI) / (total - 1);
-      const radius = Math.max(350, total * 40); // Much larger radius
+      const radius = Math.max(450, total * 60); // Extra large radius for relationship spacing
       return {
         x: 500 + radius * Math.cos(angle),
         y: 400 + radius * Math.sin(angle),
@@ -222,7 +222,7 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
 
     case 'circular':
       const circleAngle = (index * 2 * Math.PI) / total;
-      const circleRadius = Math.max(300, total * 50); // Much bigger circle
+      const circleRadius = Math.max(400, total * 70); // Extra large circle for relationship spacing
       return {
         x: 500 + circleRadius * Math.cos(circleAngle),
         y: 400 + circleRadius * Math.sin(circleAngle),
