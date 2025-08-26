@@ -583,13 +583,6 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     // Auto-fit view for newly added devices OR layout changes
     const shouldAutoZoom = newlyAddedDevices.current.size > 0 || layoutChangingDevices.current.size > 0;
     
-    // Clear the layout changing devices AFTER positioning is done
-    if (layoutChangingDevices.current.size > 0) {
-      console.log('✅ Layout positioning complete, clearing layoutChangingDevices');
-      // Clear immediately after positioning logic is complete
-      layoutChangingDevices.current.clear();
-    }
-    
     if (shouldAutoZoom && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ 
@@ -598,8 +591,10 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           maxZoom: 1.2,
           minZoom: 0.1 
         });
-        // Clear only newly added devices after auto-zoom
+        // Clear tracking sets after auto-zoom
         newlyAddedDevices.current.clear();
+        layoutChangingDevices.current.clear();
+        console.log('✅ Layout positioning complete, cleared all tracking sets');
       }, 200);
     }
     
