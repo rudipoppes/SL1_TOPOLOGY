@@ -454,6 +454,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
             const chipDeviceCount = devices.length;
             const chipDeviceIndex = devices.findIndex(d => d.id === device.id);
             position = calculatePosition(chipDeviceIndex, chipDeviceCount, currentLayout);
+            console.log(`📍 Layout positioning device ${device.name} at index ${chipDeviceIndex} with layout ${currentLayout}:`, position);
             
             // For layout changes, we want the specific layout positioning, not conflict avoidance
             // This ensures grid/hierarchical/radial layouts work as expected
@@ -580,7 +581,16 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     
     
     // Auto-fit view for newly added devices OR layout changes
-    if ((newlyAddedDevices.current.size > 0 || layoutChangingDevices.current.size > 0) && reactFlowInstance) {
+    const shouldAutoZoom = newlyAddedDevices.current.size > 0 || layoutChangingDevices.current.size > 0;
+    
+    // Clear the layout changing devices AFTER positioning is done
+    if (layoutChangingDevices.current.size > 0) {
+      console.log('✅ Layout positioning complete, clearing layoutChangingDevices');
+      // Clear immediately after positioning logic is complete
+      layoutChangingDevices.current.clear();
+    }
+    
+    if (shouldAutoZoom && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ 
           padding: 0.25, 
@@ -588,9 +598,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           maxZoom: 1.2,
           minZoom: 0.1 
         });
-        // Clear tracking sets after auto-zoom
+        // Clear only newly added devices after auto-zoom
         newlyAddedDevices.current.clear();
-        layoutChangingDevices.current.clear();
       }, 200);
     }
     
@@ -776,6 +785,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     chipDevices.forEach(device => {
       layoutChangingDevices.current.add(device.id);
     });
+    
+    console.log('🔄 Layout change: marked devices for repositioning:', Array.from(layoutChangingDevices.current));
     
     // Force recalculation by clearing positions and letting the main effect handle it
     // This will trigger the smart positioning logic in the main useEffect
