@@ -365,6 +365,36 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   const nodePositions = useRef<Map<string, XYPosition>>(new Map());
   const isDragging = useRef(false);
   
+  // Track which devices are newly added (need relationship loading)
+  const previousDeviceIds = useRef<Set<string>>(new Set());
+  const newlyAddedDevices = useRef<Set<string>>(new Set());
+  
+  // Auto-load relationships for newly added devices
+  useEffect(() => {
+    const currentDeviceIds = new Set(devices.map(d => d.id));
+    const newDevices: Device[] = [];
+    
+    devices.forEach(device => {
+      if (!previousDeviceIds.current.has(device.id)) {
+        newDevices.push(device);
+        newlyAddedDevices.current.add(device.id);
+      }
+    });
+    
+    // Auto-load relationships for new devices with 'children' direction
+    if (newDevices.length > 0 && onDirectionChange) {
+      console.log('🔄 Auto-loading relationships for newly added devices:', newDevices.map(d => d.name));
+      newDevices.forEach(device => {
+        // Trigger relationship loading for each new device (default: children)
+        setTimeout(() => {
+          onDirectionChange(device.id, 'children');
+        }, 100);
+      });
+    }
+    
+    previousDeviceIds.current = currentDeviceIds;
+  }, [devices, onDirectionChange]);
+  
   // Build nodes and edges from props
   useEffect(() => {
     const newNodes: Node[] = [];
@@ -384,76 +414,130 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       });
     }
     
-    // Process devices first - use smart placement for unconnected devices
+    // Group devices by their relationship clusters
+    const deviceGroups = new Map<string, Set<string>>(); // root device -> related devices
+    
+    // Process each device and its relationships
     devices.forEach((device, index) => {
       if (!processedIds.has(device.id)) {
         // Get existing position or calculate new one
         let position = nodePositions.current.get(device.id);
+        
         if (!position) {
-          // Check if this device is connected to others
-          const isConnected = newEdges.some(edge => 
-            edge.source === device.id || edge.target === device.id
-          );
+          // Check if this device belongs to a relationship group
+          const relatedDevices = new Set<string>();
+          const isRootDevice = newlyAddedDevices.current.has(device.id);
           
-          if (isConnected || index === 0) {
-            // Use normal layout for connected devices or first device
-            position = calculatePosition(index, devices.length + (topologyData?.nodes.length || 0), currentLayout);
+          // Find all devices connected to this one
+          if (topologyData) {
+            topologyData.edges.forEach(edge => {
+              if (edge.source === device.id) {
+                relatedDevices.add(edge.target);
+              } else if (edge.target === device.id) {
+                relatedDevices.add(edge.source);
+              }
+            });
+          }
+          
+          if (isRootDevice && relatedDevices.size > 0) {
+            // This is a newly added device with relationships - use radial layout
+            // First, find empty position for the whole group
+            const groupCenter = findEmptyPosition(nodePositions.current, [], 500);
+            position = groupCenter;
+            deviceGroups.set(device.id, relatedDevices);
+          } else if (relatedDevices.size > 0) {
+            // This device is part of a relationship - will be positioned later
+            position = null;
           } else {
-            // Use smart placement to avoid existing groups
+            // Standalone device - find empty position
             position = findEmptyPosition(nodePositions.current, newEdges);
           }
-          nodePositions.current.set(device.id, position);
+          
+          if (position) {
+            nodePositions.current.set(device.id, position);
+          }
         }
         
-        newNodes.push({
-          id: device.id,
-          type: 'device',
-          position: { ...position }, // Clone to prevent reference issues
-          data: {
-            label: device.name,
-            status: device.status,
-            ip: device.ip,
-          },
-          draggable: true,
-          selectable: true,
-          connectable: false,
-        });
-        processedIds.add(device.id);
+        if (position) {
+          newNodes.push({
+            id: device.id,
+            type: 'device',
+            position: { ...position },
+            data: {
+              label: device.name,
+              status: device.status,
+              ip: device.ip,
+            },
+            draggable: true,
+            selectable: true,
+            connectable: false,
+          });
+          processedIds.add(device.id);
+        }
       }
     });
     
-    // Process topology data nodes (from relationships)
+    // Process topology data nodes with radial layout around their root devices
     if (topologyData) {
-      // Add topology nodes with proper positioning near their connected devices
       topologyData.nodes.forEach((node, nodeIndex) => {
         if (!processedIds.has(node.id)) {
-          // Calculate position for new topology nodes
           let position = nodePositions.current.get(node.id);
+          
           if (!position) {
-            // Find connected parent device to position nearby
-            const connectedEdge = newEdges.find(edge => 
-              edge.source === node.id || edge.target === node.id
-            );
+            // Find which root device this node belongs to
+            let rootDevice: string | null = null;
+            let rootPosition: XYPosition | null = null;
             
-            if (connectedEdge) {
-              // Position near the connected device
-              const connectedId = connectedEdge.source === node.id ? connectedEdge.target : connectedEdge.source;
-              const connectedPos = nodePositions.current.get(connectedId);
+            deviceGroups.forEach((relatedSet, rootId) => {
+              if (relatedSet.has(node.id)) {
+                rootDevice = rootId;
+                rootPosition = nodePositions.current.get(rootId) || null;
+              }
+            });
+            
+            if (!rootPosition) {
+              // Check if this node is connected to any device
+              const connectedEdge = newEdges.find(edge => 
+                edge.source === node.id || edge.target === node.id
+              );
               
-              if (connectedPos) {
-                // Place in a circle around the connected device
-                const angle = (nodeIndex * 2 * Math.PI) / Math.max(4, topologyData.nodes.length);
-                const distance = 150; // Close spacing for connected devices
+              if (connectedEdge) {
+                const connectedId = connectedEdge.source === node.id ? connectedEdge.target : connectedEdge.source;
+                rootPosition = nodePositions.current.get(connectedId);
+                rootDevice = connectedId;
+              }
+            }
+            
+            if (rootPosition && rootDevice) {
+              // Get all related nodes for proper radial layout
+              const relatedToRoot = new Set<string>();
+              newEdges.forEach(edge => {
+                if (edge.source === rootDevice) {
+                  relatedToRoot.add(edge.target);
+                } else if (edge.target === rootDevice) {
+                  relatedToRoot.add(edge.source);
+                }
+              });
+              
+              const relatedCount = relatedToRoot.size;
+              const relatedArray = Array.from(relatedToRoot);
+              const relatedIndex = relatedArray.indexOf(node.id);
+              
+              if (relatedIndex !== -1) {
+                // Radial layout around root device - evenly distributed
+                const angle = (relatedIndex * 2 * Math.PI) / relatedCount;
+                const radius = Math.min(250, Math.max(180, relatedCount * 25)); // Dynamic radius based on count
+                
                 position = {
-                  x: connectedPos.x + distance * Math.cos(angle),
-                  y: connectedPos.y + distance * Math.sin(angle),
+                  x: rootPosition.x + radius * Math.cos(angle),
+                  y: rootPosition.y + radius * Math.sin(angle),
                 };
               } else {
-                // Fallback positioning
-                position = calculatePosition(processedIds.size, devices.length + topologyData.nodes.length, currentLayout);
+                // Fallback - find empty position
+                position = findEmptyPosition(nodePositions.current, newEdges);
               }
             } else {
-              // Not connected - use smart placement
+              // Fallback - find empty position
               position = findEmptyPosition(nodePositions.current, newEdges);
             }
             
@@ -483,16 +567,18 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     setEdges(newEdges);
     
     
-    // Auto-fit view to show all nodes when new devices are added
-    if (newNodes.length > 0 && reactFlowInstance) {
+    // Auto-fit view only when there are newly added devices (not just topology updates)
+    if (newlyAddedDevices.current.size > 0 && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ 
-          padding: 0.2, 
-          duration: 800,
-          maxZoom: 1.5,
+          padding: 0.25, 
+          duration: 1000,
+          maxZoom: 1.2,
           minZoom: 0.1 
         });
-      }, 100);
+        // Clear newly added devices after auto-zoom
+        newlyAddedDevices.current.clear();
+      }, 200);
     }
     
   }, [devices, topologyData, currentLayout, reactFlowInstance]);
