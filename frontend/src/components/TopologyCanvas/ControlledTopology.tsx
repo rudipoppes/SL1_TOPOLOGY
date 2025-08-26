@@ -360,7 +360,6 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   const [edges, setEdges] = useState<Edge[]>([]);
   const [currentLayout, setCurrentLayout] = useState<LayoutType>('grid');
   const [showControls, setShowControls] = useState(false);
-  const [layoutChangeCounter, setLayoutChangeCounter] = useState(0);
   
   // Track positions separately to ensure stability
   const nodePositions = useRef<Map<string, XYPosition>>(new Map());
@@ -369,7 +368,6 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   // Track which devices are newly added (need relationship loading)
   const previousDeviceIds = useRef<Set<string>>(new Set());
   const newlyAddedDevices = useRef<Set<string>>(new Set());
-  const layoutChangingDevices = useRef<Set<string>>(new Set());
   
   // Auto-load relationships for newly added devices
   useEffect(() => {
@@ -385,7 +383,6 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     
     // Auto-load relationships for new devices with 'children' direction
     if (newDevices.length > 0 && onDirectionChange) {
-      console.log('🔄 Auto-loading relationships for newly added devices:', newDevices.map(d => d.name));
       newDevices.forEach(device => {
         // Trigger relationship loading for each new device (default: children)
         setTimeout(() => {
@@ -449,15 +446,6 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           } else if (relatedDevices.size > 0) {
             // This device is part of a relationship - will be positioned later
             position = undefined;
-          } else if (layoutChangingDevices.current.has(device.id)) {
-            // For layout changes, use specific layout algorithm
-            const chipDeviceCount = devices.length;
-            const chipDeviceIndex = devices.findIndex(d => d.id === device.id);
-            position = calculatePosition(chipDeviceIndex, chipDeviceCount, currentLayout);
-            console.log(`📍 Layout positioning device ${device.name} at index ${chipDeviceIndex} with layout ${currentLayout}:`, position);
-            
-            // For layout changes, we want the specific layout positioning, not conflict avoidance
-            // This ensures grid/hierarchical/radial layouts work as expected
           } else if (newlyAddedDevices.current.has(device.id)) {
             // For new device drops, use smart positioning to avoid conflicts
             position = findEmptyPosition(nodePositions.current, newEdges);
@@ -580,10 +568,8 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     setEdges(newEdges);
     
     
-    // Auto-fit view for newly added devices OR layout changes
-    const shouldAutoZoom = newlyAddedDevices.current.size > 0 || layoutChangingDevices.current.size > 0;
-    
-    if (shouldAutoZoom && reactFlowInstance) {
+    // Auto-fit view only when there are newly added devices (not just topology updates)
+    if (newlyAddedDevices.current.size > 0 && reactFlowInstance) {
       setTimeout(() => {
         reactFlowInstance.fitView({ 
           padding: 0.25, 
@@ -591,14 +577,12 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           maxZoom: 1.2,
           minZoom: 0.1 
         });
-        // Clear tracking sets after auto-zoom
+        // Clear newly added devices after auto-zoom
         newlyAddedDevices.current.clear();
-        layoutChangingDevices.current.clear();
-        console.log('✅ Layout positioning complete, cleared all tracking sets');
       }, 200);
     }
     
-  }, [devices, topologyData, currentLayout, layoutChangeCounter, reactFlowInstance]);
+  }, [devices, topologyData, currentLayout, reactFlowInstance]);
   
   // Handle node drag - update our position map
   const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
@@ -763,30 +747,25 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    // Identify chip area devices (original selected devices, not topology nodes)
+    // Simple approach: just reposition chip devices directly
     const chipAreaDeviceIds = new Set(devices.map(d => d.id));
     
-    // Separate chip devices from topology relationship nodes
-    const chipDevices = nodes.filter(node => chipAreaDeviceIds.has(node.id));
-    // topologyNodes will keep their radial positions relative to chip devices
-    
-    // Clear old positions for chip devices only - they'll be repositioned
-    chipDevices.forEach(device => {
-      nodePositions.current.delete(device.id);
+    const updatedNodes = nodes.map((node) => {
+      if (chipAreaDeviceIds.has(node.id)) {
+        // This is a chip device - reposition it using the layout algorithm
+        const chipDeviceIndex = devices.findIndex(d => d.id === node.id);
+        const newPosition = calculatePosition(chipDeviceIndex, devices.length, layoutType);
+        nodePositions.current.set(node.id, newPosition);
+        return {
+          ...node,
+          position: newPosition,
+        };
+      }
+      // Keep topology relationship nodes as-is
+      return node;
     });
     
-    // Mark chip devices as layout-changing for repositioning
-    layoutChangingDevices.current.clear();
-    chipDevices.forEach(device => {
-      layoutChangingDevices.current.add(device.id);
-    });
-    
-    console.log('🔄 Layout change: marked devices for repositioning:', Array.from(layoutChangingDevices.current));
-    
-    // Force recalculation by clearing positions and letting the main effect handle it
-    // This will trigger the smart positioning logic in the main useEffect
-    setCurrentLayout(layoutType);
-    setLayoutChangeCounter(prev => prev + 1);
+    setNodes(updatedNodes);
     
     setTimeout(() => {
       if (reactFlowInstance) {
@@ -797,11 +776,12 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           minZoom: 0.1 
         });
       }
-    }, 200);
+    }, 100);
   }, [nodes, devices, reactFlowInstance]);
 
   // Change layout
   const changeLayout = useCallback((layoutType: LayoutType) => {
+    setCurrentLayout(layoutType);
     applyLayout(layoutType);
   }, [applyLayout]);
   
