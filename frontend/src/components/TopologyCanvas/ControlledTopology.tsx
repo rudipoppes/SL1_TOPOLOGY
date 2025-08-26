@@ -757,28 +757,43 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    // Clear positions for chip devices only, letting the main effect reposition them
+    // DIRECT APPROACH: Just update the nodes immediately
     const chipAreaDeviceIds = new Set(devices.map(d => d.id));
     
-    // Remove positions for chip devices only - they'll be recalculated
-    chipAreaDeviceIds.forEach(deviceId => {
-      nodePositions.current.delete(deviceId);
+    const updatedNodes = nodes.map((node) => {
+      if (chipAreaDeviceIds.has(node.id)) {
+        // This is a chip device - calculate new position directly
+        const chipDevices = devices;
+        const chipIndex = chipDevices.findIndex(d => d.id === node.id);
+        const newPosition = calculatePosition(chipIndex, chipDevices.length, layoutType);
+        
+        // Update position tracking
+        nodePositions.current.set(node.id, newPosition);
+        
+        return {
+          ...node,
+          position: newPosition,
+        };
+      }
+      return node; // Keep relationship nodes unchanged
     });
     
-    // Change layout and let the main effect handle positioning
+    // Update nodes directly
+    setNodes(updatedNodes);
+    
+    // Update current layout state
     setCurrentLayout(layoutType);
     
+    // Auto-zoom after layout
     setTimeout(() => {
       if (reactFlowInstance) {
         reactFlowInstance.fitView({ 
-          padding: 0.25, 
-          duration: 800,
-          maxZoom: 1.2,
-          minZoom: 0.1 
+          padding: 0.2, 
+          duration: 500
         });
       }
-    }, 200);
-  }, [devices, reactFlowInstance]);
+    }, 50);
+  }, [nodes, devices, reactFlowInstance]);
 
   // Change layout
   const changeLayout = useCallback((layoutType: LayoutType) => {
