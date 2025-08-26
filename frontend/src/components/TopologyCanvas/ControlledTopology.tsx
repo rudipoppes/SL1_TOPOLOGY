@@ -439,7 +439,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           }
           
           if (isRootDevice && relatedDevices.size > 0) {
-            // This is a newly added device with relationships - use smart positioning
+            // This is a newly dropped device with relationships - use smart positioning
             const groupCenter = findEmptyPosition(nodePositions.current, [], 500);
             position = groupCenter;
             deviceGroups.set(device.id, relatedDevices);
@@ -450,8 +450,18 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
             // For new device drops, use smart positioning to avoid conflicts
             position = findEmptyPosition(nodePositions.current, newEdges);
           } else {
-            // Standalone device - find empty position
-            position = findEmptyPosition(nodePositions.current, newEdges);
+            // This is a chip device being repositioned due to layout change
+            const chipDeviceIndex = devices.findIndex(d => d.id === device.id);
+            position = calculatePosition(chipDeviceIndex, devices.length, currentLayout);
+            
+            // Check for conflicts with existing groups and adjust if needed
+            const hasConflict = Array.from(nodePositions.current.values()).some(existingPos => 
+              Math.abs(existingPos.x - position!.x) < 300 && Math.abs(existingPos.y - position!.y) < 300
+            );
+            
+            if (hasConflict) {
+              position = findEmptyPosition(nodePositions.current, newEdges);
+            }
           }
           
           if (position) {
@@ -747,25 +757,16 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    // Simple approach: just reposition chip devices directly
+    // Clear positions for chip devices only, letting the main effect reposition them
     const chipAreaDeviceIds = new Set(devices.map(d => d.id));
     
-    const updatedNodes = nodes.map((node) => {
-      if (chipAreaDeviceIds.has(node.id)) {
-        // This is a chip device - reposition it using the layout algorithm
-        const chipDeviceIndex = devices.findIndex(d => d.id === node.id);
-        const newPosition = calculatePosition(chipDeviceIndex, devices.length, layoutType);
-        nodePositions.current.set(node.id, newPosition);
-        return {
-          ...node,
-          position: newPosition,
-        };
-      }
-      // Keep topology relationship nodes as-is
-      return node;
+    // Remove positions for chip devices only - they'll be recalculated
+    chipAreaDeviceIds.forEach(deviceId => {
+      nodePositions.current.delete(deviceId);
     });
     
-    setNodes(updatedNodes);
+    // Change layout and let the main effect handle positioning
+    setCurrentLayout(layoutType);
     
     setTimeout(() => {
       if (reactFlowInstance) {
@@ -776,12 +777,11 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           minZoom: 0.1 
         });
       }
-    }, 100);
-  }, [nodes, devices, reactFlowInstance]);
+    }, 200);
+  }, [devices, reactFlowInstance]);
 
   // Change layout
   const changeLayout = useCallback((layoutType: LayoutType) => {
-    setCurrentLayout(layoutType);
     applyLayout(layoutType);
   }, [applyLayout]);
   
