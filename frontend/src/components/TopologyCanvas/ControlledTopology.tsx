@@ -757,23 +757,102 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
   
   // Apply layout
   const applyLayout = useCallback((layoutType: LayoutType) => {
-    // LAYOUT ALL NODES ON CANVAS - EVERYTHING GETS REORGANIZED!
-    const allNodes = [...nodes]; // Work with ALL nodes on canvas
+    // SPACE OUT DEVICE GROUPS WITH PROPER SPACING
+    const chipAreaDeviceIds = new Set(devices.map(d => d.id));
     
-    // Apply the selected layout algorithm to ALL nodes
-    const updatedNodes = allNodes.map((node, index) => {
-      const newPosition = calculatePosition(index, allNodes.length, layoutType);
-      
-      // Update position tracking
-      nodePositions.current.set(node.id, newPosition);
-      
-      return {
-        ...node,
-        position: newPosition,
-      };
+    // Group nodes by their chip device (root)
+    const deviceGroups = new Map<string, string[]>();
+    
+    // Initialize groups with chip devices
+    devices.forEach(device => {
+      deviceGroups.set(device.id, [device.id]);
     });
     
-    // Update all nodes with new layout
+    // Add relationship nodes to their respective chip device groups
+    nodes.forEach(node => {
+      if (!chipAreaDeviceIds.has(node.id)) {
+        // Find which chip device this relationship node belongs to
+        const connectedChipDevice = edges.find(edge => 
+          (edge.source === node.id && chipAreaDeviceIds.has(edge.target)) ||
+          (edge.target === node.id && chipAreaDeviceIds.has(edge.source))
+        );
+        
+        if (connectedChipDevice) {
+          const chipDeviceId = chipAreaDeviceIds.has(connectedChipDevice.source) 
+            ? connectedChipDevice.source 
+            : connectedChipDevice.target;
+          
+          const group = deviceGroups.get(chipDeviceId);
+          if (group) {
+            group.push(node.id);
+          }
+        }
+      }
+    });
+    
+    // Calculate positions for each device group using the layout algorithm
+    const chipDevices = devices;
+    const groupPositions = new Map<string, XYPosition>();
+    
+    chipDevices.forEach((device, index) => {
+      const groupCenterPosition = calculatePosition(index, chipDevices.length, layoutType);
+      groupPositions.set(device.id, groupCenterPosition);
+    });
+    
+    // Position all nodes
+    const updatedNodes = nodes.map((node) => {
+      if (chipAreaDeviceIds.has(node.id)) {
+        // This is a chip device - place at group center
+        const newPosition = groupPositions.get(node.id)!;
+        nodePositions.current.set(node.id, newPosition);
+        return {
+          ...node,
+          position: newPosition,
+        };
+      } else {
+        // This is a relationship node - position radially around its chip device
+        const connectedChipDevice = edges.find(edge => 
+          (edge.source === node.id && chipAreaDeviceIds.has(edge.target)) ||
+          (edge.target === node.id && chipAreaDeviceIds.has(edge.source))
+        );
+        
+        if (connectedChipDevice) {
+          const chipDeviceId = chipAreaDeviceIds.has(connectedChipDevice.source) 
+            ? connectedChipDevice.source 
+            : connectedChipDevice.target;
+          
+          const groupCenter = groupPositions.get(chipDeviceId);
+          const group = deviceGroups.get(chipDeviceId);
+          
+          if (groupCenter && group) {
+            // Find this node's index within its group (excluding the chip device itself)
+            const relationshipNodes = group.filter(nodeId => !chipAreaDeviceIds.has(nodeId));
+            const nodeIndex = relationshipNodes.indexOf(node.id);
+            
+            if (nodeIndex >= 0) {
+              // Position radially around chip device
+              const angle = (nodeIndex * 2 * Math.PI) / relationshipNodes.length;
+              const radius = 180; // Fixed radius for radial positioning
+              
+              const newPosition = {
+                x: groupCenter.x + radius * Math.cos(angle),
+                y: groupCenter.y + radius * Math.sin(angle),
+              };
+              
+              nodePositions.current.set(node.id, newPosition);
+              return {
+                ...node,
+                position: newPosition,
+              };
+            }
+          }
+        }
+        
+        return node; // Fallback - keep current position
+      }
+    });
+    
+    // Update all nodes
     setNodes(updatedNodes);
     
     // Update current layout state
