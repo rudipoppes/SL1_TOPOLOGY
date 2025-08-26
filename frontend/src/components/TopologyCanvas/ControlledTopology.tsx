@@ -177,9 +177,113 @@ const nodeTypes = { device: ProfessionalDeviceNode };
 // Layout algorithms
 type LayoutType = 'grid' | 'hierarchical' | 'radial' | 'circular';
 
+// Smart placement that finds empty space on canvas
+const findEmptyPosition = (
+  existingPositions: Map<string, XYPosition>,
+  existingEdges: Edge[],
+  minDistance: number = 400
+): XYPosition => {
+  if (existingPositions.size === 0) {
+    return { x: 400, y: 300 };
+  }
+
+  // Find all connected groups
+  const groups: Set<Set<string>> = new Set();
+  const nodeToGroup = new Map<string, Set<string>>();
+  
+  // Build groups from edges
+  existingEdges.forEach(edge => {
+    let sourceGroup = nodeToGroup.get(edge.source);
+    let targetGroup = nodeToGroup.get(edge.target);
+    
+    if (sourceGroup && targetGroup && sourceGroup !== targetGroup) {
+      // Merge groups
+      targetGroup.forEach(node => {
+        sourceGroup!.add(node);
+        nodeToGroup.set(node, sourceGroup!);
+      });
+      groups.delete(targetGroup);
+    } else if (sourceGroup) {
+      sourceGroup.add(edge.target);
+      nodeToGroup.set(edge.target, sourceGroup);
+    } else if (targetGroup) {
+      targetGroup.add(edge.source);
+      nodeToGroup.set(edge.source, targetGroup);
+    } else {
+      // Create new group
+      const newGroup = new Set([edge.source, edge.target]);
+      groups.add(newGroup);
+      nodeToGroup.set(edge.source, newGroup);
+      nodeToGroup.set(edge.target, newGroup);
+    }
+  });
+  
+  // Add ungrouped nodes as individual groups
+  existingPositions.forEach((_, nodeId) => {
+    if (!nodeToGroup.has(nodeId)) {
+      const singleGroup = new Set([nodeId]);
+      groups.add(singleGroup);
+      nodeToGroup.set(nodeId, singleGroup);
+    }
+  });
+
+  // Find bounding boxes for each group
+  const groupBounds: { minX: number; maxX: number; minY: number; maxY: number; }[] = [];
+  groups.forEach(group => {
+    let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    
+    group.forEach(nodeId => {
+      const pos = existingPositions.get(nodeId);
+      if (pos) {
+        minX = Math.min(minX, pos.x);
+        maxX = Math.max(maxX, pos.x);
+        minY = Math.min(minY, pos.y);
+        maxY = Math.max(maxY, pos.y);
+      }
+    });
+    
+    if (minX !== Infinity) {
+      groupBounds.push({
+        minX: minX - minDistance/2,
+        maxX: maxX + minDistance/2,
+        minY: minY - minDistance/2,
+        maxY: maxY + minDistance/2,
+      });
+    }
+  });
+
+  // Find a position that doesn't overlap with any group
+  const canvasWidth = 2000;
+  const canvasHeight = 1500;
+  const stepSize = 100;
+  
+  // Try positions in a spiral pattern from center
+  for (let distance = 0; distance < Math.max(canvasWidth, canvasHeight); distance += stepSize) {
+    for (let angle = 0; angle < Math.PI * 2; angle += Math.PI / 4) {
+      const x = 600 + distance * Math.cos(angle);
+      const y = 400 + distance * Math.sin(angle);
+      
+      // Check if this position is far enough from all groups
+      const isFarEnough = groupBounds.every(bounds => 
+        x < bounds.minX || x > bounds.maxX ||
+        y < bounds.minY || y > bounds.maxY
+      );
+      
+      if (isFarEnough && x > 100 && x < canvasWidth && y > 100 && y < canvasHeight) {
+        return { x: Math.round(x), y: Math.round(y) };
+      }
+    }
+  }
+  
+  // Fallback: place to the right of everything
+  const maxX = Math.max(...Array.from(existingPositions.values()).map(p => p.x));
+  return { x: maxX + minDistance, y: 300 };
+};
+
 const calculatePosition = (index: number, total: number, layoutType: LayoutType): XYPosition => {
-  const SPACING_X = 600; // Extra wide spacing to prevent relationship line crowding
-  const SPACING_Y = 450; // Extra tall spacing to prevent relationship line crowding
+  const SPACING_X = 280; // Normal spacing for connected devices
+  const SPACING_Y = 200; // Normal spacing for connected devices
   const START_X = 250;
   const START_Y = 200;
 
@@ -214,7 +318,7 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
         return { x: 500, y: 400 }; // Center
       }
       const angle = ((index - 1) * 2 * Math.PI) / (total - 1);
-      const radius = Math.max(450, total * 60); // Extra large radius for relationship spacing
+      const radius = Math.max(250, total * 25); // Normal radius for connected devices
       return {
         x: 500 + radius * Math.cos(angle),
         y: 400 + radius * Math.sin(angle),
@@ -222,7 +326,7 @@ const calculatePosition = (index: number, total: number, layoutType: LayoutType)
 
     case 'circular':
       const circleAngle = (index * 2 * Math.PI) / total;
-      const circleRadius = Math.max(400, total * 70); // Extra large circle for relationship spacing
+      const circleRadius = Math.max(200, total * 30); // Normal circle for connected devices
       return {
         x: 500 + circleRadius * Math.cos(circleAngle),
         y: 400 + circleRadius * Math.sin(circleAngle),
@@ -267,13 +371,37 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     const newEdges: Edge[] = [];
     const processedIds = new Set<string>();
     
-    // Process devices first
+    // First, build edges to understand connections
+    if (topologyData) {
+      topologyData.edges.forEach((edge, index) => {
+        newEdges.push({
+          id: `e-${edge.source}-${edge.target}-${index}`,
+          source: edge.source,
+          target: edge.target,
+          type: 'straight',
+          animated: false,
+        });
+      });
+    }
+    
+    // Process devices first - use smart placement for unconnected devices
     devices.forEach((device, index) => {
       if (!processedIds.has(device.id)) {
         // Get existing position or calculate new one
         let position = nodePositions.current.get(device.id);
         if (!position) {
-          position = calculatePosition(index, devices.length + (topologyData?.nodes.length || 0), currentLayout);
+          // Check if this device is connected to others
+          const isConnected = newEdges.some(edge => 
+            edge.source === device.id || edge.target === device.id
+          );
+          
+          if (isConnected || index === 0) {
+            // Use normal layout for connected devices or first device
+            position = calculatePosition(index, devices.length + (topologyData?.nodes.length || 0), currentLayout);
+          } else {
+            // Use smart placement to avoid existing groups
+            position = findEmptyPosition(nodePositions.current, newEdges);
+          }
           nodePositions.current.set(device.id, position);
         }
         
@@ -294,18 +422,41 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       }
     });
     
-    // Process topology data
+    // Process topology data nodes (from relationships)
     if (topologyData) {
-      // Add topology nodes
-      topologyData.nodes.forEach((node) => {
+      // Add topology nodes with proper positioning near their connected devices
+      topologyData.nodes.forEach((node, nodeIndex) => {
         if (!processedIds.has(node.id)) {
           // Calculate position for new topology nodes
           let position = nodePositions.current.get(node.id);
           if (!position) {
-            // Place new nodes below existing ones
-            const existingCount = processedIds.size;
-            const totalCount = devices.length + (topologyData?.nodes.length || 0);
-            position = calculatePosition(existingCount, totalCount, currentLayout);
+            // Find connected parent device to position nearby
+            const connectedEdge = newEdges.find(edge => 
+              edge.source === node.id || edge.target === node.id
+            );
+            
+            if (connectedEdge) {
+              // Position near the connected device
+              const connectedId = connectedEdge.source === node.id ? connectedEdge.target : connectedEdge.source;
+              const connectedPos = nodePositions.current.get(connectedId);
+              
+              if (connectedPos) {
+                // Place in a circle around the connected device
+                const angle = (nodeIndex * 2 * Math.PI) / Math.max(4, topologyData.nodes.length);
+                const distance = 150; // Close spacing for connected devices
+                position = {
+                  x: connectedPos.x + distance * Math.cos(angle),
+                  y: connectedPos.y + distance * Math.sin(angle),
+                };
+              } else {
+                // Fallback positioning
+                position = calculatePosition(processedIds.size, devices.length + topologyData.nodes.length, currentLayout);
+              }
+            } else {
+              // Not connected - use smart placement
+              position = findEmptyPosition(nodePositions.current, newEdges);
+            }
+            
             nodePositions.current.set(node.id, position);
           }
           
@@ -325,24 +476,26 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
           processedIds.add(node.id);
         }
       });
-      
-      // Add edges
-      topologyData.edges.forEach((edge, index) => {
-        newEdges.push({
-          id: `e-${edge.source}-${edge.target}-${index}`,
-          source: edge.source,
-          target: edge.target,
-          type: 'straight',
-          animated: false,
-        });
-      });
     }
     
     // Only update if there are actual changes
     setNodes(newNodes);
     setEdges(newEdges);
     
-  }, [devices, topologyData, currentLayout]);
+    
+    // Auto-fit view to show all nodes when new devices are added
+    if (newNodes.length > 0 && reactFlowInstance) {
+      setTimeout(() => {
+        reactFlowInstance.fitView({ 
+          padding: 0.2, 
+          duration: 800,
+          maxZoom: 1.5,
+          minZoom: 0.1 
+        });
+      }, 100);
+    }
+    
+  }, [devices, topologyData, currentLayout, reactFlowInstance]);
   
   // Handle node drag - update our position map
   const handleNodeDragStop = useCallback((_event: React.MouseEvent, node: Node) => {
