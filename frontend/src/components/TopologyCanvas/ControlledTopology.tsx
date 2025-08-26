@@ -424,12 +424,14 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         position: fixed;
         left: ${event.clientX}px;
         top: ${event.clientY}px;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 4px;
-        padding: 4px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        background: #ffffff;
+        border: 2px solid #3b82f6;
+        border-radius: 8px;
+        padding: 8px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
         z-index: 10000;
+        backdrop-filter: blur(10px);
+        min-width: 200px;
       `;
       
       const options = [
@@ -438,24 +440,49 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
         { label: '↕ Both', dir: 'both' as const },
       ];
       
+      // Add title
+      const title = document.createElement('div');
+      title.textContent = `${node.data.label} - Load Relationships`;
+      title.style.cssText = `
+        font-weight: 700;
+        font-size: 14px;
+        color: #1f2937;
+        padding: 8px 12px 4px 12px;
+        border-bottom: 1px solid #e5e7eb;
+        margin-bottom: 4px;
+        text-align: center;
+      `;
+      newMenu.appendChild(title);
+      
       options.forEach((opt) => {
         const btn = document.createElement('button');
         btn.textContent = opt.label;
         btn.style.cssText = `
           display: block;
           width: 100%;
-          padding: 6px 12px;
+          padding: 10px 16px;
           text-align: left;
-          border: none;
+          border: 1px solid transparent;
           background: none;
           cursor: pointer;
-          font-size: 13px;
+          font-size: 14px;
+          font-weight: 600;
+          color: #1f2937;
+          border-radius: 6px;
+          margin: 2px 0;
+          transition: all 0.2s ease;
         `;
         btn.onmouseover = () => {
-          btn.style.background = '#f1f5f9';
+          btn.style.background = '#3b82f6';
+          btn.style.color = '#ffffff';
+          btn.style.borderColor = '#2563eb';
+          btn.style.transform = 'scale(1.02)';
         };
         btn.onmouseout = () => {
           btn.style.background = 'none';
+          btn.style.color = '#1f2937';
+          btn.style.borderColor = 'transparent';
+          btn.style.transform = 'scale(1)';
         };
         btn.onclick = () => {
           onDirectionChange(opt.dir, node.id);
