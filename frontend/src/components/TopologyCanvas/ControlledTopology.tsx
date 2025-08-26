@@ -387,7 +387,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
       newDevices.forEach(device => {
         // Trigger relationship loading for each new device (default: children)
         setTimeout(() => {
-          onDirectionChange(device.id, 'children');
+          onDirectionChange('children', device.id);
         }, 100);
       });
     }
@@ -418,7 +418,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     const deviceGroups = new Map<string, Set<string>>(); // root device -> related devices
     
     // Process each device and its relationships
-    devices.forEach((device, index) => {
+    devices.forEach((device) => {
       if (!processedIds.has(device.id)) {
         // Get existing position or calculate new one
         let position = nodePositions.current.get(device.id);
@@ -447,7 +447,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
             deviceGroups.set(device.id, relatedDevices);
           } else if (relatedDevices.size > 0) {
             // This device is part of a relationship - will be positioned later
-            position = null;
+            position = undefined;
           } else {
             // Standalone device - find empty position
             position = findEmptyPosition(nodePositions.current, newEdges);
@@ -479,7 +479,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
     
     // Process topology data nodes with radial layout around their root devices
     if (topologyData) {
-      topologyData.nodes.forEach((node, nodeIndex) => {
+      topologyData.nodes.forEach((node) => {
         if (!processedIds.has(node.id)) {
           let position = nodePositions.current.get(node.id);
           
@@ -503,7 +503,7 @@ const ControlledTopologyInner: React.FC<ControlledTopologyProps> = ({
               
               if (connectedEdge) {
                 const connectedId = connectedEdge.source === node.id ? connectedEdge.target : connectedEdge.source;
-                rootPosition = nodePositions.current.get(connectedId);
+                rootPosition = nodePositions.current.get(connectedId) || null;
                 rootDevice = connectedId;
               }
             }
