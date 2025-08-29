@@ -361,41 +361,45 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
         
         let hierarchyNodes: any[] = [];
-        let yPosition = 100;
         const levelSpacing = 250;
         const nodeSpacing = 300;
         
-        // Level 0: Selected devices (center level) 
+        // Get child nodes first to calculate center position
+        const childNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
+          topologyData?.edges.some(edge => edge.target === node.id && selectedNodeIds.has(edge.source)));
+        
         const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
+        
+        // Calculate center X position based on children width
+        const totalChildWidth = Math.max(childNodes.length - 1, 0) * nodeSpacing;
+        const centerX = 400 + (totalChildWidth / 2);
+        
+        // Level 0: Selected devices (CENTER of children) 
         selectedNodes.forEach((node, index) => {
           hierarchyNodes.push({
             id: node.id,
-            x: 200 + (index * nodeSpacing),
-            y: yPosition,
+            x: centerX + (index * nodeSpacing), // Center relative to children
+            y: 200, // Middle level
           });
         });
         
         // Level -1: Parent devices (above selected)
-        yPosition -= levelSpacing;
         const parentNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
           topologyData?.edges.some(edge => edge.source === node.id && selectedNodeIds.has(edge.target)));
         parentNodes.forEach((node, index) => {
           hierarchyNodes.push({
             id: node.id,
-            x: 200 + (index * nodeSpacing),
-            y: yPosition,
+            x: centerX + (index * nodeSpacing), // Centered like selected
+            y: 200 - levelSpacing, // Above selected
           });
         });
         
-        // Level +1: Child devices (below selected)  
-        yPosition += levelSpacing * 2; // Back to center + spacing down
-        const childNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
-          topologyData?.edges.some(edge => edge.target === node.id && selectedNodeIds.has(edge.source)));
+        // Level +1: Child devices (below selected, spread out)
         childNodes.forEach((node, index) => {
           hierarchyNodes.push({
             id: node.id,
-            x: 200 + (index * nodeSpacing),
-            y: yPosition,
+            x: 400 + (index * nodeSpacing), // Spread horizontally
+            y: 200 + levelSpacing, // Below selected
           });
         });
         
