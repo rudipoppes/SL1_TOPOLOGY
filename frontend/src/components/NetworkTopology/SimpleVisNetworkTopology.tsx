@@ -111,6 +111,12 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       },
       edges: {
         chosen: true,
+        length: 200, // Default edge length
+        smooth: {
+          enabled: true,
+          type: 'continuous',
+          roundness: 0.2,
+        },
       },
     };
 
@@ -241,7 +247,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         to: {
           enabled: true,
           type: 'arrow',
-          scaleFactor: 0.8,
+          scaleFactor: 1.0,
         },
       },
       color: {
@@ -250,26 +256,31 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         hover: '#667eea',
       },
       width: 2,
+      length: 200, // Minimum edge length
       smooth: {
         enabled: true,
-        type: 'dynamic',
-        roundness: 0.5,
+        type: 'continuous',
+        roundness: 0.2,
       },
     })) || [];
 
-    // Get current nodes to preserve their positions
-    const currentNodes = nodesDataSetRef.current.get() as any[];
+    // Get current positions from the network (includes manual drag positions)
     const currentPositions = new Map();
+    const allCurrentNodeIds = nodesDataSetRef.current.getIds();
     
-    // Save existing positions
-    currentNodes.forEach(node => {
-      if (node.x !== undefined && node.y !== undefined) {
-        currentPositions.set(node.id, { x: node.x, y: node.y });
+    // Get actual positions from network (this includes manual drag updates)
+    if (allCurrentNodeIds.length > 0) {
+      const networkPositions = networkRef.current?.getPositions(allCurrentNodeIds as string[]);
+      if (networkPositions) {
+        Object.entries(networkPositions).forEach(([nodeId, position]) => {
+          currentPositions.set(nodeId, { x: position.x, y: position.y });
+          console.log(`STATIC: Current position for ${nodeId}:`, position);
+        });
       }
-    });
+    }
 
     // Get current node and edge IDs
-    const currentNodeIds = new Set(nodesDataSetRef.current.getIds());
+    const currentNodeIds = new Set(allCurrentNodeIds);
     const currentEdgeIds = new Set(edgesDataSetRef.current.getIds());
     const newNodeIds = new Set(newVisNodes.map(n => n.id));
     const newEdgeIds = new Set(newVisEdges.map(e => e.id));
