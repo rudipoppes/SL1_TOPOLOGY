@@ -393,69 +393,74 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     console.log(`Applying layout: ${layout}`);
     
     if (layout === 'hierarchical') {
-      // Apply custom hierarchical positioning without physics
+      // Apply proper hierarchical layout using Sugiyama-style layered approach
       const nodes = nodesDataSetRef.current?.get() as any[];
       if (nodes && nodes.length > 0) {
-        // Build a proper hierarchy using BFS to determine levels
         const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
-        const nodeMap = new Map(nodes.map(n => [n.id, n]));
         const edges = topologyData?.edges || [];
         
-        // Build adjacency lists
+        // Phase 1: Build adjacency maps for DAG structure
         const childrenMap = new Map<string, string[]>();
         const parentsMap = new Map<string, string[]>();
         
         edges.forEach(edge => {
-          // edge.source is parent, edge.target is child
+          // Build parent -> children mapping
           if (!childrenMap.has(edge.source)) {
             childrenMap.set(edge.source, []);
           }
           childrenMap.get(edge.source)!.push(edge.target);
           
+          // Build child -> parents mapping  
           if (!parentsMap.has(edge.target)) {
             parentsMap.set(edge.target, []);
           }
           parentsMap.get(edge.target)!.push(edge.source);
         });
         
-        // Determine levels using BFS from selected nodes
+        // Phase 2: Proper layer assignment using topological approach
         const nodeLevels = new Map<string, number>();
-        const visited = new Set<string>();
-        const queue: {id: string, level: number}[] = [];
+        const inDegree = new Map<string, number>();
         
-        // Start with selected nodes at level 0
-        selectedNodeIds.forEach(id => {
-          queue.push({id, level: 0});
-          nodeLevels.set(id, 0);
-          visited.add(id);
+        // Initialize in-degrees
+        nodes.forEach(node => {
+          inDegree.set(node.id, parentsMap.get(node.id)?.length || 0);
         });
         
-        // BFS to assign levels
+        // Find nodes with no parents (top level)
+        const topLevelNodes: string[] = [];
+        nodes.forEach(node => {
+          if (inDegree.get(node.id) === 0) {
+            topLevelNodes.push(node.id);
+          }
+        });
+        
+        // If no natural top level exists, use selected nodes as roots
+        const rootNodes = topLevelNodes.length > 0 ? topLevelNodes : Array.from(selectedNodeIds);
+        
+        // Assign levels using modified topological sort
+        const queue: {id: string, level: number}[] = [];
+        rootNodes.forEach(id => {
+          queue.push({id, level: 0});
+          nodeLevels.set(id, 0);
+        });
+        
         while (queue.length > 0) {
           const {id, level} = queue.shift()!;
-          
-          // Process parents (level - 1)
-          const parents = parentsMap.get(id) || [];
-          parents.forEach(parentId => {
-            if (!visited.has(parentId) && nodeMap.has(parentId)) {
-              visited.add(parentId);
-              nodeLevels.set(parentId, level - 1);
-              queue.push({id: parentId, level: level - 1});
-            }
-          });
-          
-          // Process children (level + 1)
           const children = childrenMap.get(id) || [];
+          
           children.forEach(childId => {
-            if (!visited.has(childId) && nodeMap.has(childId)) {
-              visited.add(childId);
-              nodeLevels.set(childId, level + 1);
-              queue.push({id: childId, level: level + 1});
+            const currentLevel = nodeLevels.get(childId);
+            const newLevel = level + 1;
+            
+            // Assign child to deepest level encountered (handles DAG structure)
+            if (currentLevel === undefined || newLevel > currentLevel) {
+              nodeLevels.set(childId, newLevel);
+              queue.push({id: childId, level: newLevel});
             }
           });
         }
         
-        // Group nodes by level
+        // Phase 3: Group nodes by hierarchical level
         const levelGroups = new Map<number, string[]>();
         nodeLevels.forEach((level, nodeId) => {
           if (!levelGroups.has(level)) {
@@ -464,32 +469,137 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           levelGroups.get(level)!.push(nodeId);
         });
         
-        // Calculate positions
+        // Phase 4: Calculate positions with proper parent centering
         const levelSpacing = 250;
         const nodeSpacing = 300;
+        const minNodeSpacing = 150; // Minimum space between nodes
         const hierarchyNodes: any[] = [];
+        const nodePositions = new Map<string, {x: number, y: number}>();
         
-        // Sort levels to process from top to bottom
+        // Sort levels from top to bottom
         const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
         
+        // Process each level
         sortedLevels.forEach(level => {
           const nodesAtLevel = levelGroups.get(level)!;
-          const levelWidth = nodesAtLevel.length * nodeSpacing;
-          const startX = -levelWidth / 2; // Center the level
+          const levelY = level * levelSpacing + 100; // Y position for this level
           
-          nodesAtLevel.forEach((nodeId, index) => {
-            hierarchyNodes.push({
-              id: nodeId,
-              x: startX + (index * nodeSpacing) + 500, // Offset to center on canvas
-              y: level * levelSpacing + 400, // Offset from top
+          if (level === 0 || sortedLevels.indexOf(level) === 0) {
+            // Top level - distribute evenly
+            const totalWidth = (nodesAtLevel.length - 1) * nodeSpacing;
+            const startX = -totalWidth / 2;
+            
+            nodesAtLevel.forEach((nodeId, index) => {
+              const x = startX + (index * nodeSpacing);
+              nodePositions.set(nodeId, {x, y: levelY});
             });
+          } else {
+            // Lower levels - position based on parent centering
+            const positionedNodes = new Set<string>();
+            const nodeXPositions = new Map<string, number>();
+            
+            // First pass: position nodes based on their parents
+            nodesAtLevel.forEach(nodeId => {
+              const parents = parentsMap.get(nodeId) || [];
+              if (parents.length > 0) {
+                // Calculate center point of all parents
+                let parentXSum = 0;
+                let validParents = 0;
+                
+                parents.forEach(parentId => {
+                  const parentPos = nodePositions.get(parentId);
+                  if (parentPos) {
+                    parentXSum += parentPos.x;
+                    validParents++;
+                  }
+                });
+                
+                if (validParents > 0) {
+                  const centerX = parentXSum / validParents;
+                  nodeXPositions.set(nodeId, centerX);
+                  positionedNodes.add(nodeId);
+                }
+              }
+            });
+            
+            // Second pass: position remaining nodes and resolve collisions
+            const unpositionedNodes = nodesAtLevel.filter(id => !positionedNodes.has(id));
+            
+            // Sort positioned nodes by X coordinate
+            const sortedPositioned = Array.from(positionedNodes).sort((a, b) => {
+              return nodeXPositions.get(a)! - nodeXPositions.get(b)!;
+            });
+            
+            // Resolve collisions and set final positions
+            let currentX = -1000; // Start from left
+            
+            [...sortedPositioned, ...unpositionedNodes].forEach(nodeId => {
+              let desiredX = nodeXPositions.get(nodeId);
+              
+              if (desiredX === undefined) {
+                // Unpositioned node - place after last positioned node
+                desiredX = currentX + nodeSpacing;
+              } else {
+                // Positioned node - ensure minimum spacing
+                desiredX = Math.max(desiredX, currentX + minNodeSpacing);
+              }
+              
+              nodePositions.set(nodeId, {x: desiredX, y: levelY});
+              currentX = desiredX;
+            });
+          }
+        });
+        
+        // Phase 5: Re-center parents above their children (Reingold-Tilford principle)
+        sortedLevels.slice(0, -1).forEach(level => { // All levels except the last
+          const nodesAtLevel = levelGroups.get(level)!;
+          
+          nodesAtLevel.forEach(nodeId => {
+            const children = childrenMap.get(nodeId) || [];
+            if (children.length > 0) {
+              // Find leftmost and rightmost child positions
+              let minChildX = Infinity;
+              let maxChildX = -Infinity;
+              
+              children.forEach(childId => {
+                const childPos = nodePositions.get(childId);
+                if (childPos) {
+                  minChildX = Math.min(minChildX, childPos.x);
+                  maxChildX = Math.max(maxChildX, childPos.x);
+                }
+              });
+              
+              if (minChildX !== Infinity) {
+                // Center parent above children
+                const centerX = (minChildX + maxChildX) / 2;
+                const currentPos = nodePositions.get(nodeId);
+                if (currentPos) {
+                  nodePositions.set(nodeId, {x: centerX, y: currentPos.y});
+                }
+              }
+            }
           });
         });
         
-        // Apply positioning
+        // Phase 6: Convert to vis-network format and center on canvas
+        const allPositions = Array.from(nodePositions.values());
+        const minX = Math.min(...allPositions.map(p => p.x));
+        const maxX = Math.max(...allPositions.map(p => p.x));
+        const centerOffset = 500 - (minX + maxX) / 2; // Center on canvas
+        
+        nodePositions.forEach((pos, nodeId) => {
+          hierarchyNodes.push({
+            id: nodeId,
+            x: pos.x + centerOffset,
+            y: pos.y,
+          });
+        });
+        
+        // Apply the calculated positions
         if (hierarchyNodes.length > 0) {
           nodesDataSetRef.current?.update(hierarchyNodes);
-          console.log('Proper hierarchical layout applied with correct sibling grouping');
+          console.log('Advanced hierarchical layout applied with proper parent centering');
+          console.log(`Processed ${hierarchyNodes.length} nodes across ${sortedLevels.length} levels`);
         }
       }
     } else if (layout === 'physics') {
