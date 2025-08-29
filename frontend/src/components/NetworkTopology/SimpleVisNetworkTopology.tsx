@@ -50,6 +50,7 @@ const getStatusColor = (status: string) => {
 };
 
 export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> = ({
+  selectedDevices,
   topologyData,
   deviceDirections,
   onDirectionChange,
@@ -353,31 +354,57 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     console.log(`Applying layout: ${layout}`);
     
     if (layout === 'hierarchical') {
-      // Enable hierarchical layout temporarily
-      networkRef.current.setOptions({
-        physics: { enabled: true },
-        layout: {
-          hierarchical: {
-            enabled: true,
-            direction: 'UD',
-            sortMethod: 'directed',
-            levelSeparation: 250, // Keep vertical spacing good
-            nodeSpacing: 400, // MASSIVE horizontal spacing to prevent overlap
-            treeSpacing: 400, // Massive tree spacing 
-            blockShifting: true, // Enable block shifting to prevent overlap
-            edgeMinimization: true, // Minimize edge crossings
-            parentCentralization: true, // Center parent nodes
-          },
-        },
-      });
-      
-      // Disable physics after a short delay
-      setTimeout(() => {
-        if (networkRef.current) {
-          networkRef.current.setOptions({ physics: { enabled: false } });
-          console.log('Layout applied - physics disabled for static positioning');
+      // Apply custom hierarchical positioning without physics
+      const nodes = nodesDataSetRef.current?.get() as any[];
+      if (nodes && nodes.length > 0) {
+        // Determine which nodes are selected (root level)
+        const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
+        
+        let hierarchyNodes: any[] = [];
+        let yPosition = 100;
+        const levelSpacing = 250;
+        const nodeSpacing = 300;
+        
+        // Level 0: Selected devices (center level) 
+        const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
+        selectedNodes.forEach((node, index) => {
+          hierarchyNodes.push({
+            id: node.id,
+            x: 200 + (index * nodeSpacing),
+            y: yPosition,
+          });
+        });
+        
+        // Level -1: Parent devices (above selected)
+        yPosition -= levelSpacing;
+        const parentNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
+          topologyData?.edges.some(edge => edge.source === node.id && selectedNodeIds.has(edge.target)));
+        parentNodes.forEach((node, index) => {
+          hierarchyNodes.push({
+            id: node.id,
+            x: 200 + (index * nodeSpacing),
+            y: yPosition,
+          });
+        });
+        
+        // Level +1: Child devices (below selected)  
+        yPosition += levelSpacing * 2; // Back to center + spacing down
+        const childNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
+          topologyData?.edges.some(edge => edge.target === node.id && selectedNodeIds.has(edge.source)));
+        childNodes.forEach((node, index) => {
+          hierarchyNodes.push({
+            id: node.id,
+            x: 200 + (index * nodeSpacing),
+            y: yPosition,
+          });
+        });
+        
+        // Apply positioning
+        if (hierarchyNodes.length > 0) {
+          nodesDataSetRef.current?.update(hierarchyNodes);
+          console.log('Custom hierarchy layout applied with selected devices as root level');
         }
-      }, 2000);
+      }
     } else if (layout === 'physics') {
       // Enable physics temporarily for natural layout with better spacing
       networkRef.current.setOptions({
