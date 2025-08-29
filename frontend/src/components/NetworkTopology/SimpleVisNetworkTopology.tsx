@@ -396,72 +396,100 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       // Apply custom hierarchical positioning without physics
       const nodes = nodesDataSetRef.current?.get() as any[];
       if (nodes && nodes.length > 0) {
-        // Determine which nodes are selected (root level)
+        // Build a proper hierarchy using BFS to determine levels
         const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
+        const nodeMap = new Map(nodes.map(n => [n.id, n]));
+        const edges = topologyData?.edges || [];
         
-        let hierarchyNodes: any[] = [];
+        // Build adjacency lists
+        const childrenMap = new Map<string, string[]>();
+        const parentsMap = new Map<string, string[]>();
+        
+        edges.forEach(edge => {
+          // edge.source is parent, edge.target is child
+          if (!childrenMap.has(edge.source)) {
+            childrenMap.set(edge.source, []);
+          }
+          childrenMap.get(edge.source)!.push(edge.target);
+          
+          if (!parentsMap.has(edge.target)) {
+            parentsMap.set(edge.target, []);
+          }
+          parentsMap.get(edge.target)!.push(edge.source);
+        });
+        
+        // Determine levels using BFS from selected nodes
+        const nodeLevels = new Map<string, number>();
+        const visited = new Set<string>();
+        const queue: {id: string, level: number}[] = [];
+        
+        // Start with selected nodes at level 0
+        selectedNodeIds.forEach(id => {
+          queue.push({id, level: 0});
+          nodeLevels.set(id, 0);
+          visited.add(id);
+        });
+        
+        // BFS to assign levels
+        while (queue.length > 0) {
+          const {id, level} = queue.shift()!;
+          
+          // Process parents (level - 1)
+          const parents = parentsMap.get(id) || [];
+          parents.forEach(parentId => {
+            if (!visited.has(parentId) && nodeMap.has(parentId)) {
+              visited.add(parentId);
+              nodeLevels.set(parentId, level - 1);
+              queue.push({id: parentId, level: level - 1});
+            }
+          });
+          
+          // Process children (level + 1)
+          const children = childrenMap.get(id) || [];
+          children.forEach(childId => {
+            if (!visited.has(childId) && nodeMap.has(childId)) {
+              visited.add(childId);
+              nodeLevels.set(childId, level + 1);
+              queue.push({id: childId, level: level + 1});
+            }
+          });
+        }
+        
+        // Group nodes by level
+        const levelGroups = new Map<number, string[]>();
+        nodeLevels.forEach((level, nodeId) => {
+          if (!levelGroups.has(level)) {
+            levelGroups.set(level, []);
+          }
+          levelGroups.get(level)!.push(nodeId);
+        });
+        
+        // Calculate positions
         const levelSpacing = 250;
         const nodeSpacing = 300;
-        const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
+        const hierarchyNodes: any[] = [];
         
-        let currentSubtreeStartX = 100;
+        // Sort levels to process from top to bottom
+        const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
         
-        // Process each selected device as its own subtree
-        selectedNodes.forEach((selectedNode) => {
-          // Find children of this specific selected device
-          const childrenOfThisSelected = nodes.filter(node => 
-            !selectedNodeIds.has(node.id) && 
-            topologyData?.edges.some(edge => 
-              edge.source === selectedNode.id && edge.target === node.id));
+        sortedLevels.forEach(level => {
+          const nodesAtLevel = levelGroups.get(level)!;
+          const levelWidth = nodesAtLevel.length * nodeSpacing;
+          const startX = -levelWidth / 2; // Center the level
           
-          // Find parents of this specific selected device  
-          const parentsOfThisSelected = nodes.filter(node =>
-            !selectedNodeIds.has(node.id) &&
-            topologyData?.edges.some(edge => 
-              edge.target === selectedNode.id && edge.source === node.id));
-          
-          // Position children of this selected device
-          childrenOfThisSelected.forEach((childNode, childIndex) => {
+          nodesAtLevel.forEach((nodeId, index) => {
             hierarchyNodes.push({
-              id: childNode.id,
-              x: currentSubtreeStartX + (childIndex * nodeSpacing),
-              y: 200 + levelSpacing, // Below selected
+              id: nodeId,
+              x: startX + (index * nodeSpacing) + 500, // Offset to center on canvas
+              y: level * levelSpacing + 400, // Offset from top
             });
           });
-          
-          // Calculate center X for this selected device based on its children
-          let selectedX;
-          if (childrenOfThisSelected.length > 0) {
-            selectedX = currentSubtreeStartX + ((childrenOfThisSelected.length - 1) * nodeSpacing) / 2;
-          } else {
-            selectedX = currentSubtreeStartX; // No children, use start position
-          }
-          
-          // Position this selected device at center of its children
-          hierarchyNodes.push({
-            id: selectedNode.id,
-            x: selectedX,
-            y: 200, // Middle level
-          });
-          
-          // Position parents of this selected device above it
-          parentsOfThisSelected.forEach((parentNode) => {
-            hierarchyNodes.push({
-              id: parentNode.id,
-              x: selectedX, // Same X as selected device
-              y: 200 - levelSpacing, // Above selected
-            });
-          });
-          
-          // Move start position for next subtree
-          const subtreeWidth = Math.max(childrenOfThisSelected.length, 1) * nodeSpacing;
-          currentSubtreeStartX += subtreeWidth + 100; // Gap between subtrees
         });
         
         // Apply positioning
         if (hierarchyNodes.length > 0) {
           nodesDataSetRef.current?.update(hierarchyNodes);
-          console.log('Custom hierarchy layout applied with selected devices as root level');
+          console.log('Proper hierarchical layout applied with correct sibling grouping');
         }
       }
     } else if (layout === 'physics') {
