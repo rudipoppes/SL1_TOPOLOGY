@@ -139,7 +139,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         dragView: true,
         zoomView: true,
         dragNodes: true, // Allow manual dragging
-        navigationButtons: true, // Enable built-in zoom controls
+        navigationButtons: false, // Disable built-in navigation buttons - we have custom ones
         keyboard: true, // Enable keyboard shortcuts
       },
       nodes: {
