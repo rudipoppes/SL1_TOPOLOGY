@@ -1,1 +1,1 @@
-export { TopologyFlow } from './TopologyFlow';
+export { VisControlledTopology as TopologyCanvas } from './VisControlledTopology';

@@ -39,7 +39,6 @@ const directionOptions = [
 export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = ({
   isOpen,
   position,
-  nodeId,
   nodeName,
   nodeType,
   currentDirection,
@@ -77,7 +76,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
   const calculatePosition = () => {
     if (!modalRef.current) return position;
 
-    const modalRect = modalRef.current.getBoundingClientRect();
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
 

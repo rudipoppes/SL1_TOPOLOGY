@@ -58,7 +58,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
+  const nodesDataSetRef = useRef<DataSet<any> | null>(null);
+  const edgesDataSetRef = useRef<DataSet<any> | null>(null);
   const [layout, setLayout] = useState<'hierarchical' | 'physics' | 'grid'>('physics');
+  const [forceRedraw, setForceRedraw] = useState(false);
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -75,99 +78,19 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     nodeType: undefined,
   });
 
+  // Initialize network once
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || networkRef.current) return;
 
-    // Transform data to vis-network format
-    const visNodes = topologyData?.nodes.map(node => {
-      const status = getNodeStatus(node);
-      const icon = getDeviceIcon(node.type || '');
-      const statusColor = getStatusColor(status);
-      const direction = deviceDirections?.get(node.id) || 'children';
-      
-      // Add direction indicator to label
-      const directionIcon = direction === 'parents' ? '🔼' : 
-                           direction === 'both' ? '🔄' : '🔽';
-      const directionLabel = `${icon}\n${node.label || node.id}\n${directionIcon}`;
-
-      return {
-        id: node.id,
-        label: directionLabel,
-        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}`, // Tooltip
-        color: {
-          background: '#ffffff',
-          border: statusColor,
-          highlight: {
-            background: '#f9fafb',
-            border: '#667eea',
-          },
-        },
-        borderWidth: 2,
-        borderWidthSelected: 4,
-        shape: 'box',
-        shapeProperties: {
-          borderRadius: 12,
-        },
-        font: {
-          size: 14,
-          face: 'Inter, system-ui, sans-serif',
-          color: '#1f2937',
-          strokeWidth: 2,
-          strokeColor: '#ffffff',
-        },
-        margin: {
-          top: 10,
-          right: 15,
-          bottom: 10,
-          left: 15,
-        },
-        shadow: {
-          enabled: true,
-          color: 'rgba(0, 0, 0, 0.2)',
-          size: 15,
-          x: 0,
-          y: 5,
-        },
-        widthConstraint: {
-          minimum: 140,
-          maximum: 200,
-        },
-        // Store additional data for modal
-        nodeData: {
-          name: node.label || node.id,
-          type: node.type,
-          direction: direction,
-        },
-      };
-    }) || [];
-
-    const visEdges = topologyData?.edges.map((edge, index) => ({
-      id: `edge-${index}`,
-      from: edge.source,
-      to: edge.target,
-      arrows: {
-        to: {
-          enabled: true,
-          type: 'arrow',
-          scaleFactor: 0.8,
-        },
-      },
-      color: {
-        color: '#cbd5e0',
-        highlight: '#667eea',
-        hover: '#667eea',
-      },
-      width: 2,
-      smooth: {
-        enabled: true,
-        type: 'dynamic',
-        roundness: 0.5,
-      },
-    })) || [];
+    // Initialize empty datasets
+    const nodesDataSet = new DataSet([]);
+    const edgesDataSet = new DataSet([]);
+    nodesDataSetRef.current = nodesDataSet;
+    edgesDataSetRef.current = edgesDataSet;
 
     const data = {
-      nodes: new DataSet(visNodes),
-      edges: new DataSet(visEdges),
+      nodes: nodesDataSet,
+      edges: edgesDataSet,
     };
 
     const options = {
@@ -219,9 +142,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     network.on('click', (params) => {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0] as string;
-        const node = visNodes.find(n => n.id === nodeId);
+        const currentNode = nodesDataSetRef.current?.get(nodeId);
         
-        if (node && containerRef.current) {
+        if (currentNode && containerRef.current) {
           // Get canvas position relative to container
           const containerRect = containerRef.current.getBoundingClientRect();
           const canvasPosition = network.canvasToDOM(params.pointer.canvas);
@@ -236,26 +159,234 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             isOpen: true,
             position: modalPosition,
             nodeId: nodeId,
-            nodeName: node.nodeData?.name || nodeId,
-            nodeType: node.nodeData?.type,
+            nodeName: currentNode.nodeData?.name || nodeId,
+            nodeType: currentNode.nodeData?.type,
           });
         }
       }
     });
 
-    // Apply grid layout if selected (disabled physics for static layout)
-    if (layout === 'grid') {
-      network.setOptions({ physics: { enabled: false } });
+    return () => {
+      if (networkRef.current) {
+        networkRef.current.destroy();
+        networkRef.current = null;
+        nodesDataSetRef.current = null;
+        edgesDataSetRef.current = null;
+      }
+    };
+  }, []);
+
+  // Handle data updates incrementally
+  useEffect(() => {
+    if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
+
+    // If force redraw is requested (layout change), clear everything
+    if (forceRedraw) {
+      nodesDataSetRef.current.clear();
+      edgesDataSetRef.current.clear();
+      setForceRedraw(false);
     }
 
-    return () => {
-      network.destroy();
-      networkRef.current = null;
+    // Transform new data to vis-network format
+    const newVisNodes = topologyData?.nodes.map(node => {
+      const status = getNodeStatus(node);
+      const icon = getDeviceIcon(node.type || '');
+      const statusColor = getStatusColor(status);
+      const direction = deviceDirections?.get(node.id) || 'children';
+      
+      // Add direction indicator to label
+      const directionIcon = direction === 'parents' ? '🔼' : 
+                           direction === 'both' ? '🔄' : '🔽';
+      const directionLabel = `${icon}\n${node.label || node.id}\n${directionIcon}`;
+
+      return {
+        id: node.id,
+        label: directionLabel,
+        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}`,
+        color: {
+          background: '#ffffff',
+          border: statusColor,
+          highlight: {
+            background: '#f9fafb',
+            border: '#667eea',
+          },
+        },
+        borderWidth: 2,
+        borderWidthSelected: 4,
+        shape: 'box',
+        shapeProperties: {
+          borderRadius: 12,
+        },
+        font: {
+          size: 14,
+          face: 'Inter, system-ui, sans-serif',
+          color: '#1f2937',
+          strokeWidth: 2,
+          strokeColor: '#ffffff',
+        },
+        margin: {
+          top: 10,
+          right: 15,
+          bottom: 10,
+          left: 15,
+        },
+        shadow: {
+          enabled: true,
+          color: 'rgba(0, 0, 0, 0.2)',
+          size: 15,
+          x: 0,
+          y: 5,
+        },
+        widthConstraint: {
+          minimum: 140,
+          maximum: 200,
+        },
+        nodeData: {
+          name: node.label || node.id,
+          type: node.type,
+          direction: direction,
+        },
+      };
+    }) || [];
+
+    const newVisEdges = topologyData?.edges.map((edge, index) => ({
+      id: `edge-${edge.source}-${edge.target}-${index}`,
+      from: edge.source,
+      to: edge.target,
+      arrows: {
+        to: {
+          enabled: true,
+          type: 'arrow',
+          scaleFactor: 0.8,
+        },
+      },
+      color: {
+        color: '#cbd5e0',
+        highlight: '#667eea',
+        hover: '#667eea',
+      },
+      width: 2,
+      smooth: {
+        enabled: true,
+        type: 'dynamic',
+        roundness: 0.5,
+      },
+    })) || [];
+
+    // Get current node positions before updating
+    const currentPositions = new Map();
+    if (!forceRedraw) {
+      const currentNodeIds = nodesDataSetRef.current.getIds();
+      currentNodeIds.forEach((nodeId) => {
+        const nodeIdStr = String(nodeId);
+        const position = networkRef.current?.getPositions([nodeIdStr])[nodeIdStr];
+        if (position) {
+          currentPositions.set(nodeIdStr, position);
+        }
+      });
+    }
+
+    // Get current node and edge IDs
+    const currentNodeIds = new Set(nodesDataSetRef.current.getIds());
+    const currentEdgeIds = new Set(edgesDataSetRef.current.getIds());
+    const newNodeIds = new Set(newVisNodes.map(n => n.id));
+    const newEdgeIds = new Set(newVisEdges.map(e => e.id));
+
+    // Remove nodes that are no longer present
+    const nodesToRemove = Array.from(currentNodeIds).filter(id => !newNodeIds.has(id as string));
+    if (nodesToRemove.length > 0) {
+      nodesDataSetRef.current.remove(nodesToRemove);
+    }
+
+    // Remove edges that are no longer present
+    const edgesToRemove = Array.from(currentEdgeIds).filter(id => !newEdgeIds.has(id as string));
+    if (edgesToRemove.length > 0) {
+      edgesDataSetRef.current.remove(edgesToRemove);
+    }
+
+    // Add or update nodes, preserving positions for existing nodes
+    const nodesToUpdate = newVisNodes.map(node => {
+      const existingPosition = currentPositions.get(node.id);
+      if (existingPosition && !forceRedraw) {
+        return {
+          ...node,
+          x: existingPosition.x,
+          y: existingPosition.y,
+          fixed: { x: true, y: true }, // Temporarily fix position
+        };
+      }
+      return node;
+    });
+
+    if (nodesToUpdate.length > 0) {
+      nodesDataSetRef.current.update(nodesToUpdate);
+    }
+
+    // Add or update edges
+    if (newVisEdges.length > 0) {
+      edgesDataSetRef.current.update(newVisEdges);
+    }
+
+    // After a brief delay, unfix the positions to allow manual dragging
+    setTimeout(() => {
+      if (nodesDataSetRef.current && !forceRedraw) {
+        const unfixNodes = nodesToUpdate
+          .filter(node => currentPositions.has(node.id))
+          .map(node => ({
+            id: node.id,
+            fixed: { x: false, y: false },
+          }));
+        if (unfixNodes.length > 0) {
+          nodesDataSetRef.current.update(unfixNodes);
+        }
+      }
+    }, 100);
+
+  }, [topologyData, deviceDirections, forceRedraw]);
+
+  // Handle layout changes
+  useEffect(() => {
+    if (!networkRef.current) return;
+
+    const options = {
+      physics: {
+        enabled: layout === 'physics',
+        barnesHut: {
+          gravitationalConstant: -8000,
+          centralGravity: 0.3,
+          springLength: 200,
+          springConstant: 0.04,
+          damping: 0.09,
+        },
+        stabilization: {
+          enabled: true,
+          iterations: 200,
+        },
+      },
+      layout: {
+        hierarchical: layout === 'hierarchical' ? {
+          enabled: true,
+          direction: 'UD',
+          sortMethod: 'directed',
+          levelSeparation: 150,
+          nodeSpacing: 200,
+        } : {
+          enabled: false,
+        },
+      },
     };
-  }, [topologyData, layout, deviceDirections]);
+
+    networkRef.current.setOptions(options);
+
+    // Apply grid layout if selected (disabled physics for static layout)
+    if (layout === 'grid') {
+      networkRef.current.setOptions({ physics: { enabled: false } });
+    }
+  }, [layout]);
 
   const handleLayoutChange = (newLayout: typeof layout) => {
     setLayout(newLayout);
+    setForceRedraw(true); // Force redraw when layout changes
   };
 
   const handleFitView = () => {
@@ -263,8 +394,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   };
 
   const handleResetPhysics = () => {
-    if (networkRef.current && layout === 'physics') {
-      networkRef.current.stabilize();
+    if (networkRef.current) {
+      if (layout === 'physics') {
+        networkRef.current.stabilize();
+      }
+      setForceRedraw(true); // Force redraw on reset
     }
   };
 
