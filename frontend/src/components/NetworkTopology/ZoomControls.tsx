@@ -55,16 +55,10 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
     }
   };
 
-  const baseButtonClass = `
+  const uniformButtonClass = `
     w-10 h-10 rounded-lg border transition-all duration-300 
-    flex items-center justify-center font-bold text-lg
-    hover:scale-110 hover:shadow-lg active:scale-95
-  `;
-
-  const layoutButtonClass = `
-    px-3 py-2 rounded-lg border transition-all duration-300 
     flex items-center justify-center font-medium text-sm
-    hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap
+    hover:scale-110 hover:shadow-lg active:scale-95
   `;
 
   const themeClasses = theme === 'dark' 
@@ -109,19 +103,19 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         {/* Zoom In */}
         <button
           onClick={handleZoomIn}
-          className={`${baseButtonClass} ${themeClasses}`}
+          className={`${uniformButtonClass} ${themeClasses}`}
           title="Zoom In"
         >
-          +
+          <span className="text-lg font-bold">+</span>
         </button>
 
         {/* Zoom Out */}
         <button
           onClick={handleZoomOut}
-          className={`${baseButtonClass} ${themeClasses}`}
+          className={`${uniformButtonClass} ${themeClasses}`}
           title="Zoom Out"
         >
-          −
+          <span className="text-lg font-bold">−</span>
         </button>
 
         {/* Separator line */}
@@ -132,19 +126,19 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         {/* Fit View */}
         <button
           onClick={handleFitView}
-          className={`${baseButtonClass} ${themeClasses} text-sm`}
+          className={`${uniformButtonClass} ${themeClasses}`}
           title="Fit View"
         >
-          ⊡
+          <span className="text-base">⊡</span>
         </button>
 
         {/* Reset View */}
         <button
           onClick={handleReset}
-          className={`${baseButtonClass} ${themeClasses} text-sm`}
+          className={`${uniformButtonClass} ${themeClasses}`}
           title="Reset View"
         >
-          ⌂
+          <span className="text-base">⌂</span>
         </button>
       </div>
 
@@ -159,34 +153,34 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           {/* Physics Layout */}
           <button
             onClick={() => onLayoutChange('physics')}
-            className={`${layoutButtonClass} ${
+            className={`${uniformButtonClass} ${
               layout === 'physics' ? activeLayoutClass : layoutThemeClasses
             }`}
             title="Physics Layout"
           >
-            ⚛️ Physics
+            <span className="text-base">⚛️</span>
           </button>
 
           {/* Hierarchical Layout */}
           <button
             onClick={() => onLayoutChange('hierarchical')}
-            className={`${layoutButtonClass} ${
+            className={`${uniformButtonClass} ${
               layout === 'hierarchical' ? activeLayoutClass : layoutThemeClasses
             }`}
             title="Hierarchical Layout"
           >
-            🌳 Hierarchy
+            <span className="text-base">🌳</span>
           </button>
 
           {/* Grid Layout */}
           <button
             onClick={() => onLayoutChange('grid')}
-            className={`${layoutButtonClass} ${
+            className={`${uniformButtonClass} ${
               layout === 'grid' ? activeLayoutClass : layoutThemeClasses
             }`}
             title="Grid Layout"
           >
-            ⚏ Grid
+            <span className="text-base">⚏</span>
           </button>
 
           {/* Clear Button */}
@@ -197,10 +191,10 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
               }`} />
               <button
                 onClick={onClearAll}
-                className={`${layoutButtonClass} ${dangerClass}`}
+                className={`${uniformButtonClass} ${dangerClass}`}
                 title="Clear All"
               >
-                🗑️ Clear
+                <span className="text-base">🗑️</span>
               </button>
             </>
           )}
