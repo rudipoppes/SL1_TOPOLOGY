@@ -362,8 +362,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             direction: 'UD',
             sortMethod: 'directed',
             levelSeparation: 250, // Keep vertical spacing good
-            nodeSpacing: 180, // REDUCE horizontal spacing to prevent overlap
-            treeSpacing: 200, // Reduce tree spacing 
+            nodeSpacing: 400, // MASSIVE horizontal spacing to prevent overlap
+            treeSpacing: 400, // Massive tree spacing 
             blockShifting: true, // Enable block shifting to prevent overlap
             edgeMinimization: true, // Minimize edge crossings
             parentCentralization: true, // Center parent nodes
