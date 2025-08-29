@@ -311,16 +311,16 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           y: existingPosition.y,
         };
       } else {
-        // New node - assign static position
+        // New node - assign static position with much better spacing
         const newPosition = {
           x: nodePositionCounter.current.x,
           y: nodePositionCounter.current.y,
         };
-        // Increment position for next new node
-        nodePositionCounter.current.x += 200;
-        if (nodePositionCounter.current.x > 800) {
+        // Increment position for next new node with much larger spacing
+        nodePositionCounter.current.x += 400;
+        if (nodePositionCounter.current.x > 1200) {
           nodePositionCounter.current.x = 100;
-          nodePositionCounter.current.y += 150;
+          nodePositionCounter.current.y += 300;
         }
         
         console.log(`STATIC: Assigning position to new node ${node.id}:`, newPosition);
@@ -393,12 +393,12 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const nodes = nodesDataSetRef.current?.get() as any[];
       if (nodes && nodes.length > 0) {
         const gridSize = Math.ceil(Math.sqrt(nodes.length));
-        const spacing = 200;
+        const spacing = 400; // Much larger spacing to prevent overlap
         
         const gridNodes = nodes.map((node, index) => ({
           id: node.id,
-          x: (index % gridSize) * spacing,
-          y: Math.floor(index / gridSize) * spacing,
+          x: (index % gridSize) * spacing + 100,
+          y: Math.floor(index / gridSize) * spacing + 100,
         }));
         
         nodesDataSetRef.current?.update(gridNodes);
