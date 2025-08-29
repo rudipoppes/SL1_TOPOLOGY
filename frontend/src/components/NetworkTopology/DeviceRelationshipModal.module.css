@@ -1,0 +1,326 @@
+/* Device Relationship Modal Styles */
+
+.backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.modal {
+  position: fixed;
+  width: 280px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 16px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  z-index: 1001;
+  animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.deviceInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.deviceIcon {
+  font-size: 24px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.deviceDetails {
+  flex: 1;
+  min-width: 0; /* Allow text truncation */
+}
+
+.deviceName {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.deviceType {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+}
+
+.closeButton:hover {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+
+.content {
+  padding: 16px 20px;
+}
+
+.instruction {
+  font-size: 14px;
+  color: #4b5563;
+  margin: 0 0 16px 0;
+  text-align: center;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.option:hover {
+  background: rgba(var(--option-color-rgb, 102, 126, 234), 0.1);
+  border-color: rgba(var(--option-color-rgb, 102, 126, 234), 0.3);
+  transform: translateY(-1px);
+}
+
+.currentOption {
+  background: rgba(var(--option-color-rgb, 102, 126, 234), 0.15);
+  border-color: var(--option-color, #667eea);
+  box-shadow: 0 4px 12px rgba(var(--option-color-rgb, 102, 126, 234), 0.2);
+}
+
+.optionIcon {
+  font-size: 20px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  flex-shrink: 0;
+}
+
+.optionContent {
+  flex: 1;
+  min-width: 0;
+}
+
+.optionLabel {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 2px;
+}
+
+.optionDescription {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.currentIndicator {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  background: var(--option-color, #667eea);
+  color: white;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.footer {
+  padding: 12px 20px;
+  background: rgba(0, 0, 0, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hint {
+  font-size: 11px;
+  color: #6b7280;
+  text-align: center;
+  margin: 0;
+  font-style: italic;
+}
+
+/* CSS Variables for option colors */
+.option[style*="--option-color: #3b82f6"] {
+  --option-color-rgb: 59, 130, 246;
+}
+
+.option[style*="--option-color: #10b981"] {
+  --option-color-rgb: 16, 185, 129;
+}
+
+.option[style*="--option-color: #8b5cf6"] {
+  --option-color-rgb: 139, 92, 246;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .modal {
+    background: rgba(31, 41, 55, 0.95);
+    border-color: rgba(75, 85, 99, 0.3);
+  }
+  
+  .deviceName {
+    color: #f9fafb;
+  }
+  
+  .deviceType {
+    color: #d1d5db;
+  }
+  
+  .instruction {
+    color: #d1d5db;
+  }
+  
+  .optionLabel {
+    color: #f9fafb;
+  }
+  
+  .optionDescription {
+    color: #9ca3af;
+  }
+  
+  .option {
+    background: rgba(55, 65, 81, 0.5);
+  }
+  
+  .optionIcon {
+    background: rgba(55, 65, 81, 0.8);
+  }
+  
+  .footer {
+    background: rgba(0, 0, 0, 0.1);
+  }
+  
+  .hint {
+    color: #9ca3af;
+  }
+  
+  .closeButton:hover {
+    background: rgba(239, 68, 68, 0.2);
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .modal {
+    width: 260px;
+    max-width: calc(100vw - 20px);
+  }
+  
+  .header {
+    padding: 12px 16px;
+  }
+  
+  .content {
+    padding: 12px 16px;
+  }
+  
+  .footer {
+    padding: 8px 16px;
+  }
+  
+  .deviceName {
+    font-size: 14px;
+  }
+  
+  .optionLabel {
+    font-size: 13px;
+  }
+  
+  .optionDescription {
+    font-size: 11px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .modal,
+  .backdrop,
+  .option,
+  .closeButton {
+    animation: none;
+    transition: none;
+  }
+  
+  .option:hover {
+    transform: none;
+  }
+}

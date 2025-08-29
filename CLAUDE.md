@@ -47,12 +47,12 @@ This project is being built using an **iterative, incremental approach**:
 ### Important Note for Claude
 **Always check the "Current Status" section above and the Git log to understand what has been completed and what needs to be done next. This project builds incrementally - don't skip phases or create advanced features before the foundation is complete.**
 
-**CRITICAL DEVELOPMENT WORKFLOW:**
-1. Claude works on LOCAL machine (/Users/rudipoppes/Documents/VSC/SL1_TOPOLOGY/)
-2. When Claude makes code changes, Claude MUST commit and push to git immediately
-3. User deploys from EC2 using VSCode Remote SSH
-4. AWS credentials work automatically on EC2 via IAM roles
-5. Local machine has NO AWS credentials - all deployment happens on EC2
+**CRITICAL DEVELOPMENT WORKFLOW (Updated Aug 2025):**
+1. Claude works DIRECTLY on EC2 instance (/home/ubuntu/SL1_TOPOLOGY/)
+2. All code changes are made directly on the EC2 server
+3. Git commits/pushes only when explicitly requested by user
+4. AWS credentials work automatically via IAM roles
+5. Both development and deployment happen on the same EC2 instance
 
 ## 🚀 **Current System Capabilities** 
 
@@ -186,11 +186,12 @@ pkill -f "node.*serve -s dist"
 ## Git Repository Setup
 
 ### Repository Information
-- **Location**: `/Users/rudipoppes/Documents/VSC/SL1_TOPOLOGY`
+- **Location**: `/home/ubuntu/SL1_TOPOLOGY` (EC2 instance)
 - **Status**: Active Git repository
 - **GitHub**: https://github.com/rudipoppes/SL1_TOPOLOGY
 - **Ignored Folders**: `TEST/`, `Sample JSON Maps/`
 - **Remote**: origin configured and synced
+- **Workflow**: Changes made directly on EC2, git push only when requested
 
 ### GitHub Setup
 ```bash
@@ -462,48 +463,37 @@ curl http://localhost:3000
 
 ### **Backend Deployment (Lambda)**
 
-**CRITICAL: Development Workflow for Claude**
+**UPDATED Development Workflow (Direct EC2 Editing)**
 
-When Claude makes code changes during development session:
+Since we now edit directly on EC2:
 
-**Step 1: LOCAL MACHINE (Claude MUST do this first):**
+**Step 1: Deploy Lambda functions (when backend changes are made):**
 ```bash
-# Stage and commit changes made during conversation
-git add .
-git commit -m "descriptive commit message"
-git push origin main
-```
-
-**Step 2: EC2 INSTANCE (User executes via VSCode Remote SSH):**
-```bash
-# Pull changes and deploy
-cd ~/SL1_TOPOLOGY
-git pull origin main
-cd backend
+# From EC2 instance
+cd ~/SL1_TOPOLOGY/backend
 sam build
 sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
 ```
 
-**Step 3: Test deployment:**
+**Step 2: Test deployment:**
 ```bash
 curl "https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices?limit=1"
 # Should return JSON with device data, not an error
 ```
 
-**MANDATORY RULE**: Claude MUST commit and push changes to git BEFORE providing EC2 deployment instructions to user. Never assume user will handle git operations.
+**Git Operations**: Only perform git add/commit/push when explicitly requested by user.
 
 ### **Quick Deployment (Both Frontend & Backend)**
 ```bash
-# Complete deployment script
+# Complete deployment script (no git pull needed when editing directly on EC2)
 cd ~/SL1_TOPOLOGY
-git pull origin main
 
-# Deploy backend
+# Deploy backend (if Lambda functions changed)
 cd backend
 sam build
 sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3
 
-# Deploy frontend (if needed)
+# Deploy frontend (if UI changed)
 cd ../frontend
 npm run build
 ps aux | grep "serve -s dist" # Find PID
@@ -511,12 +501,11 @@ kill [PID]
 serve -s dist -l 3000
 ```
 
-### **Development Workflow**
-1. **Connect**: VSCode → Remote-SSH → EC2
-2. **Code**: Edit files directly on EC2 instance
-3. **Test**: Deploy backend, rebuild frontend
-4. **Git**: Commit and push changes
-5. **Deploy**: Follow deployment processes above
+### **Development Workflow (Updated)**
+1. **Edit**: Make changes directly on EC2 instance
+2. **Test**: Deploy backend and/or rebuild frontend as needed
+3. **Git**: Only commit/push when explicitly requested by user
+4. **Deploy**: Follow deployment processes above
 
 ### Environment Configuration
 

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
-import { ControlledTopology } from './components/TopologyCanvas/ControlledTopology';
+import { VisControlledTopology } from './components/TopologyCanvas/VisControlledTopology';
 import { configService } from './services/config';
 import { useTheme } from './hooks/useTheme';
 import './App.css';
@@ -52,8 +52,31 @@ function App() {
       console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
       setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
       
-      // Refresh topology with updated per-device directions (no clearing needed with proper merge logic)
-      await fetchTopologyDataWithDeviceDirections(topologyDevices);
+      // Find the device in current topology data
+      const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
+      if (deviceInTopology) {
+        // Create a Device object from the topology node
+        const deviceToAdd: Device = {
+          id: deviceInTopology.id,
+          name: deviceInTopology.label,
+          ip: deviceInTopology.ip || '',
+          type: deviceInTopology.type || 'Unknown',
+          status: deviceInTopology.status || 'unknown'
+        };
+        
+        // Add device to selected devices (chip area) if not already there
+        const isAlreadySelected = selectedDevices.some(d => d.id === deviceId);
+        if (!isAlreadySelected) {
+          console.log('➕ Adding device to selection:', deviceToAdd.name);
+          setSelectedDevices(prev => [...prev, deviceToAdd]);
+          setTopologyDevices(prev => [...prev, deviceToAdd]);
+        }
+        
+        // Use incremental fetch to get new relationships for this specific device
+        await fetchIncrementalTopologyDataWithDirections([deviceToAdd]);
+      } else {
+        console.warn('Device not found in topology:', deviceId);
+      }
     } else {
       // Global direction change (fallback for compatibility)
       console.log('🔄 Changing global direction to:', direction);
@@ -410,10 +433,14 @@ function App() {
                 </div>
               </div>
             )}
-            <ControlledTopology 
+            <VisControlledTopology 
               devices={topologyDevices}
-              topologyData={topologyData || undefined}
+              selectedDevices={selectedDevices}
+              topologyData={topologyData}
+              deviceDirections={deviceDirections}
               onDirectionChange={handleDirectionChange}
+              onClearAll={handleClearAll}
+              loadingTopology={loadingTopology}
               className="h-full"
             />
           </div>
