@@ -62,6 +62,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const edgesDataSetRef = useRef<DataSet<any> | null>(null);
   const [layout, setLayout] = useState<'hierarchical' | 'physics' | 'grid'>('physics');
   const [forceRedraw, setForceRedraw] = useState(false);
+  const [physicsEnabled, setPhysicsEnabled] = useState(true);
+  const [isStabilized, setIsStabilized] = useState(false);
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -95,7 +97,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     const options = {
       physics: {
-        enabled: layout === 'physics',
+        enabled: physicsEnabled,
         barnesHut: {
           gravitationalConstant: -8000,
           centralGravity: 0.3,
@@ -105,7 +107,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         },
         stabilization: {
           enabled: true,
-          iterations: 200,
+          iterations: 100,
+          updateInterval: 25,
         },
       },
       layout: {
@@ -137,6 +140,17 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     const network = new Network(containerRef.current, data, options);
     networkRef.current = network;
+
+    // Listen for stabilization completion
+    network.on('stabilizationIterationsDone', () => {
+      console.log('Network stabilized - disabling physics to preserve positions');
+      setIsStabilized(true);
+      // Disable physics after stabilization to lock positions
+      network.setOptions({
+        physics: { enabled: false }
+      });
+      setPhysicsEnabled(false);
+    });
 
     // Add click event listener for node clicks
     network.on('click', (params) => {
@@ -176,15 +190,19 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     };
   }, []);
 
-  // Handle data updates incrementally
+  // Handle data updates with position preservation
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
 
-    // If force redraw is requested (layout change), clear everything
+    // If force redraw is requested (layout change), clear everything and re-enable physics
     if (forceRedraw) {
+      console.log('Force redraw requested - clearing canvas and re-enabling physics');
       nodesDataSetRef.current.clear();
       edgesDataSetRef.current.clear();
       setForceRedraw(false);
+      setPhysicsEnabled(true);
+      setIsStabilized(false);
+      networkRef.current.setOptions({ physics: { enabled: true } });
     }
 
     // Transform new data to vis-network format
@@ -273,15 +291,16 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       },
     })) || [];
 
-    // Get current node positions before updating
-    const currentPositions = new Map();
-    if (!forceRedraw) {
+    // Save current positions before making changes (only when physics is disabled)
+    const savedPositions = new Map();
+    if (!physicsEnabled && !forceRedraw && isStabilized) {
+      console.log('Saving current node positions before update');
       const currentNodeIds = nodesDataSetRef.current.getIds();
       currentNodeIds.forEach((nodeId) => {
         const nodeIdStr = String(nodeId);
         const position = networkRef.current?.getPositions([nodeIdStr])[nodeIdStr];
         if (position) {
-          currentPositions.set(nodeIdStr, position);
+          savedPositions.set(nodeIdStr, position);
         }
       });
     }
@@ -295,54 +314,65 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     // Remove nodes that are no longer present
     const nodesToRemove = Array.from(currentNodeIds).filter(id => !newNodeIds.has(id as string));
     if (nodesToRemove.length > 0) {
+      console.log('Removing nodes:', nodesToRemove);
       nodesDataSetRef.current.remove(nodesToRemove);
     }
 
     // Remove edges that are no longer present
     const edgesToRemove = Array.from(currentEdgeIds).filter(id => !newEdgeIds.has(id as string));
     if (edgesToRemove.length > 0) {
+      console.log('Removing edges:', edgesToRemove);
       edgesDataSetRef.current.remove(edgesToRemove);
     }
 
-    // Add or update nodes, preserving positions for existing nodes
+    // Prepare nodes for update - preserve positions if physics is disabled
     const nodesToUpdate = newVisNodes.map(node => {
-      const existingPosition = currentPositions.get(node.id);
-      if (existingPosition && !forceRedraw) {
+      const savedPosition = savedPositions.get(node.id);
+      if (savedPosition && !physicsEnabled && !forceRedraw) {
+        console.log(`Preserving position for node ${node.id}:`, savedPosition);
         return {
           ...node,
-          x: existingPosition.x,
-          y: existingPosition.y,
-          fixed: { x: true, y: true }, // Temporarily fix position
+          x: savedPosition.x,
+          y: savedPosition.y,
+          fixed: { x: false, y: false }, // Allow dragging but preserve position
         };
       }
       return node;
     });
 
     if (nodesToUpdate.length > 0) {
+      console.log('Updating nodes:', nodesToUpdate.length);
       nodesDataSetRef.current.update(nodesToUpdate);
     }
 
     // Add or update edges
     if (newVisEdges.length > 0) {
+      console.log('Updating edges:', newVisEdges.length);
       edgesDataSetRef.current.update(newVisEdges);
     }
 
-    // After a brief delay, unfix the positions to allow manual dragging
-    setTimeout(() => {
-      if (nodesDataSetRef.current && !forceRedraw) {
-        const unfixNodes = nodesToUpdate
-          .filter(node => currentPositions.has(node.id))
-          .map(node => ({
-            id: node.id,
-            fixed: { x: false, y: false },
-          }));
-        if (unfixNodes.length > 0) {
-          nodesDataSetRef.current.update(unfixNodes);
-        }
+    // If we have new nodes and physics is disabled, position them away from existing nodes
+    if (!physicsEnabled && !forceRedraw && isStabilized) {
+      const newNodes = newVisNodes.filter(node => !savedPositions.has(node.id));
+      if (newNodes.length > 0) {
+        console.log('Positioning new nodes without physics:', newNodes.length);
+        // Give new nodes default positions spread out
+        const positionedNewNodes = newNodes.map((node, index) => ({
+          id: node.id,
+          x: 100 + (index * 200),
+          y: 100 + (index * 100),
+          fixed: { x: false, y: false },
+        }));
+        
+        setTimeout(() => {
+          if (nodesDataSetRef.current) {
+            nodesDataSetRef.current.update(positionedNewNodes);
+          }
+        }, 50);
       }
-    }, 100);
+    }
 
-  }, [topologyData, deviceDirections, forceRedraw]);
+  }, [topologyData, deviceDirections, forceRedraw, physicsEnabled, isStabilized]);
 
   // Handle layout changes
   useEffect(() => {
@@ -385,8 +415,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   }, [layout]);
 
   const handleLayoutChange = (newLayout: typeof layout) => {
+    console.log(`Layout change requested: ${newLayout}`);
     setLayout(newLayout);
     setForceRedraw(true); // Force redraw when layout changes
+    setPhysicsEnabled(true); // Re-enable physics for new layout
+    setIsStabilized(false); // Reset stabilization state
   };
 
   const handleFitView = () => {
@@ -394,11 +427,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   };
 
   const handleResetPhysics = () => {
+    console.log('Reset requested');
     if (networkRef.current) {
-      if (layout === 'physics') {
-        networkRef.current.stabilize();
-      }
       setForceRedraw(true); // Force redraw on reset
+      setPhysicsEnabled(true); // Re-enable physics for reset
+      setIsStabilized(false); // Reset stabilization state
     }
   };
 
