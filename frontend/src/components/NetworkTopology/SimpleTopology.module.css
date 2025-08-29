@@ -25,6 +25,13 @@
   gap: 8px;
 }
 
+/* Dark mode support for control groups */
+:global([data-theme="dark"]) .controlGroup {
+  background: rgba(55, 65, 81, 0.95);
+  border: 1px solid rgba(107, 114, 128, 0.3);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
 .controlBtn {
   padding: 8px 12px;
   border: none;
@@ -36,12 +43,24 @@
   font-weight: 500;
   color: #6b7280;
   white-space: nowrap;
+  min-width: auto; /* Ensure consistent sizing */
+}
+
+/* Dark mode support for control buttons */
+:global([data-theme="dark"]) .controlBtn {
+  background: rgba(255, 255, 255, 0.1);
+  color: #d1d5db;
 }
 
 .controlBtn:hover {
   background: rgba(102, 126, 234, 0.1);
   color: #667eea;
   transform: translateY(-1px);
+}
+
+:global([data-theme="dark"]) .controlBtn:hover {
+  background: rgba(129, 140, 248, 0.2);
+  color: #818cf8;
 }
 
 .controlBtn.active {
@@ -61,6 +80,12 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode canvas background */
+:global([data-theme="dark"]) .visContainer {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 /* Hide any remaining vis-network navigation elements */

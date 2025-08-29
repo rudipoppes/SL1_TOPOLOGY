@@ -157,13 +157,13 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20 dark:from-slate-800/30 dark:via-slate-700/50 dark:to-slate-800/20 transition-colors duration-300">
       {/* Enhanced readable header */}
-      <div className="border-b border-white/20 dark:border-gray-700/30 bg-gradient-to-r from-blue-700 to-indigo-700 dark:from-blue-800 dark:to-indigo-800 text-white p-6 shadow-lg transition-colors duration-300">
+      <div className="border-b border-white/20 dark:border-gray-700/30 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm text-gray-800 dark:text-gray-100 p-6 shadow-lg transition-colors duration-300">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold mb-1 text-white drop-shadow-sm">
+            <h2 className="text-2xl font-bold mb-1 text-gray-800 dark:text-gray-100">
               Device Inventory
             </h2>
-            <p className="text-blue-100 text-sm font-medium">
+            <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
               Click devices to add to topology
             </p>
           </div>
@@ -173,8 +173,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               <button
                 onClick={onThemeToggle}
                 className="
-                  bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 
-                  rounded-xl p-3 transition-all duration-300 hover:bg-white/30 dark:hover:bg-white/20
+                  bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 
+                  rounded-xl p-3 transition-all duration-300 hover:bg-gray-200/70 dark:hover:bg-gray-600/70
                   hover:shadow-lg
                 "
                 title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
@@ -186,9 +186,9 @@ export const DeviceList: React.FC<DeviceListProps> = ({
             )}
             
             {/* Device Count */}
-            <div className="bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl p-4 transition-colors duration-300">
-              <div className="text-2xl font-bold text-white drop-shadow-sm">{devices.length}</div>
-              <div className="text-xs text-blue-100 font-medium uppercase tracking-wide">devices loaded</div>
+            <div className="bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl p-4 transition-colors duration-300">
+              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{devices.length}</div>
+              <div className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">devices loaded</div>
             </div>
           </div>
         </div>
