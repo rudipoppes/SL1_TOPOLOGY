@@ -8,6 +8,9 @@ interface ZoomControlsProps {
   layout?: 'hierarchical' | 'physics' | 'grid';
   onLayoutChange?: (layout: 'hierarchical' | 'physics' | 'grid') => void;
   onClearAll?: () => void;
+  // Lock controls
+  isLocked?: boolean;
+  onToggleLock?: () => void;
 }
 
 export const ZoomControls: React.FC<ZoomControlsProps> = ({ 
@@ -15,7 +18,9 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   theme = 'light',
   layout = 'physics',
   onLayoutChange,
-  onClearAll
+  onClearAll,
+  isLocked = false,
+  onToggleLock
 }) => {
   const handleZoomIn = () => {
     if (networkRef.current) {
@@ -197,6 +202,21 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
                 <span className="text-base">🗑️</span>
               </button>
             </>
+          )}
+
+          {/* Lock/Unlock Button */}
+          {onToggleLock && (
+            <button
+              onClick={onToggleLock}
+              className={`${uniformButtonClass} ${
+                isLocked 
+                  ? 'bg-red-500 border-red-400 text-white hover:bg-red-600 shadow-red-500/25'
+                  : layoutThemeClasses
+              }`}
+              title={isLocked ? "Unlock Canvas" : "Lock Canvas"}
+            >
+              <span className="text-base">{isLocked ? '🔒' : '🔓'}</span>
+            </button>
           )}
         </div>
       )}

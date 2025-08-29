@@ -96,6 +96,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const edgesDataSetRef = useRef<DataSet<any> | null>(null);
   const [layout, setLayout] = useState<'hierarchical' | 'physics' | 'grid'>('physics');
   const [forceRedraw, setForceRedraw] = useState(false);
+  const [isLocked, setIsLocked] = useState(false); // Canvas lock state
   const nodePositionCounter = useRef({ x: 100, y: 100 });
   
   // Modal state
@@ -651,6 +652,44 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     setForceRedraw(true); // This will trigger layout change
   };
 
+  // Lock/unlock canvas functions
+  const lockCanvas = () => {
+    if (networkRef.current) {
+      networkRef.current.setOptions({
+        interaction: {
+          dragNodes: false,
+          dragView: false,
+          zoomView: false,
+          selectable: false,
+        }
+      });
+      setIsLocked(true);
+      console.log('Canvas locked - all interactions disabled');
+    }
+  };
+
+  const unlockCanvas = () => {
+    if (networkRef.current) {
+      networkRef.current.setOptions({
+        interaction: {
+          dragNodes: true,
+          dragView: true,
+          zoomView: true,
+          selectable: true,
+        }
+      });
+      setIsLocked(false);
+      console.log('Canvas unlocked - all interactions enabled');
+    }
+  };
+
+  const toggleCanvasLock = () => {
+    if (isLocked) {
+      unlockCanvas();
+    } else {
+      lockCanvas();
+    }
+  };
 
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
     if (onDirectionChange && modalState.nodeId) {
@@ -674,6 +713,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         layout={layout}
         onLayoutChange={handleLayoutChange}
         onClearAll={onClearAll}
+        isLocked={isLocked}
+        onToggleLock={toggleCanvasLock}
       />
       
       <div 
