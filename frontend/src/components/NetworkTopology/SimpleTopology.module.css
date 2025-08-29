@@ -77,7 +77,9 @@
 .visContainer {
   width: 100%;
   height: 100%;
-  background: #ffffff; /* Default white background */
+  background: #ffffff !important; /* Force white background */
+  background-color: #ffffff !important;
+  background-image: none !important;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
   transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transitions */
@@ -85,7 +87,9 @@
 
 /* Dark mode canvas background */
 :global([data-theme="dark"]) .visContainer {
-  background: #1f2937; /* Dark gray background for dark mode */
+  background: #1f2937 !important; /* Force dark gray background for dark mode */
+  background-color: #1f2937 !important;
+  background-image: none !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
@@ -95,13 +99,29 @@
 }
 
 /* Ensure vis-network canvas maintains theme-appropriate background */
+:global(.vis-network) {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  background: #ffffff !important;
+}
+
 :global(.vis-network canvas) {
   background-color: #ffffff !important;
+  background-image: none !important;
+  background: #ffffff !important;
   transition: background-color 0.3s ease !important;
+}
+
+:global([data-theme="dark"] .vis-network) {
+  background-color: #1f2937 !important;
+  background-image: none !important;
+  background: #1f2937 !important;
 }
 
 :global([data-theme="dark"] .vis-network canvas) {
   background-color: #1f2937 !important;
+  background-image: none !important;
+  background: #1f2937 !important;
 }
 
 @media (max-width: 768px) {
