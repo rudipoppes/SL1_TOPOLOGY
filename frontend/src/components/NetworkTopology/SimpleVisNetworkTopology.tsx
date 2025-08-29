@@ -361,9 +361,12 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             enabled: true,
             direction: 'UD',
             sortMethod: 'directed',
-            levelSeparation: 250, // Increased from 150 for more space between levels
-            nodeSpacing: 300, // Increased from 200 for more horizontal spacing
-            treeSpacing: 350, // Add tree spacing for better relationship lines
+            levelSeparation: 250, // Keep vertical spacing good
+            nodeSpacing: 180, // REDUCE horizontal spacing to prevent overlap
+            treeSpacing: 200, // Reduce tree spacing 
+            blockShifting: true, // Enable block shifting to prevent overlap
+            edgeMinimization: true, // Minimize edge crossings
+            parentCentralization: true, // Center parent nodes
           },
         },
       });
