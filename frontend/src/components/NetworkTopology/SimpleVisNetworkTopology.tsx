@@ -363,46 +363,60 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         let hierarchyNodes: any[] = [];
         const levelSpacing = 250;
         const nodeSpacing = 300;
-        
-        // Get child nodes first to calculate center position
-        const childNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
-          topologyData?.edges.some(edge => edge.target === node.id && selectedNodeIds.has(edge.source)));
-        
         const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
         
-        // Level +1: Child devices (spread out) - position FIRST to determine center
-        const childStartX = 400;
-        childNodes.forEach((node, index) => {
-          hierarchyNodes.push({
-            id: node.id,
-            x: childStartX + (index * nodeSpacing),
-            y: 200 + levelSpacing, // Below selected
+        let currentSubtreeStartX = 100;
+        
+        // Process each selected device as its own subtree
+        selectedNodes.forEach((selectedNode) => {
+          // Find children of this specific selected device
+          const childrenOfThisSelected = nodes.filter(node => 
+            !selectedNodeIds.has(node.id) && 
+            topologyData?.edges.some(edge => 
+              edge.source === selectedNode.id && edge.target === node.id));
+          
+          // Find parents of this specific selected device  
+          const parentsOfThisSelected = nodes.filter(node =>
+            !selectedNodeIds.has(node.id) &&
+            topologyData?.edges.some(edge => 
+              edge.target === selectedNode.id && edge.source === node.id));
+          
+          // Position children of this selected device
+          childrenOfThisSelected.forEach((childNode, childIndex) => {
+            hierarchyNodes.push({
+              id: childNode.id,
+              x: currentSubtreeStartX + (childIndex * nodeSpacing),
+              y: 200 + levelSpacing, // Below selected
+            });
           });
-        });
-        
-        // Calculate the CENTER X position of the children
-        const childCenterX = childNodes.length > 0 
-          ? childStartX + ((childNodes.length - 1) * nodeSpacing) / 2
-          : 400; // Default if no children
-        
-        // Level 0: Selected devices (at CENTER of children positions) 
-        selectedNodes.forEach((node) => {
+          
+          // Calculate center X for this selected device based on its children
+          let selectedX;
+          if (childrenOfThisSelected.length > 0) {
+            selectedX = currentSubtreeStartX + ((childrenOfThisSelected.length - 1) * nodeSpacing) / 2;
+          } else {
+            selectedX = currentSubtreeStartX; // No children, use start position
+          }
+          
+          // Position this selected device at center of its children
           hierarchyNodes.push({
-            id: node.id,
-            x: childCenterX, // EXACT center of children
+            id: selectedNode.id,
+            x: selectedX,
             y: 200, // Middle level
           });
-        });
-        
-        // Level -1: Parent devices (above selected, same X as selected)
-        const parentNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
-          topologyData?.edges.some(edge => edge.source === node.id && selectedNodeIds.has(edge.target)));
-        parentNodes.forEach((node) => {
-          hierarchyNodes.push({
-            id: node.id,
-            x: childCenterX, // Same X as selected device
-            y: 200 - levelSpacing, // Above selected
+          
+          // Position parents of this selected device above it
+          parentsOfThisSelected.forEach((parentNode) => {
+            hierarchyNodes.push({
+              id: parentNode.id,
+              x: selectedX, // Same X as selected device
+              y: 200 - levelSpacing, // Above selected
+            });
           });
+          
+          // Move start position for next subtree
+          const subtreeWidth = Math.max(childrenOfThisSelected.length, 1) * nodeSpacing;
+          currentSubtreeStartX += subtreeWidth + 100; // Gap between subtrees
         });
         
         // Apply positioning
