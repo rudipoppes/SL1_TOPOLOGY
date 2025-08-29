@@ -4,11 +4,18 @@ import { Network } from 'vis-network/standalone';
 interface ZoomControlsProps {
   networkRef: React.RefObject<Network | null>;
   theme?: 'light' | 'dark';
+  // Layout controls
+  layout?: 'hierarchical' | 'physics' | 'grid';
+  onLayoutChange?: (layout: 'hierarchical' | 'physics' | 'grid') => void;
+  onClearAll?: () => void;
 }
 
 export const ZoomControls: React.FC<ZoomControlsProps> = ({ 
   networkRef, 
-  theme = 'light' 
+  theme = 'light',
+  layout = 'physics',
+  onLayoutChange,
+  onClearAll
 }) => {
   const handleZoomIn = () => {
     if (networkRef.current) {
@@ -54,6 +61,12 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
     hover:scale-110 hover:shadow-lg active:scale-95
   `;
 
+  const layoutButtonClass = `
+    px-3 py-2 rounded-lg border transition-all duration-300 
+    flex items-center justify-center font-medium text-sm
+    hover:scale-105 hover:shadow-lg active:scale-95 whitespace-nowrap
+  `;
+
   const themeClasses = theme === 'dark' 
     ? `
       bg-gray-800 border-gray-600 text-gray-100
@@ -66,8 +79,27 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
       shadow-lg shadow-black/10
     `;
 
+  const layoutThemeClasses = theme === 'dark' 
+    ? `
+      bg-gray-800 border-gray-600 text-gray-100
+      hover:bg-gray-700 hover:border-gray-500
+      shadow-lg shadow-black/20
+    `
+    : `
+      bg-white border-gray-300 text-gray-700
+      hover:bg-gray-50 hover:border-gray-400
+      shadow-lg shadow-black/10
+    `;
+
+  const activeLayoutClass = theme === 'dark'
+    ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/25'
+    : 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/25';
+
+  const dangerClass = 'bg-orange-500 border-orange-400 text-white hover:bg-orange-600 shadow-orange-500/25';
+
   return (
     <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 backdrop-blur-sm">
+      {/* Zoom Controls */}
       <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
         theme === 'dark' 
           ? 'bg-gray-800/90 border-gray-600' 
@@ -115,6 +147,65 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           ⌂
         </button>
       </div>
+
+      {/* Layout Controls */}
+      {onLayoutChange && (
+        <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
+          theme === 'dark' 
+            ? 'bg-gray-800/90 border-gray-600' 
+            : 'bg-white/90 border-gray-200'
+        } shadow-xl`}>
+          
+          {/* Physics Layout */}
+          <button
+            onClick={() => onLayoutChange('physics')}
+            className={`${layoutButtonClass} ${
+              layout === 'physics' ? activeLayoutClass : layoutThemeClasses
+            }`}
+            title="Physics Layout"
+          >
+            ⚛️ Physics
+          </button>
+
+          {/* Hierarchical Layout */}
+          <button
+            onClick={() => onLayoutChange('hierarchical')}
+            className={`${layoutButtonClass} ${
+              layout === 'hierarchical' ? activeLayoutClass : layoutThemeClasses
+            }`}
+            title="Hierarchical Layout"
+          >
+            🌳 Hierarchy
+          </button>
+
+          {/* Grid Layout */}
+          <button
+            onClick={() => onLayoutChange('grid')}
+            className={`${layoutButtonClass} ${
+              layout === 'grid' ? activeLayoutClass : layoutThemeClasses
+            }`}
+            title="Grid Layout"
+          >
+            ⚏ Grid
+          </button>
+
+          {/* Clear Button */}
+          {onClearAll && (
+            <>
+              <div className={`h-px my-1 ${
+                theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
+              }`} />
+              <button
+                onClick={onClearAll}
+                className={`${layoutButtonClass} ${dangerClass}`}
+                title="Clear All"
+              >
+                🗑️ Clear
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };

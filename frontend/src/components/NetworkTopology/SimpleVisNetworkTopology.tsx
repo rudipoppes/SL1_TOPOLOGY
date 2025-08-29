@@ -526,40 +526,14 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
   return (
     <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
-      {/* Zoom Controls Panel */}
-      <ZoomControls networkRef={networkRef} theme={theme} />
-      
-      {/* Simple Controls */}
-      <div className={styles.simpleControls}>
-        <div className={styles.controlGroup}>
-          <button
-            onClick={() => handleLayoutChange('physics')}
-            className={`${styles.controlBtn} ${layout === 'physics' ? styles.active : ''}`}
-          >
-            ⚛️ Physics
-          </button>
-          <button
-            onClick={() => handleLayoutChange('hierarchical')}
-            className={`${styles.controlBtn} ${layout === 'hierarchical' ? styles.active : ''}`}
-          >
-            🌳 Hierarchy
-          </button>
-          <button
-            onClick={() => handleLayoutChange('grid')}
-            className={`${styles.controlBtn} ${layout === 'grid' ? styles.active : ''}`}
-          >
-            ⚏ Grid
-          </button>
-        </div>
-        
-        <div className={styles.controlGroup}>
-          {onClearAll && (
-            <button onClick={onClearAll} className={`${styles.controlBtn} ${styles.danger}`}>
-              🗑️ Clear
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Integrated Controls Panel */}
+      <ZoomControls 
+        networkRef={networkRef} 
+        theme={theme}
+        layout={layout}
+        onLayoutChange={handleLayoutChange}
+        onClearAll={onClearAll}
+      />
       
       <div 
         ref={containerRef} 
