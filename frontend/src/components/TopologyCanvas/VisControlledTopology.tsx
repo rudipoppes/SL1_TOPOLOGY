@@ -13,6 +13,7 @@ interface VisControlledTopologyProps {
   onClearAll?: () => void;
   loadingTopology?: boolean;
   className?: string;
+  theme?: 'light' | 'dark';
 }
 
 export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
@@ -25,6 +26,7 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
   onClearAll,
   loadingTopology = false,
   className = '',
+  theme = 'light',
 }) => {
   if (loadingTopology) {
     return (
@@ -80,6 +82,7 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
         onAddDeviceToSelection={onAddDeviceToSelection}
         onClearAll={onClearAll}
         className={styles.visNetworkWrapper}
+        theme={theme}
       />
     </div>
   );

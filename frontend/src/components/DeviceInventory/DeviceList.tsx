@@ -17,12 +17,16 @@ interface DeviceListProps {
   onDeviceSelect: (devices: Device[]) => void;
   onClearSelection: () => void;
   selectedDevices: Device[];
+  theme?: 'light' | 'dark';
+  onThemeToggle?: () => void;
 }
 
 export const DeviceList: React.FC<DeviceListProps> = ({
   onDeviceSelect,
   onClearSelection,
   selectedDevices: parentSelectedDevices,
+  theme = 'light',
+  onThemeToggle,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
@@ -163,9 +167,29 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               Click devices to add to topology
             </p>
           </div>
-          <div className="bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl p-4 transition-colors duration-300">
-            <div className="text-2xl font-bold text-white drop-shadow-sm">{devices.length}</div>
-            <div className="text-xs text-blue-100 font-medium uppercase tracking-wide">devices loaded</div>
+          <div className="flex items-center gap-3">
+            {/* Theme Toggle Button */}
+            {onThemeToggle && (
+              <button
+                onClick={onThemeToggle}
+                className="
+                  bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 
+                  rounded-xl p-3 transition-all duration-300 hover:bg-white/30 dark:hover:bg-white/20
+                  hover:shadow-lg
+                "
+                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+              >
+                <span className="text-xl">
+                  {theme === 'light' ? '🌙' : '☀️'}
+                </span>
+              </button>
+            )}
+            
+            {/* Device Count */}
+            <div className="bg-white/20 dark:bg-white/10 backdrop-blur-sm border border-white/30 dark:border-white/20 rounded-xl p-4 transition-colors duration-300">
+              <div className="text-2xl font-bold text-white drop-shadow-sm">{devices.length}</div>
+              <div className="text-xs text-blue-100 font-medium uppercase tracking-wide">devices loaded</div>
+            </div>
           </div>
         </div>
       </div>

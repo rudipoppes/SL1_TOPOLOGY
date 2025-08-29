@@ -352,20 +352,6 @@ function App() {
 
   return (
     <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 transition-colors duration-300">
-      {/* Theme Toggle Button */}
-      <button
-        onClick={toggleTheme}
-        className="
-          fixed top-4 right-4 z-50 glass-panel backdrop-blur-lg border-white/30 
-          rounded-lg shadow-lg p-2 transition-all duration-300 hover:shadow-xl
-          hover:bg-white/20 dark:hover:bg-white/10
-        "
-        title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-      >
-        <span className="text-lg">
-          {theme === 'light' ? '🌙' : '☀️'}
-        </span>
-      </button>
       {/* Resizable Left Panel - Device Inventory */}
       <div 
         className="glass-panel flex-shrink-0 border-r border-white/20 animate-slide-in"
@@ -375,6 +361,8 @@ function App() {
           onDeviceSelect={handleDeviceSelect}
           onClearSelection={handleClearAll}
           selectedDevices={selectedDevices}
+          theme={theme}
+          onThemeToggle={toggleTheme}
         />
       </div>
 
@@ -442,6 +430,7 @@ function App() {
               onClearAll={handleClearAll}
               loadingTopology={loadingTopology}
               className="h-full"
+              theme={theme}
             />
           </div>
         )}

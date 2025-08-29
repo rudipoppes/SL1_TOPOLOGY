@@ -17,6 +17,7 @@ interface SimpleVisNetworkTopologyProps {
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
   className?: string;
+  theme?: 'light' | 'dark';
 }
 
 const getDeviceIcon = (type: string): string => {
@@ -49,6 +50,34 @@ const getStatusColor = (status: string) => {
   }
 };
 
+const getThemeColors = (theme: 'light' | 'dark' = 'light') => {
+  if (theme === 'dark') {
+    return {
+      nodeBackground: '#374151',
+      nodeBorder: '#6b7280',
+      nodeText: '#f9fafb',
+      nodeStroke: '#1f2937',
+      highlightBackground: '#4b5563',
+      highlightBorder: '#818cf8',
+      edgeColor: '#4b5563',
+      edgeHighlight: '#818cf8',
+      edgeHover: '#818cf8',
+    };
+  } else {
+    return {
+      nodeBackground: '#ffffff',
+      nodeBorder: '#e5e7eb',
+      nodeText: '#1f2937',
+      nodeStroke: '#ffffff',
+      highlightBackground: '#f9fafb',
+      highlightBorder: '#667eea',
+      edgeColor: '#cbd5e0',
+      edgeHighlight: '#667eea',
+      edgeHover: '#667eea',
+    };
+  }
+};
+
 export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> = ({
   selectedDevices,
   topologyData,
@@ -56,6 +85,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   onDirectionChange,
   onClearAll,
   className = '',
+  theme = 'light',
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const networkRef = useRef<Network | null>(null);
@@ -179,6 +209,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }
 
     // Transform new data to vis-network format with static positioning
+    const themeColors = getThemeColors(theme);
     const newVisNodes = topologyData?.nodes.map(node => {
       const status = getNodeStatus(node);
       const icon = getDeviceIcon(node.type || '');
@@ -195,11 +226,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         label: directionLabel,
         title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}`,
         color: {
-          background: '#ffffff',
+          background: themeColors.nodeBackground,
           border: statusColor,
           highlight: {
-            background: '#f9fafb',
-            border: '#667eea',
+            background: themeColors.highlightBackground,
+            border: themeColors.highlightBorder,
           },
         },
         borderWidth: 2,
@@ -211,9 +242,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         font: {
           size: 14,
           face: 'Inter, system-ui, sans-serif',
-          color: '#1f2937',
+          color: themeColors.nodeText,
           strokeWidth: 2,
-          strokeColor: '#ffffff',
+          strokeColor: themeColors.nodeStroke,
         },
         margin: {
           top: 10,
@@ -223,7 +254,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         },
         shadow: {
           enabled: true,
-          color: 'rgba(0, 0, 0, 0.2)',
+          color: theme === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.2)',
           size: 15,
           x: 0,
           y: 5,
@@ -252,9 +283,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         },
       },
       color: {
-        color: '#cbd5e0',
-        highlight: '#667eea',
-        hover: '#667eea',
+        color: themeColors.edgeColor,
+        highlight: themeColors.edgeHighlight,
+        hover: themeColors.edgeHover,
       },
       width: 2,
       length: 200, // Minimum edge length
@@ -345,7 +376,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       edgesDataSetRef.current.update(newVisEdges);
     }
 
-  }, [topologyData, deviceDirections, forceRedraw]);
+  }, [topologyData, deviceDirections, forceRedraw, theme]);
 
   // Handle layout changes by enabling physics temporarily
   useEffect(() => {
