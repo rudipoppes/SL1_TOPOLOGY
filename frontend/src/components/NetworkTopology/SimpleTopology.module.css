@@ -63,6 +63,42 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 }
 
+/* Custom styles for vis-network navigation buttons to match UI */
+:global(.vis-network .vis-navigation .vis-button) {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  width: 40px !important;
+  height: 40px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+:global(.vis-network .vis-navigation .vis-button:hover) {
+  background: rgba(102, 126, 234, 0.1) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.2) !important;
+}
+
+:global(.vis-network .vis-navigation .vis-button:active) {
+  transform: translateY(0) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Dark mode support for navigation buttons */
+:global([data-theme="dark"] .vis-network .vis-navigation .vis-button) {
+  background: rgba(55, 65, 81, 0.95) !important;
+  border: 1px solid rgba(107, 114, 128, 0.3) !important;
+  color: #f9fafb !important;
+}
+
+:global([data-theme="dark"] .vis-network .vis-navigation .vis-button:hover) {
+  background: rgba(129, 140, 248, 0.2) !important;
+  box-shadow: 0 12px 35px rgba(129, 140, 248, 0.3) !important;
+}
+
 @media (max-width: 768px) {
   .simpleControls {
     top: 10px;
@@ -71,5 +107,11 @@
   
   .controlGroup {
     flex-direction: column;
+  }
+  
+  /* Make navigation buttons smaller on mobile */
+  :global(.vis-network .vis-navigation .vis-button) {
+    width: 35px !important;
+    height: 35px !important;
   }
 }

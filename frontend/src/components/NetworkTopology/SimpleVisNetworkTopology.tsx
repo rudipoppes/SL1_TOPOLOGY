@@ -510,14 +510,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     setForceRedraw(true); // This will trigger layout change
   };
 
-  const handleFitView = () => {
-    networkRef.current?.fit({ animation: { duration: 1000, easingFunction: 'easeInOutQuad' } });
-  };
-
-  const handleResetPhysics = () => {
-    console.log('STATIC: Reset requested');
-    setForceRedraw(true); // This will clear and redraw everything
-  };
 
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
     if (onDirectionChange && modalState.nodeId) {
@@ -561,12 +553,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         </div>
         
         <div className={styles.controlGroup}>
-          <button onClick={handleFitView} className={styles.controlBtn}>
-            🔍 Fit View
-          </button>
-          <button onClick={handleResetPhysics} className={styles.controlBtn}>
-            🔄 Reset
-          </button>
           {onClearAll && (
             <button onClick={onClearAll} className={`${styles.controlBtn} ${styles.danger}`}>
               🗑️ Clear
