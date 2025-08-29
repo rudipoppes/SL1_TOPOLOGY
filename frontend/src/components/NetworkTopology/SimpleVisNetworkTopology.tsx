@@ -316,11 +316,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           x: nodePositionCounter.current.x,
           y: nodePositionCounter.current.y,
         };
-        // Increment position for next new node with much larger spacing
-        nodePositionCounter.current.x += 400;
-        if (nodePositionCounter.current.x > 1200) {
+        // Increment position for next new node with balanced spacing
+        nodePositionCounter.current.x += 280;
+        if (nodePositionCounter.current.x > 1000) {
           nodePositionCounter.current.x = 100;
-          nodePositionCounter.current.y += 300;
+          nodePositionCounter.current.y += 220;
         }
         
         console.log(`STATIC: Assigning position to new node ${node.id}:`, newPosition);
@@ -361,8 +361,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             enabled: true,
             direction: 'UD',
             sortMethod: 'directed',
-            levelSeparation: 150,
-            nodeSpacing: 200,
+            levelSeparation: 250, // Increased from 150 for more space between levels
+            nodeSpacing: 300, // Increased from 200 for more horizontal spacing
+            treeSpacing: 350, // Add tree spacing for better relationship lines
           },
         },
       });
@@ -375,9 +376,19 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       }, 2000);
     } else if (layout === 'physics') {
-      // Enable physics temporarily for natural layout
+      // Enable physics temporarily for natural layout with better spacing
       networkRef.current.setOptions({
-        physics: { enabled: true },
+        physics: { 
+          enabled: true,
+          barnesHut: {
+            gravitationalConstant: -6000, // Reduced from -8000 for less attraction
+            centralGravity: 0.2, // Reduced from 0.3 for less central pull
+            springLength: 250, // Increased from 200 for longer connections
+            springConstant: 0.03, // Reduced from 0.04 for softer springs
+            damping: 0.09,
+            avoidOverlap: 1, // Add overlap avoidance
+          },
+        },
         layout: { hierarchical: { enabled: false } },
       });
       
