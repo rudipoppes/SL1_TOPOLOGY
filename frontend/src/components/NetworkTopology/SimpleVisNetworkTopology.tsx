@@ -471,8 +471,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         
         // Phase 4: Calculate positions with proper parent centering
         const levelSpacing = 250;
-        const nodeSpacing = 300;
-        const minNodeSpacing = 150; // Minimum space between nodes
+        const nodeSpacing = 400; // Increased from 300 to prevent overlap
+        const minNodeSpacing = 220; // Increased from 150 to ensure no overlap
         const hierarchyNodes: any[] = [];
         const nodePositions = new Map<string, {x: number, y: number}>();
         
