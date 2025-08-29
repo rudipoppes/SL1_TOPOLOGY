@@ -3,7 +3,10 @@ import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 import { DeviceRelationshipModal } from './DeviceRelationshipModal';
+import { ZoomControls } from './ZoomControls';
 import styles from './SimpleTopology.module.css';
+// Import vis-network CSS for navigation buttons
+import 'vis-network/dist/dist/vis-network.min.css';
 
 interface SimpleVisNetworkTopologyProps {
   devices?: Device[];
@@ -136,6 +139,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         dragView: true,
         zoomView: true,
         dragNodes: true, // Allow manual dragging
+        navigationButtons: true, // Enable built-in zoom controls
+        keyboard: true, // Enable keyboard shortcuts
       },
       nodes: {
         chosen: true,
@@ -529,6 +534,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
   return (
     <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
+      {/* Zoom Controls Panel */}
+      <ZoomControls networkRef={networkRef} theme={theme} />
+      
       {/* Simple Controls */}
       <div className={styles.simpleControls}>
         <div className={styles.controlGroup}>
