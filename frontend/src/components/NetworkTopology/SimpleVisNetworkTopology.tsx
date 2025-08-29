@@ -370,36 +370,38 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         
         const selectedNodes = nodes.filter(node => selectedNodeIds.has(node.id));
         
-        // Calculate center X position based on children width
-        const totalChildWidth = Math.max(childNodes.length - 1, 0) * nodeSpacing;
-        const centerX = 400 + (totalChildWidth / 2);
-        
-        // Level 0: Selected devices (CENTER of children) 
-        selectedNodes.forEach((node, index) => {
+        // Level +1: Child devices (spread out) - position FIRST to determine center
+        const childStartX = 400;
+        childNodes.forEach((node, index) => {
           hierarchyNodes.push({
             id: node.id,
-            x: centerX + (index * nodeSpacing), // Center relative to children
+            x: childStartX + (index * nodeSpacing),
+            y: 200 + levelSpacing, // Below selected
+          });
+        });
+        
+        // Calculate the CENTER X position of the children
+        const childCenterX = childNodes.length > 0 
+          ? childStartX + ((childNodes.length - 1) * nodeSpacing) / 2
+          : 400; // Default if no children
+        
+        // Level 0: Selected devices (at CENTER of children positions) 
+        selectedNodes.forEach((node) => {
+          hierarchyNodes.push({
+            id: node.id,
+            x: childCenterX, // EXACT center of children
             y: 200, // Middle level
           });
         });
         
-        // Level -1: Parent devices (above selected)
+        // Level -1: Parent devices (above selected, same X as selected)
         const parentNodes = nodes.filter(node => !selectedNodeIds.has(node.id) && 
           topologyData?.edges.some(edge => edge.source === node.id && selectedNodeIds.has(edge.target)));
-        parentNodes.forEach((node, index) => {
+        parentNodes.forEach((node) => {
           hierarchyNodes.push({
             id: node.id,
-            x: centerX + (index * nodeSpacing), // Centered like selected
+            x: childCenterX, // Same X as selected device
             y: 200 - levelSpacing, // Above selected
-          });
-        });
-        
-        // Level +1: Child devices (below selected, spread out)
-        childNodes.forEach((node, index) => {
-          hierarchyNodes.push({
-            id: node.id,
-            x: 400 + (index * nodeSpacing), // Spread horizontally
-            y: 200 + levelSpacing, // Below selected
           });
         });
         
