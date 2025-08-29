@@ -128,6 +128,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       edges: edgesDataSet,
     };
 
+    // Get theme-appropriate background color
+    const canvasBackground = theme === 'dark' ? '#1f2937' : '#ffffff';
+    
     const options = {
       physics: {
         enabled: false, // Always disable physics for static positioning
@@ -154,6 +157,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           roundness: 0.2,
         },
       },
+      configure: {
+        enabled: false,
+      },
+      // Ensure canvas background matches theme
+      canvas: {
+        style: {
+          backgroundColor: canvasBackground,
+        }
+      }
     };
 
     const network = new Network(containerRef.current, data, options);
@@ -197,7 +209,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         edgesDataSetRef.current = null;
       }
     };
-  }, []);
+  }, [theme]); // Recreate network when theme changes to update canvas background
 
   // Handle data updates with static positioning
   useEffect(() => {
