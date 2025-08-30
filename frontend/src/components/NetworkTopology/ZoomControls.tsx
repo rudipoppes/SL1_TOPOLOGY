@@ -60,6 +60,81 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
     }
   };
 
+  // Export functions
+  const handleExportPNG = () => {
+    if (networkRef.current) {
+      // Get canvas via DOM query since vis-network doesn't expose getCanvas in TypeScript
+      const canvas = (networkRef.current as any).canvas?.frame?.canvas;
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = 'topology-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      } else {
+        alert('Canvas not available for export');
+      }
+    }
+  };
+
+  const handleExportJPEG = () => {
+    if (networkRef.current) {
+      // Get canvas via DOM query since vis-network doesn't expose getCanvas in TypeScript
+      const canvas = (networkRef.current as any).canvas?.frame?.canvas;
+      if (canvas) {
+        const link = document.createElement('a');
+        link.download = 'topology-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.jpg';
+        link.href = canvas.toDataURL('image/jpeg', 0.9);
+        link.click();
+      } else {
+        alert('Canvas not available for export');
+      }
+    }
+  };
+
+  const handleExportSVG = () => {
+    // Note: vis-network doesn't directly support SVG export
+    // This is a placeholder for future implementation
+    alert('SVG export not yet implemented. Use PNG or JPEG for now.');
+  };
+
+  const handleExportHTML = () => {
+    if (networkRef.current) {
+      const canvas = (networkRef.current as any).canvas?.frame?.canvas;
+      if (canvas) {
+        const dataURL = canvas.toDataURL('image/png');
+        
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Network Topology Export</title>
+    <style>
+        body { margin: 0; padding: 20px; font-family: Arial, sans-serif; }
+        .container { text-align: center; }
+        .timestamp { color: #666; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Network Topology</h1>
+        <img src="${dataURL}" alt="Network Topology" style="max-width: 100%; height: auto;" />
+        <div class="timestamp">Generated on: ${new Date().toLocaleString()}</div>
+    </div>
+</body>
+</html>`;
+        
+        const blob = new Blob([html], { type: 'text/html' });
+        const link = document.createElement('a');
+        link.download = 'topology-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.html';
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+      } else {
+        alert('Canvas not available for export');
+      }
+    }
+  };
+
   const uniformButtonClass = `
     w-10 h-10 rounded-lg border transition-all duration-300 
     flex items-center justify-center font-medium text-sm
@@ -220,6 +295,55 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           )}
         </div>
       )}
+      
+      {/* Export Controls */}
+      <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
+        theme === 'dark' 
+          ? 'bg-gray-800/90 border-gray-600' 
+          : 'bg-white/90 border-gray-200'
+      } shadow-xl`}>
+        
+        {/* Export PNG */}
+        <button
+          onClick={handleExportPNG}
+          className={`${uniformButtonClass} ${themeClasses}`}
+          title="Export as PNG"
+        >
+          <span className="text-xs font-bold">PNG</span>
+        </button>
+
+        {/* Export JPEG */}
+        <button
+          onClick={handleExportJPEG}
+          className={`${uniformButtonClass} ${themeClasses}`}
+          title="Export as JPEG"
+        >
+          <span className="text-xs font-bold">JPG</span>
+        </button>
+
+        {/* Separator line */}
+        <div className={`h-px my-1 ${
+          theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
+        }`} />
+
+        {/* Export HTML */}
+        <button
+          onClick={handleExportHTML}
+          className={`${uniformButtonClass} ${themeClasses}`}
+          title="Export as HTML"
+        >
+          <span className="text-xs font-bold">HTML</span>
+        </button>
+
+        {/* Export SVG (placeholder) */}
+        <button
+          onClick={handleExportSVG}
+          className={`${uniformButtonClass} ${themeClasses} opacity-50`}
+          title="Export as SVG (Coming Soon)"
+        >
+          <span className="text-xs font-bold">SVG</span>
+        </button>
+      </div>
     </div>
   );
 };

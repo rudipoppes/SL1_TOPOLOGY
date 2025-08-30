@@ -825,6 +825,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       <div 
         ref={containerRef} 
         className={styles.visContainer}
+        style={{
+          outline: isLocked ? '3px solid #ef4444' : 'none',
+          outlineOffset: '-3px'
+        }}
       />
 
       {/* Device Relationship Modal */}
