@@ -92,9 +92,108 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   };
 
   const handleExportSVG = () => {
-    // Note: vis-network doesn't directly support SVG export
-    // This is a placeholder for future implementation
-    alert('SVG export not yet implemented. Use PNG or JPEG for now.');
+    if (networkRef.current) {
+      try {
+        // Get network data
+        const nodes = (networkRef.current as any).body.data.nodes;
+        const edges = (networkRef.current as any).body.data.edges;
+        const positions = networkRef.current.getPositions();
+        
+        if (!nodes || !edges || !positions) {
+          alert('Network data not available for SVG export');
+          return;
+        }
+        
+        // Calculate bounding box
+        const nodePositions = Object.values(positions) as { x: number; y: number }[];
+        const minX = Math.min(...nodePositions.map(p => p.x)) - 100;
+        const maxX = Math.max(...nodePositions.map(p => p.x)) + 100;
+        const minY = Math.min(...nodePositions.map(p => p.y)) - 100;
+        const maxY = Math.max(...nodePositions.map(p => p.y)) + 100;
+        const width = maxX - minX;
+        const height = maxY - minY;
+        
+        // Start SVG content
+        let svg = `<?xml version="1.0" encoding="UTF-8"?>
+<svg width="${width}" height="${height}" viewBox="${minX} ${minY} ${width} ${height}" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .node-text { font-family: Inter, Arial, sans-serif; font-size: 14px; text-anchor: middle; }
+      .edge-line { stroke: #848484; stroke-width: 2; }
+      .node-rect { stroke: #333; stroke-width: 2; rx: 12; }
+    </style>
+  </defs>
+  <g id="edges">`;
+        
+        // Add edges
+        if (edges._data) {
+          Object.values(edges._data).forEach((edge: any) => {
+            const fromPos = positions[edge.from];
+            const toPos = positions[edge.to];
+            if (fromPos && toPos) {
+              svg += `
+    <line x1="${fromPos.x}" y1="${fromPos.y}" x2="${toPos.x}" y2="${toPos.y}" class="edge-line"/>`;
+            }
+          });
+        }
+        
+        svg += `
+  </g>
+  <g id="nodes">`;
+        
+        // Add nodes
+        if (nodes._data) {
+          Object.values(nodes._data).forEach((node: any) => {
+            const pos = positions[node.id];
+            if (pos) {
+              const nodeWidth = 120;
+              const nodeHeight = 60;
+              const x = pos.x - nodeWidth/2;
+              const y = pos.y - nodeHeight/2;
+              
+              // Node background
+              svg += `
+    <rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" 
+          fill="#ffffff" class="node-rect"/>`;
+          
+              // Node text (handle multiline)
+              const lines = (node.label || node.id || '').split('\n');
+              const textY = pos.y - (lines.length - 1) * 7;
+              lines.forEach((line: string, index: number) => {
+                svg += `
+    <text x="${pos.x}" y="${textY + index * 14}" class="node-text">${escapeXml(line)}</text>`;
+              });
+            }
+          });
+        }
+        
+        svg += `
+  </g>
+</svg>`;
+        
+        // Download SVG
+        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const link = document.createElement('a');
+        link.download = 'topology-' + new Date().toISOString().slice(0, 19).replace(/:/g, '-') + '.svg';
+        link.href = URL.createObjectURL(blob);
+        link.click();
+        URL.revokeObjectURL(link.href);
+        
+      } catch (error) {
+        console.error('SVG export error:', error);
+        alert('SVG export failed. Try PNG or JPEG export instead.');
+      }
+    }
+  };
+  
+  // Helper function to escape XML characters
+  const escapeXml = (text: string): string => {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
   };
 
   const handleExportHTML = () => {
@@ -335,11 +434,11 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           <span className="text-xs font-bold">HTML</span>
         </button>
 
-        {/* Export SVG (placeholder) */}
+        {/* Export SVG */}
         <button
           onClick={handleExportSVG}
-          className={`${uniformButtonClass} ${themeClasses} opacity-50`}
-          title="Export as SVG (Coming Soon)"
+          className={`${uniformButtonClass} ${themeClasses}`}
+          title="Export as SVG"
         >
           <span className="text-xs font-bold">SVG</span>
         </button>
