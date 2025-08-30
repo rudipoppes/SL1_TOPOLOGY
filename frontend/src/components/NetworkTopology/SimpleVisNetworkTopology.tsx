@@ -181,6 +181,16 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // No stabilization needed - physics is always disabled
 
+    // Listen for selection changes from vis-network and sync with our state
+    network.on('select', (params) => {
+      const selectedNodes = new Set(params.nodes as string[]);
+      if (selectedNodes.size !== selectedNodeIds.size || 
+          !Array.from(selectedNodes).every(id => selectedNodeIds.has(id))) {
+        console.log(`🔄 Vis-network selection changed: ${selectedNodes.size} nodes`);
+        setSelectedNodeIds(selectedNodes);
+      }
+    });
+
     // Add click event listener for node clicks and selection
     network.on('click', (params) => {
       if (params.nodes.length > 0) {
@@ -189,15 +199,14 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         
         // Handle shift-click for multi-selection
         if (params.event.srcEvent?.shiftKey) {
-          setSelectedNodeIds(prev => {
-            const newSelection = new Set(prev);
-            if (newSelection.has(nodeId)) {
-              newSelection.delete(nodeId);
-            } else {
-              newSelection.add(nodeId);
-            }
-            return newSelection;
-          });
+          const newSelection = new Set(selectedNodeIds);
+          if (newSelection.has(nodeId)) {
+            newSelection.delete(nodeId);
+          } else {
+            newSelection.add(nodeId);
+          }
+          setSelectedNodeIds(newSelection);
+          syncSelectionWithNetwork(newSelection);
           return; // Don't open modal for shift-click
         }
         
@@ -223,7 +232,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       } else {
         // Click on empty canvas - clear selection if not shift-clicking
         if (!params.event.srcEvent?.shiftKey) {
-          setSelectedNodeIds(new Set());
+          const emptySelection = new Set<string>();
+          setSelectedNodeIds(emptySelection);
+          syncSelectionWithNetwork(emptySelection);
         }
       }
     });
@@ -338,11 +349,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           }
           
           // Update selection
-          setSelectedNodeIds(prev => {
-            const newSelection = new Set(prev);
-            nodesInSelection.forEach(nodeId => newSelection.add(nodeId));
-            return newSelection;
-          });
+          const newSelection = new Set(selectedNodeIds);
+          nodesInSelection.forEach(nodeId => newSelection.add(nodeId));
+          setSelectedNodeIds(newSelection);
+          syncSelectionWithNetwork(newSelection);
         }
         
         // Reset selection state
@@ -1114,17 +1124,33 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }));
   };
 
+  // Synchronize our custom selection with vis-network's internal selection
+  const syncSelectionWithNetwork = (nodeIds: Set<string>) => {
+    if (networkRef.current) {
+      const idsArray = Array.from(nodeIds);
+      networkRef.current.setSelection({
+        nodes: idsArray,
+        edges: []
+      });
+      console.log(`🔄 Synced selection with vis-network: ${idsArray.length} nodes`);
+    }
+  };
+
   // Selection management functions
   const selectAllNodes = () => {
     const allNodeIds = nodesDataSetRef.current?.getIds() as string[];
     if (allNodeIds) {
-      setSelectedNodeIds(new Set(allNodeIds));
+      const newSelection = new Set(allNodeIds);
+      setSelectedNodeIds(newSelection);
+      syncSelectionWithNetwork(newSelection);
       console.log(`✅ Selected all ${allNodeIds.length} nodes`);
     }
   };
 
   const clearSelection = () => {
-    setSelectedNodeIds(new Set());
+    const emptySelection = new Set<string>();
+    setSelectedNodeIds(emptySelection);
+    syncSelectionWithNetwork(emptySelection);
     console.log('🗑️ Cleared node selection');
   };
 
