@@ -273,8 +273,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           },
         },
         fixed: isLocked ? { x: true, y: true } : false, // Apply locked state
-        borderWidth: 2,
-        borderWidthSelected: 4,
+        borderWidth: isLocked ? 3 : 2, // Thicker border for locked nodes
+        borderWidthSelected: isLocked ? 5 : 4, // Even thicker when selected
         shape: 'box',
         shapeProperties: {
           borderRadius: 12,
@@ -725,10 +725,24 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   // Individual node lock/unlock functions
   const lockNode = (nodeId: string) => {
     if (nodesDataSetRef.current) {
-      nodesDataSetRef.current.update({
-        id: nodeId,
-        fixed: { x: true, y: true }
-      });
+      // Get current node to preserve other properties
+      const currentNode = nodesDataSetRef.current.get(nodeId);
+      if (currentNode) {
+        // Update node with locked state and red border
+        nodesDataSetRef.current.update({
+          id: nodeId,
+          fixed: { x: true, y: true },
+          borderWidth: 3,
+          color: {
+            ...currentNode.color,
+            border: '#ef4444', // Red border for locked
+            highlight: {
+              ...(currentNode.color?.highlight || {}),
+              border: '#dc2626' // Darker red when selected
+            }
+          }
+        });
+      }
       setLockedNodes(prev => new Set(prev.add(nodeId)));
       console.log(`🔒 Node ${nodeId} locked`);
     }
@@ -736,10 +750,29 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
   const unlockNode = (nodeId: string) => {
     if (nodesDataSetRef.current) {
-      nodesDataSetRef.current.update({
-        id: nodeId,
-        fixed: false
-      });
+      // Get current node to restore original color
+      const currentNode = nodesDataSetRef.current.get(nodeId);
+      if (currentNode) {
+        // Determine original status color
+        const status = topologyData?.nodes.find(n => n.id === nodeId)?.status || 'active';
+        const statusColor = getStatusColor(status);
+        const themeColors = getThemeColors();
+        
+        // Update node with unlocked state and original border
+        nodesDataSetRef.current.update({
+          id: nodeId,
+          fixed: false,
+          borderWidth: 2,
+          color: {
+            ...currentNode.color,
+            border: statusColor, // Restore original border color
+            highlight: {
+              ...(currentNode.color?.highlight || {}),
+              border: themeColors.highlightBorder // Restore original highlight
+            }
+          }
+        });
+      }
       setLockedNodes(prev => {
         const newSet = new Set(prev);
         newSet.delete(nodeId);
