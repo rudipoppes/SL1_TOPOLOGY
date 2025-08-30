@@ -12,9 +12,9 @@ To get Claude up to speed with this project, tell Claude:
 This will load all project context including architecture, configuration formats, deployment setup, and current development status.
 
 ### 🎯 **BASE APPLICATION REFERENCE**
-- **Commit Hash**: `30dd521`  
+- **Commit Hash**: `a27fdb5`  
 - **Date**: August 30, 2025
-- **Status**: Fully functional base application with all core features working
+- **Status**: Fully functional base application with all core features working + hierarchical layout bug fixes
 - **Branch**: main
 - **Note**: Use this as reference point for all future development
 
@@ -43,7 +43,9 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Cursor Pagination**: Implemented proper SL1 GraphQL cursor-based pagination (Dec 2024)
 - ✅ **Phantom Connection Fix**: Eliminated fake edges between unrelated devices
 - ✅ **Loading State Fix**: Single overlay loading indicator for smooth UX (Aug 30, 2025)
-- 🎯 **BASE APPLICATION**: Commit 30dd521 - All core features working perfectly
+- ✅ **Hierarchical Layout Fix**: Corrected selected items to arrange horizontally (Aug 30, 2025)
+- ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md to prevent floating panels re-implementation
+- 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
 - 🔄 **Next**: Phase 4 - Modern UI Enhancements (see TODO.md)
 
 ### **IMPORTANT: Visualization Library Status**
@@ -769,3 +771,25 @@ Modern, responsive web application optimized for topology visualization and expl
 - **Intelligent Data Loading**: Progressive disclosure prevents information overload
 - **Responsive Design**: Works on desktop, tablet, and mobile devices
 - **Accessibility**: Full keyboard navigation and screen reader support
+
+---
+
+## 🚫 **REJECTED FEATURES - DO NOT IMPLEMENT**
+
+**CRITICAL: Certain features have been explicitly rejected and must NEVER be re-implemented.**
+
+### **Floating/Draggable Panels** ❌
+- **Status**: PERMANENTLY REJECTED (August 30, 2025)
+- **User Feedback**: "Nah don't like it. Revert back to previous version"
+- **Files Blocked**: `FloatingPanel.tsx`, `DraggablePanel.*`, `MovablePanel.*`
+- **Safeguards**: Added to `.gitignore` and documented in `REJECTED_FEATURES.md`
+- **Required Approach**: Use fixed positioned controls in sidebar only
+
+### **Implementation Guidelines**
+1. **NEVER** implement floating or draggable UI elements
+2. **ALWAYS** use fixed positioning for control panels  
+3. **STICK** to the current sidebar layout approach
+4. **ASK** the user before implementing any major UI layout changes
+5. **REFER** to `REJECTED_FEATURES.md` when considering panel/control modifications
+
+---

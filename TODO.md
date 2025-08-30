@@ -29,6 +29,8 @@
 - ✅ **Export Functionality**: Complete export system with PNG, JPEG, HTML, and SVG formats
 - ✅ **Loading State Fixes**: Eliminated duplicate "loading topology" messages
 - ✅ **Visual Polish**: Enhanced lock/unlock interactions with proper color feedback and smooth animations
+- ✅ **Hierarchical Layout Fix**: Corrected selected items hierarchical layout to arrange horizontally instead of vertically
+- ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md and .gitignore blocks for floating panels
 
 ---
 
@@ -185,5 +187,6 @@
 ---
 
 **Last Updated**: August 30, 2025
-**Current Focus**: Modern UI Enhancement Phase
+**Current Focus**: Modern UI Enhancement Phase  
 **Status**: All critical bugs fixed - Ready for Visual Modernization
+**Recent Fixes**: Hierarchical layout bug resolved, floating panels implementation permanently blocked
