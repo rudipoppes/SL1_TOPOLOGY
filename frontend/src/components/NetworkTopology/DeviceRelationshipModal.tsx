@@ -8,7 +8,9 @@ interface DeviceRelationshipModalProps {
   nodeName: string;
   nodeType?: string;
   currentDirection: 'parents' | 'children' | 'both';
+  isNodeLocked?: boolean;
   onDirectionSelect: (direction: 'parents' | 'children' | 'both') => void;
+  onLockToggle?: () => void;
   onClose: () => void;
 }
 
@@ -42,7 +44,9 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
   nodeName,
   nodeType,
   currentDirection,
+  isNodeLocked = false,
   onDirectionSelect,
+  onLockToggle,
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
@@ -187,6 +191,40 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
               </button>
             ))}
           </div>
+
+          {/* Lock/Unlock Node Section */}
+          {onLockToggle && (
+            <>
+              <div className={styles.divider} style={{ margin: '16px 0', borderTop: '1px solid #e5e7eb' }} />
+              <p className={styles.instruction}>
+                Node position control:
+              </p>
+              <button
+                className={styles.option}
+                onClick={() => {
+                  onLockToggle();
+                  onClose();
+                }}
+                style={{
+                  '--option-color': isNodeLocked ? '#ef4444' : '#22c55e',
+                  marginTop: '8px',
+                } as React.CSSProperties}
+              >
+                <div className={styles.optionIcon}>{isNodeLocked ? '🔒' : '🔓'}</div>
+                <div className={styles.optionContent}>
+                  <div className={styles.optionLabel}>
+                    {isNodeLocked ? 'Unlock Node' : 'Lock Node'}
+                  </div>
+                  <div className={styles.optionDescription}>
+                    {isNodeLocked ? 'Allow node to be dragged' : 'Fix node at current position'}
+                  </div>
+                </div>
+                {isNodeLocked && (
+                  <div className={styles.currentIndicator} style={{ background: '#ef4444' }}>Locked</div>
+                )}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Footer */}

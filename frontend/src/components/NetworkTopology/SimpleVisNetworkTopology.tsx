@@ -97,6 +97,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const [layout, setLayout] = useState<'hierarchical' | 'physics' | 'grid'>('physics');
   const [forceRedraw, setForceRedraw] = useState(false);
   const [isLocked, setIsLocked] = useState(false); // Canvas lock state
+  const [lockedNodes, setLockedNodes] = useState<Set<string>>(new Set()); // Individual node locks
   const nodePositionCounter = useRef({ x: 100, y: 100 });
   
   // Modal state
@@ -193,12 +194,39 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       }
     });
 
+    // Add keyboard event handler for locking nodes
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Ctrl+L or Cmd+L to lock/unlock selected nodes
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
+        event.preventDefault();
+        const selectedNodes = network.getSelectedNodes();
+        if (selectedNodes.length > 0) {
+          selectedNodes.forEach(nodeId => {
+            toggleNodeLock(nodeId as string);
+          });
+          console.log(`🔒 Toggled lock for ${selectedNodes.length} node(s)`);
+        }
+      }
+    };
+
+    // Attach keyboard event listener to container
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('keydown', handleKeyDown);
+      // Make container focusable for keyboard events
+      container.setAttribute('tabindex', '0');
+    }
+
     return () => {
       if (networkRef.current) {
         networkRef.current.destroy();
         networkRef.current = null;
         nodesDataSetRef.current = null;
         edgesDataSetRef.current = null;
+      }
+      // Clean up keyboard event listener
+      if (container) {
+        container.removeEventListener('keydown', handleKeyDown);
       }
     };
   }, []); // Initialize network only once - theme changes handled via CSS
@@ -224,24 +252,27 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const icon = getDeviceIcon(node.type || '');
       const statusColor = getStatusColor(status);
       const direction = deviceDirections?.get(node.id) || 'children';
+      const isLocked = lockedNodes.has(node.id);
       
-      // Add direction indicator to label
+      // Add direction indicator and lock indicator to label
       const directionIcon = direction === 'parents' ? '🔼' : 
                            direction === 'both' ? '🔄' : '🔽';
-      const directionLabel = `${icon}\n${node.label || node.id}\n${directionIcon}`;
+      const lockIcon = isLocked ? '🔒' : '';
+      const directionLabel = `${icon}${lockIcon}\n${node.label || node.id}\n${directionIcon}`;
 
       return {
         id: node.id,
         label: directionLabel,
-        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}`,
+        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}${isLocked ? '\nStatus: Locked' : ''}`,
         color: {
           background: themeColors.nodeBackground,
-          border: statusColor,
+          border: isLocked ? '#ef4444' : statusColor, // Red border for locked nodes
           highlight: {
             background: themeColors.highlightBackground,
-            border: themeColors.highlightBorder,
+            border: isLocked ? '#dc2626' : themeColors.highlightBorder, // Darker red when selected
           },
         },
+        fixed: isLocked ? { x: true, y: true } : false, // Apply locked state
         borderWidth: 2,
         borderWidthSelected: 4,
         shape: 'box',
@@ -691,9 +722,50 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }
   };
 
+  // Individual node lock/unlock functions
+  const lockNode = (nodeId: string) => {
+    if (nodesDataSetRef.current) {
+      nodesDataSetRef.current.update({
+        id: nodeId,
+        fixed: { x: true, y: true }
+      });
+      setLockedNodes(prev => new Set(prev.add(nodeId)));
+      console.log(`🔒 Node ${nodeId} locked`);
+    }
+  };
+
+  const unlockNode = (nodeId: string) => {
+    if (nodesDataSetRef.current) {
+      nodesDataSetRef.current.update({
+        id: nodeId,
+        fixed: false
+      });
+      setLockedNodes(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(nodeId);
+        return newSet;
+      });
+      console.log(`🔓 Node ${nodeId} unlocked`);
+    }
+  };
+
+  const toggleNodeLock = (nodeId: string) => {
+    if (lockedNodes.has(nodeId)) {
+      unlockNode(nodeId);
+    } else {
+      lockNode(nodeId);
+    }
+  };
+
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
     if (onDirectionChange && modalState.nodeId) {
       onDirectionChange(direction, modalState.nodeId);
+    }
+  };
+
+  const handleNodeLockToggle = () => {
+    if (modalState.nodeId) {
+      toggleNodeLock(modalState.nodeId);
     }
   };
 
@@ -730,7 +802,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         nodeName={modalState.nodeName}
         nodeType={modalState.nodeType}
         currentDirection={deviceDirections?.get(modalState.nodeId) || 'children'}
+        isNodeLocked={lockedNodes.has(modalState.nodeId)}
         onDirectionSelect={handleDirectionSelect}
+        onLockToggle={handleNodeLockToggle}
         onClose={handleModalClose}
       />
     </div>
