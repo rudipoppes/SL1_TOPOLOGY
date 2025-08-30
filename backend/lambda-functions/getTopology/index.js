@@ -26,9 +26,10 @@ exports.handler = async (event) => {
     // Parse POST body
     const body = JSON.parse(event.body || '{}');
     const deviceIds = body.deviceIds || [];
-    const depth = body.depth || 1;
+    const depth = Math.min(Math.max(body.depth || 1, 1), 5); // Validate depth between 1-5
     const direction = body.direction || 'both';
     const deviceDirections = body.deviceDirections || {}; // Map of deviceId -> direction
+    const deviceDepths = body.deviceDepths || {}; // Map of deviceId -> depth
 
     if (!deviceIds.length) {
       return {
@@ -41,10 +42,12 @@ exports.handler = async (event) => {
       };
     }
 
-    // Create cache key - include device directions if provided
+    // Create cache key - include device directions and depths if provided
     const hasDeviceDirections = Object.keys(deviceDirections).length > 0;
+    const hasDeviceDepths = Object.keys(deviceDepths).length > 0;
     const directionsStr = hasDeviceDirections ? JSON.stringify(deviceDirections) : direction;
-    const cacheKey = `topology:${deviceIds.join(',')}:${depth}:${directionsStr}`;
+    const depthsStr = hasDeviceDepths ? JSON.stringify(deviceDepths) : depth.toString();
+    const cacheKey = `topology:${deviceIds.join(',')}:${depthsStr}:${directionsStr}`;
     
     // Check cache
     const cachedData = await checkCache(cacheKey);
@@ -67,53 +70,66 @@ exports.handler = async (event) => {
     
     const relationshipData = await sl1Client.query(QUERIES.GET_DEVICE_RELATIONSHIPS, { first: 5000 });
     
-    let allRelationships = [];
+    // Build relationship graph for multi-level traversal
+    let relationshipGraph = new Map(); // parentId -> [childIds]
+    let reverseGraph = new Map(); // childId -> [parentIds]
+    
     if (relationshipData.deviceRelationships && relationshipData.deviceRelationships.edges) {
-      // Filter to only relationships involving our devices
-      allRelationships = relationshipData.deviceRelationships.edges.filter(edge => {
+      relationshipData.deviceRelationships.edges.forEach(edge => {
         const parentId = edge.node.parentDevice?.id;
         const childId = edge.node.childDevice?.id;
         
-        // Apply direction-based filtering (per-device or global)
-        if (hasDeviceDirections) {
-          // Per-device direction filtering
-          let includeEdge = false;
-          
-          // Check if any of our devices want to see this relationship
-          for (const deviceId of deviceIds) {
-            const deviceDirection = deviceDirections[deviceId] || 'both';
-            
-            if (deviceDirection === 'parents' && deviceId === childId) {
-              // Device wants to see parents and is the child in this relationship
-              includeEdge = true;
-              break;
-            } else if (deviceDirection === 'children' && deviceId === parentId) {
-              // Device wants to see children and is the parent in this relationship
-              includeEdge = true;
-              break;
-            } else if (deviceDirection === 'both' && (deviceId === parentId || deviceId === childId)) {
-              // Device wants to see both and is involved in this relationship
-              includeEdge = true;
-              break;
-            }
+        if (parentId && childId) {
+          // Forward graph (parent -> children)
+          if (!relationshipGraph.has(parentId)) {
+            relationshipGraph.set(parentId, []);
           }
+          relationshipGraph.get(parentId).push({
+            childId,
+            relationship: edge.node
+          });
           
-          return includeEdge;
-        } else {
-          // Global direction filtering (legacy)
-          if (direction === 'parents') {
-            return deviceIds.includes(childId);
-          } else if (direction === 'children') {
-            return deviceIds.includes(parentId);
-          } else {
-            return deviceIds.includes(parentId) || deviceIds.includes(childId);
+          // Reverse graph (child -> parents)  
+          if (!reverseGraph.has(childId)) {
+            reverseGraph.set(childId, []);
           }
+          reverseGraph.get(childId).push({
+            parentId,
+            relationship: edge.node
+          });
         }
       });
-      
-      const directionInfo = hasDeviceDirections ? `Per-device: ${JSON.stringify(deviceDirections)}` : `Global: ${direction}`;
-      console.log(`${directionInfo} - Found ${allRelationships.length} relevant relationships out of ${relationshipData.deviceRelationships.edges.length} total`);
     }
+
+    // Multi-level traversal with cycle detection
+    const visitedNodes = new Set();
+    const discoveredRelationships = [];
+    const nodeDepthMap = new Map(); // Track depth of each discovered node
+    
+    // Traverse from each starting device with its specific depth/direction settings
+    for (const deviceId of deviceIds) {
+      const deviceDepth = deviceDepths[deviceId] || depth;
+      const deviceDirection = deviceDirections[deviceId] || direction;
+      
+      console.log(`Traversing from device ${deviceId} with depth ${deviceDepth} and direction ${deviceDirection}`);
+      
+      // Recursive traversal
+      traverseRelationships(
+        deviceId,
+        deviceDepth,
+        deviceDirection,
+        relationshipGraph,
+        reverseGraph,
+        visitedNodes,
+        discoveredRelationships,
+        nodeDepthMap,
+        new Set([deviceId]), // Current path for cycle detection
+        0 // Current depth level
+      );
+    }
+    
+    const allRelationships = discoveredRelationships;
+    console.log(`Multi-level traversal complete: Found ${allRelationships.length} relationships across ${visitedNodes.size} nodes`);
     
     console.log(`Total relationships found: ${allRelationships.length}`);
 
@@ -185,8 +201,10 @@ exports.handler = async (event) => {
       stats: {
         totalDevices: nodes.size,
         totalRelationships: edges.length,
-        depth,
-        direction
+        depth: hasDeviceDepths ? 'per-device' : depth,
+        direction: hasDeviceDirections ? 'per-device' : direction,
+        deviceDepths: hasDeviceDepths ? deviceDepths : undefined,
+        deviceDirections: hasDeviceDirections ? deviceDirections : undefined
       }
     };
     
@@ -211,6 +229,113 @@ exports.handler = async (event) => {
     };
   }
 };
+
+// Multi-level traversal function with cycle detection
+function traverseRelationships(
+  currentNodeId,
+  maxDepth,
+  direction,
+  relationshipGraph,
+  reverseGraph,
+  visitedNodes,
+  discoveredRelationships,
+  nodeDepthMap,
+  currentPath,
+  currentDepth
+) {
+  // Base case: reached maximum depth
+  if (currentDepth >= maxDepth) {
+    return;
+  }
+  
+  // Record this node as visited at this depth
+  if (!nodeDepthMap.has(currentNodeId)) {
+    nodeDepthMap.set(currentNodeId, currentDepth);
+  }
+  visitedNodes.add(currentNodeId);
+  
+  // Get relationships based on direction
+  const shouldTraverseChildren = direction === 'children' || direction === 'both';
+  const shouldTraverseParents = direction === 'parents' || direction === 'both';
+  
+  // Traverse children (outgoing edges)
+  if (shouldTraverseChildren && relationshipGraph.has(currentNodeId)) {
+    const children = relationshipGraph.get(currentNodeId);
+    
+    for (const child of children) {
+      const childId = child.childId;
+      
+      // Cycle detection: skip if child is already in current path
+      if (currentPath.has(childId)) {
+        console.log(`Cycle detected: skipping ${childId} -> ${currentNodeId}`);
+        continue;
+      }
+      
+      // Add relationship to results
+      discoveredRelationships.push({
+        node: child.relationship
+      });
+      
+      // Recursively traverse child if within depth limit
+      if (currentDepth + 1 < maxDepth) {
+        const newPath = new Set(currentPath);
+        newPath.add(childId);
+        
+        traverseRelationships(
+          childId,
+          maxDepth,
+          direction,
+          relationshipGraph,
+          reverseGraph,
+          visitedNodes,
+          discoveredRelationships,
+          nodeDepthMap,
+          newPath,
+          currentDepth + 1
+        );
+      }
+    }
+  }
+  
+  // Traverse parents (incoming edges)
+  if (shouldTraverseParents && reverseGraph.has(currentNodeId)) {
+    const parents = reverseGraph.get(currentNodeId);
+    
+    for (const parent of parents) {
+      const parentId = parent.parentId;
+      
+      // Cycle detection: skip if parent is already in current path
+      if (currentPath.has(parentId)) {
+        console.log(`Cycle detected: skipping ${parentId} -> ${currentNodeId}`);
+        continue;
+      }
+      
+      // Add relationship to results
+      discoveredRelationships.push({
+        node: parent.relationship
+      });
+      
+      // Recursively traverse parent if within depth limit
+      if (currentDepth + 1 < maxDepth) {
+        const newPath = new Set(currentPath);
+        newPath.add(parentId);
+        
+        traverseRelationships(
+          parentId,
+          maxDepth,
+          direction,
+          relationshipGraph,
+          reverseGraph,
+          visitedNodes,
+          discoveredRelationships,
+          nodeDepthMap,
+          newPath,
+          currentDepth + 1
+        );
+      }
+    }
+  }
+}
 
 // Helper functions
 function normalizeStatus(status) {

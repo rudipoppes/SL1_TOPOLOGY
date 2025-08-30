@@ -4,6 +4,8 @@ import { DataSet } from 'vis-data/standalone';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 import { DeviceRelationshipModal } from './DeviceRelationshipModal';
 import { ZoomControls } from './ZoomControls';
+import { DepthSelector } from './DepthSelector';
+import { configService } from '../../services/config';
 import styles from './SimpleTopology.module.css';
 // Import vis-network CSS for navigation buttons
 import 'vis-network/dist/dist/vis-network.min.css';
@@ -16,7 +18,10 @@ interface SimpleVisNetworkTopologyProps {
     edges: TopologyEdge[];
   };
   deviceDirections?: Map<string, 'parents' | 'children' | 'both'>;
+  deviceDepths?: Map<string, number>;
+  globalDepth?: number;
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
+  onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
   className?: string;
@@ -85,7 +90,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   selectedDevices,
   topologyData,
   deviceDirections,
+  deviceDepths,
+  globalDepth = 2,
   onDirectionChange,
+  onDepthChange,
   onClearAll,
   className = '',
   theme = 'light',
@@ -1201,6 +1209,25 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }
   };
 
+  const handleDeviceDepthChange = (depth: number) => {
+    if (onDepthChange && modalState.nodeId) {
+      onDepthChange(depth, modalState.nodeId);
+    }
+  };
+
+  const handleDrawSelectedItems = (pendingDepth: number) => {
+    if (onDepthChange && selectedNodeIds.size > 0) {
+      // Apply pending depth to all selected nodes by calling onDepthChange for each
+      const selectedNodes = Array.from(selectedNodeIds);
+      console.log(`🎯 Applying depth ${pendingDepth} to ${selectedNodes.length} selected nodes:`, selectedNodes);
+      
+      // For each selected node, trigger depth change
+      selectedNodes.forEach(nodeId => {
+        onDepthChange(pendingDepth, nodeId);
+      });
+    }
+  };
+
   const handleNodeLockToggle = () => {
     if (modalState.nodeId) {
       toggleNodeLock(modalState.nodeId);
@@ -1250,19 +1277,34 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
   return (
     <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
-      {/* Integrated Controls Panel */}
-      <ZoomControls 
-        networkRef={networkRef} 
-        theme={theme}
-        layout={layout}
-        onLayoutChange={handleLayoutChange}
-        onClearAll={onClearAll}
-        isLocked={isLocked}
-        onToggleLock={toggleCanvasLock}
-        selectedCount={getSelectedNodesCount()}
-        onSelectAll={selectAllNodes}
-        onClearSelection={clearSelection}
-      />
+      {/* Controls Header */}
+      <div className="absolute top-4 left-4 flex items-start space-x-4 z-20">
+        {/* Depth Selector */}
+        {onDepthChange && (
+          <DepthSelector
+            globalDepth={globalDepth}
+            onDepthChange={onDepthChange}
+            hasCanvasItems={!!(topologyData && topologyData.nodes && topologyData.nodes.length > 0)}
+            selectedNodesCount={selectedNodeIds.size}
+            onDrawItems={handleDrawSelectedItems}
+            theme={theme}
+          />
+        )}
+        
+        {/* Integrated Controls Panel */}
+        <ZoomControls 
+          networkRef={networkRef} 
+          theme={theme}
+          layout={layout}
+          onLayoutChange={handleLayoutChange}
+          onClearAll={onClearAll}
+          isLocked={isLocked}
+          onToggleLock={toggleCanvasLock}
+          selectedCount={getSelectedNodesCount()}
+          onSelectAll={selectAllNodes}
+          onClearSelection={clearSelection}
+        />
+      </div>
       
       <div 
         ref={containerRef} 
@@ -1295,8 +1337,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         nodeName={modalState.nodeName}
         nodeType={modalState.nodeType}
         currentDirection={deviceDirections?.get(modalState.nodeId) || 'children'}
+        currentDepth={deviceDepths?.get(modalState.nodeId) || globalDepth}
+        maxDepth={configService.getTopologyConfig().controls.maxDepth}
         isNodeLocked={lockedNodes.has(modalState.nodeId)}
         onDirectionSelect={handleDirectionSelect}
+        onDepthChange={onDepthChange ? handleDeviceDepthChange : undefined}
         onLockToggle={handleNodeLockToggle}
         onClose={handleModalClose}
       />

@@ -109,6 +109,7 @@ export const apiService = {
     depth?: number;
     direction?: 'parents' | 'children' | 'both';
     deviceDirections?: { [deviceId: string]: 'parents' | 'children' | 'both' };
+    deviceDepths?: { [deviceId: string]: number };
   }): Promise<TopologyResponse> {
     console.log('🚀 Calling real topology API for devices:', params.deviceIds);
     const response = await api.post<TopologyResponse>('/topology', params);

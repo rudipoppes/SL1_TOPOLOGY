@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 3 - BASE APPLICATION ESTABLISHED** 🎯
+### Current Status: **Phase 4 - DEPTH SELECTOR IMPLEMENTATION** ⚠️ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -47,8 +47,12 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md to prevent floating panels re-implementation
 - ✅ **Selection & Pan Behavior**: Fixed interaction conflicts between selection and canvas panning (Aug 30, 2025)
 - ✅ **Canvas Pan Reversion**: Normal drag now pans canvas, removed shift+drag requirement (Aug 30, 2025)
+- ✅ **Multi-Level Depth Traversal**: Backend Lambda enhanced with recursive relationship traversal & cycle detection (Aug 30, 2025)
+- ✅ **Depth Selector Component**: Modern rolling number controls with visual level indicators (Aug 30, 2025)
+- ✅ **Selected-Only Depth Control**: Canvas-selected nodes only + "Draw Items" button workflow (Aug 30, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- 🔄 **Next**: Phase 4 - Modern UI Enhancements (see TODO.md)
+- ⚠️ **CURRENT BRANCH**: ui-modernization - Contains depth selector functionality (**UNTESTED**)
+- 🔄 **Next**: Testing and validation of depth selector implementation
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -79,10 +83,11 @@ This project is being built using an **iterative, incremental approach**:
 
 ### **Frontend (React + TypeScript)**
 - ✅ **Device Inventory**: Search, filter, pagination with virtual scrolling
-- ✅ **Interactive Topology**: React Flow visualization with drag & drop
+- ✅ **Interactive Topology**: vis-network visualization with drag & drop
 - ✅ **Real-time Data**: Connected to live Lambda API
 - ✅ **Modern UI**: Tailwind CSS responsive design
 - ✅ **Topology Controls**: Layout switching, zoom, center view
+- ⚠️ **Depth Selector**: Multi-level relationship traversal with selected-nodes workflow (**UNTESTED**)
 
 ### **User Experience**
 - ✅ **Drag & Drop Workflow**: Select devices from inventory → drag to canvas
@@ -95,6 +100,74 @@ This project is being built using an **iterative, incremental approach**:
 - **Frontend URL**: `http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/`
 - **Real SL1 Data**: Authenticated with `admin` user on selab.sciencelogic.com
 - **Status**: Fully operational with real device data and proper UI
+
+---
+
+## 🚀 **DEPTH SELECTOR FUNCTIONALITY** ⚠️ **UNTESTED**
+
+### **Recent Implementation (August 30, 2025)**
+**Branch**: `ui-modernization` | **Status**: Built but not tested
+
+### **Core Features Implemented**
+
+**1. Multi-Level Depth Traversal**
+- **Backend Enhancement**: Lambda functions now support recursive relationship traversal (depth 1-5)
+- **Cycle Detection**: Prevents infinite loops in complex network hierarchies
+- **Per-Device Depths**: Each device can have individual depth settings
+- **Performance**: Smart caching and efficient traversal algorithms
+
+**2. Depth Selector UI Component**
+- **Modern Controls**: Rolling number stepper with up/down arrows
+- **Visual Indicators**: Dot-based level display showing current depth
+- **Pending State**: Orange highlighting for unsaved depth changes
+- **Theme Support**: Dark/light mode compatibility
+
+**3. Selected-Only Workflow**
+- **Canvas Detection**: Different behavior when canvas has topology items
+- **Node Selection**: Only applies depth changes to canvas-selected nodes
+- **Draw Items Button**: Required to apply pending depth changes to selected nodes
+- **Batch Processing**: Efficient handling of multiple selected devices
+
+### **User Experience Flow**
+
+**Empty Canvas (Original Behavior)**:
+1. User adjusts depth stepper → Immediate topology update
+2. All new devices use the global depth setting
+
+**Canvas with Items (New Behavior)**:
+1. User selects nodes on canvas (single or multiple selection)
+2. User adjusts depth stepper → Shows as pending change (orange)
+3. User clicks "Draw Items" button → Applies depth to selected nodes only
+4. System fetches new relationships at specified depth for selected nodes
+
+### **Technical Implementation**
+
+**Components Modified**:
+- `DepthSelector.tsx` - New component with pending state logic
+- `SimpleVisNetworkTopology.tsx` - Canvas integration and node selection handling
+- `App.tsx` - Enhanced depth state management
+- `DeviceRelationshipModal.tsx` - Per-device depth controls in context menu
+- `backend/lambda-functions/getTopology/index.js` - Multi-level traversal with cycle detection
+
+**State Management**:
+- `globalDepth` - Default depth for new devices
+- `deviceDepths` - Per-device depth settings Map
+- `pendingDepth` - User's selected depth before applying
+- `selectedNodeIds` - Canvas-selected nodes for depth application
+
+**API Enhancement**:
+- `deviceDepths` parameter support in topology API
+- Recursive relationship traversal with configurable depth
+- Cycle detection prevents infinite loops
+- Per-device direction and depth processing
+
+### **Critical Notes**
+
+⚠️ **TESTING REQUIRED**: This functionality has been implemented but not tested with real data
+
+⚠️ **BRANCH STATUS**: All changes are on `ui-modernization` branch - not merged to main
+
+⚠️ **ROLLBACK**: Can easily revert to main branch if issues found
 
 ---
 

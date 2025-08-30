@@ -14,7 +14,10 @@ function App() {
   const [isResizing, setIsResizing] = useState(false);
   const [loadingTopology, setLoadingTopology] = useState(false);
   const [deviceDirections, setDeviceDirections] = useState<Map<string, 'parents' | 'children' | 'both'>>(new Map());
+  const [deviceDepths, setDeviceDepths] = useState<Map<string, number>>(new Map());
+  const [globalDepth, setGlobalDepth] = useState<number>(configService.getTopologyConfig().controls.defaultDepth);
   const defaultDirection = configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both';
+  const defaultDepth = configService.getTopologyConfig().controls.defaultDepth;
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
 
@@ -25,14 +28,19 @@ function App() {
     // Update topology to match chip area (selected devices)
     setTopologyDevices(devices);
     
-    // Set default directions for all new devices
+    // Set default directions and depths for all new devices
     const newDirections = new Map(deviceDirections);
+    const newDepths = new Map(deviceDepths);
     devices.forEach(device => {
       if (!newDirections.has(device.id)) {
         newDirections.set(device.id, defaultDirection);
       }
+      if (!newDepths.has(device.id)) {
+        newDepths.set(device.id, globalDepth);
+      }
     });
     setDeviceDirections(newDirections);
+    setDeviceDepths(newDepths);
     
     // Fetch topology data with per-device directions
     await fetchTopologyDataWithDeviceDirections(devices);
@@ -44,6 +52,52 @@ function App() {
     setTopologyDevices([]);
     setTopologyData(null);
     setSelectedDevices([]);
+  };
+
+  const handleDepthChange = async (depth: number, deviceId?: string) => {
+    if (deviceId) {
+      // Change depth for specific device
+      console.log('🔄 Changing depth for device:', deviceId, 'to:', depth);
+      setDeviceDepths(prev => new Map(prev.set(deviceId, depth)));
+      
+      // Find the device in current topology data
+      const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
+      if (deviceInTopology) {
+        // Create a Device object from the topology node
+        const deviceToAdd: Device = {
+          id: deviceInTopology.id,
+          name: deviceInTopology.label,
+          ip: deviceInTopology.ip || '',
+          type: deviceInTopology.type || 'Unknown',
+          status: deviceInTopology.status || 'unknown'
+        };
+        
+        // Add device to selected devices (chip area) if not already there
+        const isAlreadySelected = selectedDevices.some(d => d.id === deviceId);
+        if (!isAlreadySelected) {
+          console.log('➕ Adding device to selection:', deviceToAdd.name);
+          setSelectedDevices(prev => [...prev, deviceToAdd]);
+          setTopologyDevices(prev => [...prev, deviceToAdd]);
+        }
+        
+        // Use incremental fetch to get new relationships for this specific device
+        await fetchIncrementalTopologyDataWithDirections([deviceToAdd]);
+      } else {
+        console.warn('Device not found in topology:', deviceId);
+      }
+    } else {
+      // Global depth change
+      console.log('🔄 Changing global depth to:', depth);
+      setGlobalDepth(depth);
+      const newDepths = new Map<string, number>();
+      topologyDevices.forEach(device => {
+        newDepths.set(device.id, depth);
+      });
+      setDeviceDepths(newDepths);
+      
+      // Refresh topology with updated global depth
+      await fetchTopologyDataWithDeviceDirections(topologyDevices);
+    }
   };
 
   const handleDirectionChange = async (direction: 'parents' | 'children' | 'both', deviceId?: string) => {
@@ -100,18 +154,24 @@ function App() {
 
     setLoadingTopology(true);
     try {
-      // Create device directions object
+      // Create device directions and depths objects
       const deviceDirectionsObj: { [deviceId: string]: 'parents' | 'children' | 'both' } = {};
+      const deviceDepthsObj: { [deviceId: string]: number } = {};
       devices.forEach(device => {
         deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
+        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || defaultDepth;
       });
 
-      console.log('🔍 Fetching topology with per-device directions:', deviceDirectionsObj);
+      console.log('🔍 Fetching topology with per-device directions and depths:', {
+        directions: deviceDirectionsObj,
+        depths: deviceDepthsObj
+      });
       
       const response = await apiService.getTopology({
         deviceIds: devices.map(d => d.id),
-        depth: 1,
-        deviceDirections: deviceDirectionsObj
+        depth: globalDepth,
+        deviceDirections: deviceDirectionsObj,
+        deviceDepths: deviceDepthsObj
       });
       
       console.log('📊 Topology data received:', response.topology);
@@ -169,18 +229,24 @@ function App() {
 
     setLoadingTopology(true);
     try {
-      // Create device directions object for new devices only
+      // Create device directions and depths objects for new devices only
       const deviceDirectionsObj: { [deviceId: string]: 'parents' | 'children' | 'both' } = {};
+      const deviceDepthsObj: { [deviceId: string]: number } = {};
       newDevices.forEach(device => {
         deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
+        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || defaultDepth;
       });
 
-      console.log('🔄 Fetching INCREMENTAL topology with per-device directions:', deviceDirectionsObj);
+      console.log('🔄 Fetching INCREMENTAL topology with per-device directions and depths:', {
+        directions: deviceDirectionsObj,
+        depths: deviceDepthsObj
+      });
       
       const response = await apiService.getTopology({
         deviceIds: newDevices.map(d => d.id),
-        depth: 1,
-        deviceDirections: deviceDirectionsObj
+        depth: globalDepth,
+        deviceDirections: deviceDirectionsObj,
+        deviceDepths: deviceDepthsObj
       });
       
       console.log('📊 Incremental topology data received:', response.topology);
@@ -291,10 +357,13 @@ function App() {
   const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
     // Legacy function - now redirects to per-device approach
     const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
+    const newDepths = new Map<string, number>();
     devices.forEach(device => {
       newDirections.set(device.id, direction || defaultDirection);
+      newDepths.set(device.id, globalDepth);
     });
     setDeviceDirections(newDirections);
+    setDeviceDepths(newDepths);
     return fetchTopologyDataWithDeviceDirections(devices);
   };
 
@@ -305,6 +374,7 @@ function App() {
     // Legacy function - now redirects to per-device approach
     newDevices.forEach(device => {
       setDeviceDirections(prev => new Map(prev.set(device.id, direction || defaultDirection)));
+      setDeviceDepths(prev => new Map(prev.set(device.id, globalDepth)));
     });
     return fetchIncrementalTopologyDataWithDirections(newDevices);
   };
@@ -426,7 +496,10 @@ function App() {
               selectedDevices={selectedDevices}
               topologyData={topologyData}
               deviceDirections={deviceDirections}
+              deviceDepths={deviceDepths}
+              globalDepth={globalDepth}
               onDirectionChange={handleDirectionChange}
+              onDepthChange={handleDepthChange}
               onClearAll={handleClearAll}
               className="h-full"
               theme={theme}
