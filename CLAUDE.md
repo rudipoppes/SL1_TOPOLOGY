@@ -32,17 +32,17 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Modern UI/UX**: Tailwind CSS responsive design with enhanced selection visibility
 - ✅ **Performance Optimized**: Virtual scrolling, caching, efficient rendering
 - ✅ **Configuration Management**: Proper handling of environment-specific configs
-- ✅ **React Flow Migration**: Replaced problematic Cytoscape.js with React Flow (Aug 2024)
+- ✅ **vis-network Implementation**: Using vis-network v9.1.9 for robust topology visualization
 - ✅ **Cursor Pagination**: Implemented proper SL1 GraphQL cursor-based pagination (Dec 2024)
 - ✅ **Phantom Connection Fix**: Eliminated fake edges between unrelated devices
 - ⚠️ **Known Issues**: See TODO.md for current bugs and missing features
 - 🔄 **Next**: Phase 3 - Fix remaining issues, SL1 Relationship Mapping
 
-### **IMPORTANT: React Flow Migration (August 2024)**
-- **Issue**: Cytoscape.js was causing infinite rendering loops and browser performance issues
-- **Solution**: Migrated to React Flow (@xyflow/react) for better React integration
-- **Benefits**: Native React hooks, TypeScript support, better performance, no infinite loops
-- **Status**: ✅ Complete - TopologyFlow component replaces TopologyCanvas
+### **IMPORTANT: Visualization Library Status**
+- **Current Implementation**: vis-network v9.1.9 for topology visualization
+- **Architecture**: vis-network/standalone with vis-data for dataset management
+- **Benefits**: Mature network visualization, built-in physics engine, extensive layout options
+- **Note**: Documentation previously mentioned React Flow migration, but current production uses vis-network
 
 ### Important Note for Claude
 **Always check the "Current Status" section above and the Git log to understand what has been completed and what needs to be done next. This project builds incrementally - don't skip phases or create advanced features before the foundation is complete.**
@@ -275,7 +275,7 @@ CloudFront          DynamoDB
 - **Frontend**: React + TypeScript hosted on existing AWS server
 - **API Layer**: AWS Lambda functions + API Gateway
 - **Data Layer**: DynamoDB for caching, direct SL1 integration
-- **Visualization**: React Flow for topology rendering
+- **Visualization**: vis-network for topology rendering with advanced layout algorithms
 ---
 
 ## Development Environment Setup
@@ -529,11 +529,35 @@ serve -s dist -l 3000
 - **TypeScript**: Type safety for complex device/relationship data
 - **Vite**: Fast development server and optimized builds
 
-### Topology Visualization: React Flow
+### Topology Visualization: vis-network
 - **Performance**: Handles thousands of nodes/edges smoothly with viewport rendering
-- **Layouts**: Grid, hierarchical, force-directed via plugins (Dagre, ELK)
-- **Interactions**: Built-in pan, zoom, selection, drag-drop, minimap
-- **React Native**: Built specifically for React with hooks and TypeScript support
+- **Layouts**: Hierarchical (Sugiyama + Reingold-Tilford), Physics-based (Barnes-Hut), Grid
+- **Interactions**: Built-in pan, zoom, selection, drag-drop, node positioning
+- **Physics Engine**: Configurable force-directed layouts with spring physics
+- **Data Management**: vis-data DataSets for efficient node/edge updates
+
+### Hierarchical Layout Algorithm Implementation
+
+#### **Primary Technique: Sugiyama Method (Layered Graph Drawing)**
+- **Purpose**: Proper hierarchical level assignment for Directed Acyclic Graph (DAG) structures
+- **Key Feature**: Handles nodes that can be both parents AND children simultaneously
+- **Phases**: 
+  1. Layer assignment using topological sorting
+  2. Crossing minimization for clean edges
+  3. Coordinate assignment for optimal spacing
+
+#### **Secondary Technique: Reingold-Tilford Algorithm**
+- **Purpose**: Parent-centered positioning within each hierarchical level
+- **Key Principle**: "Parents must be centered above their children"
+- **Implementation**: Calculates midpoint between leftmost and rightmost child, positions parent directly above
+
+#### **Combined Approach in Production**
+1. Sugiyama method determines which hierarchical level each node belongs to
+2. Reingold-Tilford principle ensures parents are perfectly centered above their children
+3. Collision resolution maintains proper spacing while preserving the centering
+4. This combination is specifically designed for network topology where nodes have multiple roles
+
+**Also Known As**: "Layered Tree Layout" or "Hierarchical DAG Layout" in visualization literature
 
 ### UI Framework: Tailwind CSS + Headless UI
 - **Tailwind CSS**: Utility-first styling, highly customizable
