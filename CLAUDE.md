@@ -45,6 +45,8 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Loading State Fix**: Single overlay loading indicator for smooth UX (Aug 30, 2025)
 - ✅ **Hierarchical Layout Fix**: Corrected selected items to arrange horizontally (Aug 30, 2025)
 - ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md to prevent floating panels re-implementation
+- ✅ **Selection & Pan Behavior**: Fixed interaction conflicts between selection and canvas panning (Aug 30, 2025)
+- ✅ **Canvas Pan Reversion**: Normal drag now pans canvas, removed shift+drag requirement (Aug 30, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
 - 🔄 **Next**: Phase 4 - Modern UI Enhancements (see TODO.md)
 

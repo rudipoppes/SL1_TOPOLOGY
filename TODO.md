@@ -31,6 +31,8 @@
 - ✅ **Visual Polish**: Enhanced lock/unlock interactions with proper color feedback and smooth animations
 - ✅ **Hierarchical Layout Fix**: Corrected selected items hierarchical layout to arrange horizontally instead of vertically
 - ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md and .gitignore blocks for floating panels
+- ✅ **Selection & Pan Behavior Fix**: Resolved interaction conflicts between selection and canvas panning
+- ✅ **Pan Canvas Behavior**: Reverted back to normal drag for canvas panning (removed shift+drag requirement)
 
 ---
 

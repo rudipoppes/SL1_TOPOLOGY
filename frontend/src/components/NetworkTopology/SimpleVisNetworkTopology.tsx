@@ -98,7 +98,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const [forceRedraw, setForceRedraw] = useState(false);
   const [isLocked, setIsLocked] = useState(false); // Canvas lock state
   const [lockedNodes, setLockedNodes] = useState<Set<string>>(new Set()); // Individual node locks
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set()); // Multi-selection state
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
   const [isSelecting, setIsSelecting] = useState(false); // Drag selection state
   const [selectionBox, setSelectionBox] = useState<{ 
     startX: number; 
@@ -152,12 +152,13 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       interaction: {
         hover: true,
         tooltipDelay: 200,
-        multiselect: true,
-        dragView: true,
+        multiselect: true, // Enable multiselect for ctrl+click
+        dragView: true, // Enable canvas panning with normal drag
         zoomView: true,
-        dragNodes: true, // Allow manual dragging
+        dragNodes: true, // Allow manual dragging of nodes
         navigationButtons: false, // Disable built-in navigation buttons - we have custom ones
         keyboard: true, // Enable keyboard shortcuts
+        selectConnectedEdges: false, // Don't select edges when selecting nodes
       },
       nodes: {
         chosen: true,
@@ -181,9 +182,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // No stabilization needed - physics is always disabled
 
-    // Listen for selection changes from vis-network and sync with our state
+    // Listen for selection changes from vis-network
     network.on('select', (params) => {
       const selectedNodes = new Set(params.nodes as string[]);
+      // Only update if the selection actually changed
       if (selectedNodes.size !== selectedNodeIds.size || 
           !Array.from(selectedNodes).every(id => selectedNodeIds.has(id))) {
         console.log(`🔄 Vis-network selection changed: ${selectedNodes.size} nodes`);
@@ -196,48 +198,42 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0] as string;
         const currentNode = nodesDataSetRef.current?.get(nodeId);
+        const shiftPressed = params.event.srcEvent?.shiftKey;
         
-        // Handle shift-click for multi-selection
-        if (params.event.srcEvent?.shiftKey) {
-          const newSelection = new Set(selectedNodeIds);
-          if (newSelection.has(nodeId)) {
-            newSelection.delete(nodeId);
-          } else {
-            newSelection.add(nodeId);
-          }
-          setSelectedNodeIds(newSelection);
-          syncSelectionWithNetwork(newSelection);
-          return; // Don't open modal for shift-click
-        }
-        
-        if (currentNode && containerRef.current) {
-          // Get canvas position relative to container
-          const containerRect = containerRef.current.getBoundingClientRect();
-          const canvasPosition = network.canvasToDOM(params.pointer.canvas);
-          
-          // Calculate modal position relative to viewport
-          const modalPosition = {
-            x: containerRect.left + canvasPosition.x,
-            y: containerRect.top + canvasPosition.y,
-          };
+        if (shiftPressed) {
+          // Shift+click - open context menu
+          if (currentNode && containerRef.current) {
+            // Get canvas position relative to container
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const canvasPosition = network.canvasToDOM(params.pointer.canvas);
+            
+            // Calculate modal position relative to viewport
+            const modalPosition = {
+              x: containerRect.left + canvasPosition.x,
+              y: containerRect.top + canvasPosition.y,
+            };
 
-          setModalState({
-            isOpen: true,
-            position: modalPosition,
-            nodeId: nodeId,
-            nodeName: currentNode.nodeData?.name || nodeId,
-            nodeType: currentNode.nodeData?.type,
-          });
+            setModalState({
+              isOpen: true,
+              position: modalPosition,
+              nodeId: nodeId,
+              nodeName: currentNode.nodeData?.name || nodeId,
+              nodeType: currentNode.nodeData?.type,
+            });
+          }
+        } else {
+          // Normal click - vis-network will handle selection including ctrl+click
+          // We don't need to do anything here, the 'select' event will update our state
         }
       } else {
-        // Click on empty canvas - clear selection if not shift-clicking
-        if (!params.event.srcEvent?.shiftKey) {
-          const emptySelection = new Set<string>();
-          setSelectedNodeIds(emptySelection);
-          syncSelectionWithNetwork(emptySelection);
-        }
+        // Click on empty canvas - clear selection
+        const emptySelection = new Set<string>();
+        setSelectedNodeIds(emptySelection);
+        syncSelectionWithNetwork(emptySelection);
       }
     });
+
+
 
     // Add keyboard event handler for shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -274,8 +270,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // Add drag selection functionality
     const handleMouseDown = (event: MouseEvent) => {
-      // Only start drag selection with Shift+drag on empty canvas
-      if (event.shiftKey && event.button === 0) {
+      // Start drag selection with normal click+drag on empty canvas (no modifier keys)
+      // Shift+drag will be handled by vis-network for canvas panning
+      if (!event.shiftKey && !event.ctrlKey && !event.metaKey && event.button === 0) {
         const rect = containerRef.current?.getBoundingClientRect();
         if (rect) {
           const startX = event.clientX - rect.left;
@@ -893,20 +890,113 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const applySelectiveHierarchicalLayout = (selectedNodes: any[]) => {
     if (selectedNodes.length === 0) return;
     
-    // Create a simplified hierarchical layout for selected nodes
-    // Position them in a horizontal row formation (hierarchical = horizontal arrangement)
-    const startX = selectedNodes[0].x || 0; // Use first node's X as reference
-    const startY = selectedNodes[0].y || 0; // Use first node's Y as reference
-    const spacing = 150;
+    const selectedNodeIds = new Set(selectedNodes.map(node => node.id));
+    const edges = topologyData?.edges || [];
+    
+    // Build adjacency maps for selected nodes only
+    const childrenMap = new Map<string, string[]>();
+    const parentsMap = new Map<string, string[]>();
+    
+    edges.forEach(edge => {
+      // Only consider edges between selected nodes
+      if (selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)) {
+        // Build parent -> children mapping
+        if (!childrenMap.has(edge.source)) {
+          childrenMap.set(edge.source, []);
+        }
+        childrenMap.get(edge.source)!.push(edge.target);
+        
+        // Build child -> parents mapping  
+        if (!parentsMap.has(edge.target)) {
+          parentsMap.set(edge.target, []);
+        }
+        parentsMap.get(edge.target)!.push(edge.source);
+      }
+    });
+    
+    // Determine hierarchical levels for selected nodes
+    const nodeLevels = new Map<string, number>();
+    const processedNodes = new Set<string>();
+    
+    // Find root nodes (nodes with no parents in selected set)
+    const rootNodes = selectedNodes.filter(node => !parentsMap.has(node.id));
+    
+    // If no clear hierarchy, arrange horizontally as before
+    if (rootNodes.length === selectedNodes.length) {
+      const startX = selectedNodes[0].x || 0;
+      const startY = selectedNodes[0].y || 0;
+      const spacing = 400;
 
-    const updatedNodes = selectedNodes.map((node, index) => ({
-      id: node.id,
-      x: startX + (index * spacing),
-      y: startY,
-    }));
+      const updatedNodes = selectedNodes.map((node, index) => ({
+        id: node.id,
+        x: startX + (index * spacing),
+        y: startY,
+      }));
 
+      nodesDataSetRef.current?.update(updatedNodes);
+      console.log(`Applied horizontal layout to ${selectedNodes.length} nodes (no hierarchy detected)`);
+      return;
+    }
+    
+    // Assign levels using BFS approach
+    const queue: Array<{nodeId: string, level: number}> = [];
+    
+    // Start with root nodes at level 0
+    rootNodes.forEach(node => {
+      nodeLevels.set(node.id, 0);
+      processedNodes.add(node.id);
+      queue.push({ nodeId: node.id, level: 0 });
+    });
+    
+    // Process remaining nodes level by level
+    while (queue.length > 0) {
+      const { nodeId, level } = queue.shift()!;
+      const children = childrenMap.get(nodeId) || [];
+      
+      children.forEach(childId => {
+        if (selectedNodeIds.has(childId) && !processedNodes.has(childId)) {
+          const childLevel = level + 1;
+          nodeLevels.set(childId, childLevel);
+          processedNodes.add(childId);
+          queue.push({ nodeId: childId, level: childLevel });
+        }
+      });
+    }
+    
+    // Group nodes by level
+    const levelGroups = new Map<number, string[]>();
+    nodeLevels.forEach((level, nodeId) => {
+      if (!levelGroups.has(level)) {
+        levelGroups.set(level, []);
+      }
+      levelGroups.get(level)!.push(nodeId);
+    });
+    
+    // Calculate positions
+    const levelSpacing = 300; // Vertical spacing between levels
+    const nodeSpacing = 400; // Horizontal spacing between nodes
+    const startX = selectedNodes[0].x || 0;
+    const startY = selectedNodes[0].y || 0;
+    
+    const updatedNodes: any[] = [];
+    
+    levelGroups.forEach((nodeIds, level) => {
+      const levelY = startY + (level * levelSpacing);
+      const totalWidth = (nodeIds.length - 1) * nodeSpacing;
+      const levelStartX = startX - (totalWidth / 2);
+      
+      nodeIds.forEach((nodeId, index) => {
+        const x = levelStartX + (index * nodeSpacing);
+        updatedNodes.push({
+          id: nodeId,
+          x: x,
+          y: levelY,
+        });
+      });
+    });
+    
     nodesDataSetRef.current?.update(updatedNodes);
-    console.log(`Applied selective hierarchical layout to ${selectedNodes.length} nodes`);
+    console.log(`Applied hierarchical layout to ${selectedNodes.length} nodes across ${levelGroups.size} levels`);
   };
 
   const applySelectivePhysicsLayout = (selectedNodeIds: string[]) => {
