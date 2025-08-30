@@ -894,15 +894,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     if (selectedNodes.length === 0) return;
     
     // Create a simplified hierarchical layout for selected nodes
-    // Position them in a vertical column formation
+    // Position them in a horizontal row formation (hierarchical = horizontal arrangement)
     const startX = selectedNodes[0].x || 0; // Use first node's X as reference
     const startY = selectedNodes[0].y || 0; // Use first node's Y as reference
     const spacing = 150;
 
     const updatedNodes = selectedNodes.map((node, index) => ({
       id: node.id,
-      x: startX,
-      y: startY + (index * spacing),
+      x: startX + (index * spacing),
+      y: startY,
     }));
 
     nodesDataSetRef.current?.update(updatedNodes);

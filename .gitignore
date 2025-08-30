@@ -71,3 +71,15 @@ frontend/.env*
 
 # Git files
 FETCH_HEAD
+
+# BLOCKED IMPLEMENTATIONS - DO NOT ADD THESE FILES
+# Floating panels implementation is explicitly rejected by user
+frontend/src/components/NetworkTopology/FloatingPanel.tsx
+**/FloatingPanel.tsx
+**/FloatingPanel.*
+# Any draggable panel implementations
+**/DraggablePanel.*
+**/MovablePanel.*
+# Block any floating/movable control implementations
+**/FloatingControls.*
+**/MovableControls.*
