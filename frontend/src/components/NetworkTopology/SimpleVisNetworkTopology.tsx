@@ -810,14 +810,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   };
 
   return (
-    <div 
-      className={`${styles.simpleVisNetworkTopology} ${className}`}
-      style={{
-        outline: isLocked ? '4px solid #ef4444' : 'none',
-        outlineOffset: '-4px',
-        transition: 'outline 0.2s ease-in-out'
-      }}
-    >
+    <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
       {/* Integrated Controls Panel */}
       <ZoomControls 
         networkRef={networkRef} 
@@ -831,7 +824,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       
       <div 
         ref={containerRef} 
-        className={styles.visContainer}
+        className={`${styles.visContainer} ${isLocked ? styles.locked : ''}`}
       />
 
       {/* Device Relationship Modal */}

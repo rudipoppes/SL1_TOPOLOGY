@@ -82,7 +82,13 @@
   background-image: none !important;
   border-radius: 16px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
-  transition: background-color 0.3s ease, box-shadow 0.3s ease; /* Smooth transitions */
+  transition: background-color 0.3s ease, box-shadow 0.3s ease, border 0.2s ease-in-out; /* Smooth transitions */
+  border: 2px solid transparent; /* Default transparent border */
+}
+
+.visContainer.locked {
+  border: 4px solid #ef4444 !important; /* Red border when locked */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.2) !important; /* Add glow effect */
 }
 
 /* Dark mode canvas background */
@@ -91,6 +97,11 @@
   background-color: #1f2937 !important;
   background-image: none !important;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+:global([data-theme="dark"]) .visContainer.locked {
+  border: 4px solid #f87171 !important; /* Lighter red border for dark mode */
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.3) !important; /* Red glow for dark mode */
 }
 
 /* Hide any remaining vis-network navigation elements */
