@@ -328,7 +328,7 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         </button>
       </div>
 
-      {/* Layout Controls */}
+      {/* Layout Controls - All Canvas */}
       {onLayoutChange && (
         <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
           theme === 'dark' 
@@ -347,18 +347,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             <span className="text-base">⚛️</span>
           </button>
 
-          {/* Physics Layout - Selected Only */}
-          {selectedCount > 0 && onLayoutChange && (
-            <button
-              onClick={() => onLayoutChange('physics', true)}
-              className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
-              title="Physics Layout (Selected)"
-              style={{ fontSize: '9px', padding: '6px' }}
-            >
-              <span>⚛️✓</span>
-            </button>
-          )}
-
           {/* Hierarchical Layout - All Nodes */}
           <button
             onClick={() => onLayoutChange('hierarchical', false)}
@@ -370,18 +358,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             <span className="text-base">🌳</span>
           </button>
 
-          {/* Hierarchical Layout - Selected Only */}
-          {selectedCount > 0 && onLayoutChange && (
-            <button
-              onClick={() => onLayoutChange('hierarchical', true)}
-              className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
-              title="Hierarchical Layout (Selected)"
-              style={{ fontSize: '9px', padding: '6px' }}
-            >
-              <span>🌳✓</span>
-            </button>
-          )}
-
           {/* Grid Layout - All Nodes */}
           <button
             onClick={() => onLayoutChange('grid', false)}
@@ -392,18 +368,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           >
             <span className="text-base">⚏</span>
           </button>
-
-          {/* Grid Layout - Selected Only */}
-          {selectedCount > 0 && onLayoutChange && (
-            <button
-              onClick={() => onLayoutChange('grid', true)}
-              className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
-              title="Grid Layout (Selected)"
-              style={{ fontSize: '9px', padding: '6px' }}
-            >
-              <span>⚏✓</span>
-            </button>
-          )}
 
           {/* Clear Button */}
           {onClearAll && (
@@ -438,6 +402,46 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         </div>
       )}
 
+      {/* Layout Controls - Selected Items Only */}
+      {selectedCount > 0 && onLayoutChange && (
+        <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
+          theme === 'dark' 
+            ? 'bg-gray-800/90 border-gray-600' 
+            : 'bg-white/90 border-gray-200'
+        } shadow-xl`}>
+          
+          {/* Physics Layout - Selected Only */}
+          <button
+            onClick={() => onLayoutChange('physics', true)}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            title="Physics Layout (Selected)"
+            style={{ fontSize: '9px', padding: '6px' }}
+          >
+            <span>⚛️✓</span>
+          </button>
+
+          {/* Hierarchical Layout - Selected Only */}
+          <button
+            onClick={() => onLayoutChange('hierarchical', true)}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            title="Hierarchical Layout (Selected)"
+            style={{ fontSize: '9px', padding: '6px' }}
+          >
+            <span>🌳✓</span>
+          </button>
+
+          {/* Grid Layout - Selected Only */}
+          <button
+            onClick={() => onLayoutChange('grid', true)}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            title="Grid Layout (Selected)"
+            style={{ fontSize: '9px', padding: '6px' }}
+          >
+            <span>⚏✓</span>
+          </button>
+        </div>
+      )}
+
       {/* Selection Controls - Only show when nodes are selected or Select All is available */}
       {(onSelectAll && selectedCount === 0) && (
         <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
@@ -458,30 +462,21 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
       )}
 
       {/* Selection Management - Only show when nodes are selected */}
-      {selectedCount > 0 && (onSelectAll || onClearSelection) && (
+      {selectedCount > 0 && onClearSelection && (
         <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
           theme === 'dark' 
             ? 'bg-gray-800/90 border-gray-600' 
             : 'bg-white/90 border-gray-200'
         } shadow-xl`}>
           
-          {/* Selection Count Display */}
-          <div className={`px-2 py-1 text-center text-xs font-medium ${
-            theme === 'dark' ? 'text-gray-200' : 'text-gray-700'
-          }`}>
-            {selectedCount} selected
-          </div>
-          
           {/* Clear Selection */}
-          {onClearSelection && (
-            <button
-              onClick={onClearSelection}
-              className={`${uniformButtonClass} ${layoutThemeClasses}`}
-              title="Clear Selection"
-            >
-              <span className="text-xs font-bold">CLR</span>
-            </button>
-          )}
+          <button
+            onClick={onClearSelection}
+            className={`${uniformButtonClass} ${layoutThemeClasses}`}
+            title="Clear Selection"
+          >
+            <span className="text-xs font-bold">CLR</span>
+          </button>
         </div>
       )}
       
