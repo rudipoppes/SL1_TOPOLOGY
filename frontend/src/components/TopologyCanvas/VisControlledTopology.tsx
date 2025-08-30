@@ -11,7 +11,6 @@ interface VisControlledTopologyProps {
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
-  loadingTopology?: boolean;
   className?: string;
   theme?: 'light' | 'dark';
 }
@@ -24,21 +23,9 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
   onDirectionChange,
   onAddDeviceToSelection,
   onClearAll,
-  loadingTopology = false,
   className = '',
   theme = 'light',
 }) => {
-  if (loadingTopology) {
-    return (
-      <div className={`${styles.controlledTopologyLoading} ${className}`}>
-        <div className={styles.loadingContainer}>
-          <div className={styles.loadingSpinner} />
-          <div className={styles.loadingText}>Loading topology data...</div>
-        </div>
-      </div>
-    );
-  }
-
   if (!topologyData || (!topologyData.nodes.length && !selectedDevices.length)) {
     return (
       <div className={`${styles.controlledTopologyEmpty} ${className}`}>

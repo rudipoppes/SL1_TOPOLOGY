@@ -428,7 +428,6 @@ function App() {
               deviceDirections={deviceDirections}
               onDirectionChange={handleDirectionChange}
               onClearAll={handleClearAll}
-              loadingTopology={loadingTopology}
               className="h-full"
               theme={theme}
             />
