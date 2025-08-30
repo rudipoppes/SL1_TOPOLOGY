@@ -98,6 +98,21 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const [forceRedraw, setForceRedraw] = useState(false);
   const [isLocked, setIsLocked] = useState(false); // Canvas lock state
   const [lockedNodes, setLockedNodes] = useState<Set<string>>(new Set()); // Individual node locks
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set()); // Multi-selection state
+  const [isSelecting, setIsSelecting] = useState(false); // Drag selection state
+  const [selectionBox, setSelectionBox] = useState<{ 
+    startX: number; 
+    startY: number; 
+    currentX: number; 
+    currentY: number; 
+    isVisible: boolean;
+  }>({
+    startX: 0, 
+    startY: 0, 
+    currentX: 0, 
+    currentY: 0, 
+    isVisible: false
+  });
   const nodePositionCounter = useRef({ x: 100, y: 100 });
   
   // Modal state
@@ -166,11 +181,25 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // No stabilization needed - physics is always disabled
 
-    // Add click event listener for node clicks
+    // Add click event listener for node clicks and selection
     network.on('click', (params) => {
       if (params.nodes.length > 0) {
         const nodeId = params.nodes[0] as string;
         const currentNode = nodesDataSetRef.current?.get(nodeId);
+        
+        // Handle shift-click for multi-selection
+        if (params.event.srcEvent?.shiftKey) {
+          setSelectedNodeIds(prev => {
+            const newSelection = new Set(prev);
+            if (newSelection.has(nodeId)) {
+              newSelection.delete(nodeId);
+            } else {
+              newSelection.add(nodeId);
+            }
+            return newSelection;
+          });
+          return; // Don't open modal for shift-click
+        }
         
         if (currentNode && containerRef.current) {
           // Get canvas position relative to container
@@ -191,10 +220,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             nodeType: currentNode.nodeData?.type,
           });
         }
+      } else {
+        // Click on empty canvas - clear selection if not shift-clicking
+        if (!params.event.srcEvent?.shiftKey) {
+          setSelectedNodeIds(new Set());
+        }
       }
     });
 
-    // Add keyboard event handler for locking nodes
+    // Add keyboard event handler for shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
       // Ctrl+L or Cmd+L to lock/unlock selected nodes
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
@@ -207,12 +241,123 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           console.log(`🔒 Toggled lock for ${selectedNodes.length} node(s)`);
         }
       }
+      
+      // Ctrl+A or Cmd+A to select all nodes
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+        event.preventDefault();
+        selectAllNodes();
+      }
+      
+      // Escape to clear selection
+      if (event.key === 'Escape') {
+        clearSelection();
+      }
+      
+      // Delete to clear selected nodes (demonstration - just clears selection in this case)
+      if (event.key === 'Delete' && selectedNodeIds.size > 0) {
+        event.preventDefault();
+        console.log(`⚠️ Delete pressed with ${selectedNodeIds.size} nodes selected (no action taken)`);
+        // Could implement node deletion here if needed
+      }
     };
 
-    // Attach keyboard event listener to container
+    // Add drag selection functionality
+    const handleMouseDown = (event: MouseEvent) => {
+      // Only start drag selection with Shift+drag on empty canvas
+      if (event.shiftKey && event.button === 0) {
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+          const startX = event.clientX - rect.left;
+          const startY = event.clientY - rect.top;
+          
+          // Check if click is on empty canvas (not on a node)
+          const nodesAtPosition = network.getNodeAt({ x: startX, y: startY });
+          
+          if (!nodesAtPosition) {
+            setIsSelecting(true);
+            setSelectionBox({
+              startX,
+              startY,
+              currentX: startX,
+              currentY: startY,
+              isVisible: true
+            });
+            
+            // Prevent default dragging behavior
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }
+      }
+    };
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (isSelecting && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const currentX = event.clientX - rect.left;
+        const currentY = event.clientY - rect.top;
+        
+        setSelectionBox(prev => ({
+          ...prev,
+          currentX,
+          currentY
+        }));
+      }
+    };
+
+    const handleMouseUp = () => {
+      if (isSelecting) {
+        // Calculate final selection area
+        const rect = containerRef.current?.getBoundingClientRect();
+        if (rect) {
+          const { startX, startY, currentX, currentY } = selectionBox;
+          
+          // Define selection rectangle bounds
+          const minX = Math.min(startX, currentX);
+          const maxX = Math.max(startX, currentX);
+          const minY = Math.min(startY, currentY);
+          const maxY = Math.max(startY, currentY);
+          
+          // Find nodes within selection rectangle
+          const allNodes = nodesDataSetRef.current?.get() as any[];
+          const nodesInSelection: string[] = [];
+          
+          if (allNodes) {
+            allNodes.forEach(node => {
+              if (node.x !== undefined && node.y !== undefined) {
+                // Convert node position to DOM coordinates
+                const domPos = network.canvasToDOM({ x: node.x, y: node.y });
+                
+                // Check if node is within selection rectangle
+                if (domPos.x >= minX && domPos.x <= maxX && 
+                    domPos.y >= minY && domPos.y <= maxY) {
+                  nodesInSelection.push(node.id);
+                }
+              }
+            });
+          }
+          
+          // Update selection
+          setSelectedNodeIds(prev => {
+            const newSelection = new Set(prev);
+            nodesInSelection.forEach(nodeId => newSelection.add(nodeId));
+            return newSelection;
+          });
+        }
+        
+        // Reset selection state
+        setIsSelecting(false);
+        setSelectionBox(prev => ({ ...prev, isVisible: false }));
+      }
+    };
+
+    // Attach mouse event listeners
     const container = containerRef.current;
     if (container) {
       container.addEventListener('keydown', handleKeyDown);
+      container.addEventListener('mousedown', handleMouseDown);
+      container.addEventListener('mousemove', handleMouseMove);
+      container.addEventListener('mouseup', handleMouseUp);
       // Make container focusable for keyboard events
       container.setAttribute('tabindex', '0');
     }
@@ -224,9 +369,12 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         nodesDataSetRef.current = null;
         edgesDataSetRef.current = null;
       }
-      // Clean up keyboard event listener
+      // Clean up event listeners
       if (container) {
         container.removeEventListener('keydown', handleKeyDown);
+        container.removeEventListener('mousedown', handleMouseDown);
+        container.removeEventListener('mousemove', handleMouseMove);
+        container.removeEventListener('mouseup', handleMouseUp);
       }
     };
   }, []); // Initialize network only once - theme changes handled via CSS
@@ -253,23 +401,39 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const statusColor = getStatusColor(status);
       const direction = deviceDirections?.get(node.id) || 'children';
       const isLocked = lockedNodes.has(node.id);
+      const isSelected = selectedNodeIds.has(node.id);
       
-      // Add direction indicator and lock indicator to label
+      // Add direction indicator, lock indicator, and selection indicator to label
       const directionIcon = direction === 'parents' ? '🔼' : 
                            direction === 'both' ? '🔄' : '🔽';
       const lockIcon = isLocked ? '🔒' : '';
-      const directionLabel = `${icon}${lockIcon}\n${node.label || node.id}\n${directionIcon}`;
+      const selectionIcon = isSelected ? '✓' : '';
+      const directionLabel = `${icon}${lockIcon}${selectionIcon}\n${node.label || node.id}\n${directionIcon}`;
 
       return {
         id: node.id,
         label: directionLabel,
-        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}${isLocked ? '\nStatus: Locked' : ''}`,
+        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}${isLocked ? '\nStatus: Locked' : ''}${isSelected ? '\nSelected' : ''}`,
         color: {
-          background: themeColors.nodeBackground,
-          border: isLocked ? '#ef4444' : statusColor, // Red border for locked nodes
+          background: isSelected 
+            ? (theme === 'dark' ? '#312e81' : '#e0e7ff')  // Dark purple for dark theme, light blue for light theme
+            : themeColors.nodeBackground,
+          border: isLocked 
+            ? '#ef4444' 
+            : (isSelected 
+                ? (theme === 'dark' ? '#6366f1' : '#3b82f6') // Indigo for dark theme, blue for light theme
+                : statusColor
+              ),
           highlight: {
-            background: themeColors.highlightBackground,
-            border: isLocked ? '#dc2626' : themeColors.highlightBorder, // Darker red when selected
+            background: isSelected 
+              ? (theme === 'dark' ? '#3730a3' : '#c7d2fe') // Darker purple/blue based on theme
+              : themeColors.highlightBackground,
+            border: isLocked 
+              ? '#dc2626' 
+              : (isSelected 
+                  ? (theme === 'dark' ? '#4f46e5' : '#2563eb') // Theme-appropriate selection colors
+                  : themeColors.highlightBorder
+                ),
           },
         },
         fixed: isLocked ? { x: true, y: true } : false, // Apply locked state
@@ -416,7 +580,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       edgesDataSetRef.current.update(newVisEdges);
     }
 
-  }, [topologyData, deviceDirections, forceRedraw, theme]);
+  }, [topologyData, deviceDirections, forceRedraw, theme, selectedNodeIds, lockedNodes]);
 
   // Handle layout changes by enabling physics temporarily
   useEffect(() => {
@@ -677,10 +841,151 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }
   }, [layout, forceRedraw]);
 
-  const handleLayoutChange = (newLayout: typeof layout) => {
-    console.log(`STATIC: Layout change requested: ${newLayout}`);
+  const handleLayoutChange = (newLayout: typeof layout, selectedOnly: boolean = false) => {
+    console.log(`STATIC: Layout change requested: ${newLayout}${selectedOnly ? ' (selected nodes only)' : ''}`);
     setLayout(newLayout);
-    setForceRedraw(true); // This will trigger layout change
+    
+    // Store selective layout preference for the effect
+    if (selectedOnly && selectedNodeIds.size > 0) {
+      // Apply layout to selected nodes only
+      applyLayoutToSelectedNodes(newLayout);
+    } else {
+      // Apply layout to all nodes (existing behavior)
+      setForceRedraw(true);
+    }
+  };
+
+  // Apply layout only to selected nodes
+  const applyLayoutToSelectedNodes = (layoutType: typeof layout) => {
+    if (!networkRef.current || selectedNodeIds.size === 0) return;
+
+    const selectedNodesArray = Array.from(selectedNodeIds);
+    const allNodes = nodesDataSetRef.current?.get() as any[];
+    const selectedNodesData = allNodes?.filter(node => selectedNodeIds.has(node.id));
+
+    if (!selectedNodesData || selectedNodesData.length === 0) return;
+
+    console.log(`Applying ${layoutType} layout to ${selectedNodesData.length} selected nodes`);
+
+    if (layoutType === 'hierarchical') {
+      // Apply hierarchical layout to selected nodes only
+      applySelectiveHierarchicalLayout(selectedNodesData);
+    } else if (layoutType === 'physics') {
+      // Apply physics layout to selected nodes only
+      applySelectivePhysicsLayout(selectedNodesArray);
+    } else if (layoutType === 'grid') {
+      // Apply grid layout to selected nodes only
+      applySelectiveGridLayout(selectedNodesData);
+    }
+  };
+
+  // Selective layout implementation functions
+  const applySelectiveHierarchicalLayout = (selectedNodes: any[]) => {
+    if (selectedNodes.length === 0) return;
+    
+    // Create a simplified hierarchical layout for selected nodes
+    // Position them in a vertical column formation
+    const startX = selectedNodes[0].x || 0; // Use first node's X as reference
+    const startY = selectedNodes[0].y || 0; // Use first node's Y as reference
+    const spacing = 150;
+
+    const updatedNodes = selectedNodes.map((node, index) => ({
+      id: node.id,
+      x: startX,
+      y: startY + (index * spacing),
+    }));
+
+    nodesDataSetRef.current?.update(updatedNodes);
+    console.log(`Applied selective hierarchical layout to ${selectedNodes.length} nodes`);
+  };
+
+  const applySelectivePhysicsLayout = (selectedNodeIds: string[]) => {
+    if (selectedNodeIds.length === 0) return;
+
+    // Apply physics only to selected nodes by temporarily enabling physics
+    // and constraining it to selected nodes
+    if (networkRef.current) {
+      // Get current positions of non-selected nodes to preserve them
+      const allNodeIds = nodesDataSetRef.current?.getIds() as string[];
+      const nonSelectedIds = allNodeIds.filter(id => !selectedNodeIds.includes(id));
+      const preservedPositions: any[] = [];
+
+      // Store positions of non-selected nodes
+      nonSelectedIds.forEach(nodeId => {
+        const node = nodesDataSetRef.current?.get(nodeId);
+        if (node && node.x !== undefined && node.y !== undefined) {
+          preservedPositions.push({
+            id: nodeId,
+            x: node.x,
+            y: node.y,
+            fixed: { x: true, y: true } // Fix non-selected nodes
+          });
+        }
+      });
+
+      // Fix non-selected nodes in place
+      if (preservedPositions.length > 0) {
+        nodesDataSetRef.current?.update(preservedPositions);
+      }
+
+      // Enable physics temporarily
+      networkRef.current.setOptions({
+        physics: { 
+          enabled: true,
+          barnesHut: {
+            gravitationalConstant: -4000,
+            centralGravity: 0.1,
+            springLength: 200,
+            springConstant: 0.05,
+            damping: 0.09,
+            avoidOverlap: 1,
+          },
+        }
+      });
+
+      // Disable physics after a short time and unfix non-selected nodes
+      setTimeout(() => {
+        if (networkRef.current) {
+          networkRef.current.setOptions({ physics: { enabled: false } });
+          
+          // Unfix non-selected nodes (restore their original fixed state)
+          const restoredNodes = preservedPositions.map(node => ({
+            id: node.id,
+            fixed: false // Restore to unfixed state
+          }));
+          
+          if (restoredNodes.length > 0) {
+            nodesDataSetRef.current?.update(restoredNodes);
+          }
+          
+          console.log(`Applied selective physics layout to ${selectedNodeIds.length} nodes`);
+        }
+      }, 2000);
+    }
+  };
+
+  const applySelectiveGridLayout = (selectedNodes: any[]) => {
+    if (selectedNodes.length === 0) return;
+
+    // Arrange selected nodes in a grid pattern
+    const gridSize = Math.ceil(Math.sqrt(selectedNodes.length));
+    const spacing = 200;
+    
+    // Use the center of selected nodes as reference point
+    const centerX = selectedNodes.reduce((sum, node) => sum + (node.x || 0), 0) / selectedNodes.length;
+    const centerY = selectedNodes.reduce((sum, node) => sum + (node.y || 0), 0) / selectedNodes.length;
+    
+    const startX = centerX - ((gridSize - 1) * spacing) / 2;
+    const startY = centerY - ((Math.ceil(selectedNodes.length / gridSize) - 1) * spacing) / 2;
+
+    const updatedNodes = selectedNodes.map((node, index) => ({
+      id: node.id,
+      x: startX + ((index % gridSize) * spacing),
+      y: startY + (Math.floor(index / gridSize) * spacing),
+    }));
+
+    nodesDataSetRef.current?.update(updatedNodes);
+    console.log(`Applied selective grid layout to ${selectedNodes.length} nodes`);
   };
 
   // Lock/unlock canvas functions
@@ -809,6 +1114,24 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }));
   };
 
+  // Selection management functions
+  const selectAllNodes = () => {
+    const allNodeIds = nodesDataSetRef.current?.getIds() as string[];
+    if (allNodeIds) {
+      setSelectedNodeIds(new Set(allNodeIds));
+      console.log(`✅ Selected all ${allNodeIds.length} nodes`);
+    }
+  };
+
+  const clearSelection = () => {
+    setSelectedNodeIds(new Set());
+    console.log('🗑️ Cleared node selection');
+  };
+
+  const getSelectedNodesCount = () => {
+    return selectedNodeIds.size;
+  };
+
   return (
     <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
       {/* Integrated Controls Panel */}
@@ -820,12 +1143,33 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         onClearAll={onClearAll}
         isLocked={isLocked}
         onToggleLock={toggleCanvasLock}
+        selectedCount={getSelectedNodesCount()}
+        onSelectAll={selectAllNodes}
+        onClearSelection={clearSelection}
       />
       
       <div 
         ref={containerRef} 
         className={`${styles.visContainer} ${isLocked ? styles.locked : ''}`}
       />
+
+      {/* Selection Rectangle Overlay */}
+      {selectionBox.isVisible && (
+        <div
+          className={styles.selectionRectangle}
+          style={{
+            position: 'absolute',
+            left: Math.min(selectionBox.startX, selectionBox.currentX),
+            top: Math.min(selectionBox.startY, selectionBox.currentY),
+            width: Math.abs(selectionBox.currentX - selectionBox.startX),
+            height: Math.abs(selectionBox.currentY - selectionBox.startY),
+            border: '2px dashed #3b82f6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            pointerEvents: 'none',
+            zIndex: 1000,
+          }}
+        />
+      )}
 
       {/* Device Relationship Modal */}
       <DeviceRelationshipModal
