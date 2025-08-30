@@ -90,6 +90,9 @@
   border: 4px solid #ef4444 !important; /* Red border when locked */
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.2) !important; /* Add glow effect */
   animation: heartbeatBorder 2s ease-in-out infinite !important; /* Slow heartbeat animation */
+  /* Force animation to be visible */
+  -webkit-animation: heartbeatBorder 2s ease-in-out infinite !important;
+  -moz-animation: heartbeatBorder 2s ease-in-out infinite !important;
 }
 
 /* Dark mode canvas background */
@@ -104,6 +107,8 @@
   border: 4px solid #f87171 !important; /* Lighter red border for dark mode */
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.3) !important; /* Red glow for dark mode */
   animation: heartbeatBorderDark 2s ease-in-out infinite !important; /* Slow heartbeat animation for dark mode */
+  -webkit-animation: heartbeatBorderDark 2s ease-in-out infinite !important;
+  -moz-animation: heartbeatBorderDark 2s ease-in-out infinite !important;
 }
 
 /* Hide any remaining vis-network navigation elements */
@@ -139,57 +144,55 @@
 
 /* Heartbeat animation keyframes for locked canvas border */
 @keyframes heartbeatBorder {
-  0% {
+  0%, 50%, 100% {
     border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.3);
+    transform: scale(1);
   }
-  15% {
+  15%, 35% {
     border-color: #dc2626;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 8px rgba(239, 68, 68, 0.7);
+    transform: scale(1.01);
   }
-  25% {
+}
+
+@-webkit-keyframes heartbeatBorder {
+  0%, 50%, 100% {
     border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 6px rgba(239, 68, 68, 0.6);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.3);
+    transform: scale(1);
   }
-  35% {
+  15%, 35% {
     border-color: #dc2626;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(239, 68, 68, 0.4);
-  }
-  50% {
-    border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.2);
-  }
-  100% {
-    border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(239, 68, 68, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1), 0 0 0 8px rgba(239, 68, 68, 0.7);
+    transform: scale(1.01);
   }
 }
 
 /* Dark mode heartbeat animation */
 @keyframes heartbeatBorderDark {
-  0% {
+  0%, 50%, 100% {
     border-color: #f87171;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.4);
+    transform: scale(1);
   }
-  15% {
+  15%, 35% {
     border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(248, 113, 113, 0.5);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(248, 113, 113, 0.8);
+    transform: scale(1.01);
   }
-  25% {
+}
+
+@-webkit-keyframes heartbeatBorderDark {
+  0%, 50%, 100% {
     border-color: #f87171;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 6px rgba(248, 113, 113, 0.7);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.4);
+    transform: scale(1);
   }
-  35% {
+  15%, 35% {
     border-color: #ef4444;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 4px rgba(248, 113, 113, 0.5);
-  }
-  50% {
-    border-color: #f87171;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.3);
-  }
-  100% {
-    border-color: #f87171;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(248, 113, 113, 0.3);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6), 0 0 0 8px rgba(248, 113, 113, 0.8);
+    transform: scale(1.01);
   }
 }
 
