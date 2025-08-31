@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 4 - DEPTH SELECTOR FUNCTIONALITY COMPLETE** ✅ 
+### Current Status: **Phase 5 - DUAL-PORT AUTHENTICATION SYSTEM COMPLETE** ✅ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -48,13 +48,14 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Selection & Pan Behavior**: Fixed interaction conflicts between selection and canvas panning (Aug 30, 2025)
 - ✅ **Canvas Pan Reversion**: Normal drag now pans canvas, removed shift+drag requirement (Aug 30, 2025)
 - ✅ **Multi-Level Depth Traversal**: Backend Lambda enhanced with recursive relationship traversal & cycle detection (Aug 30, 2025)
+- ✅ **Dual-Port Authentication**: Simple login system for user access while maintaining dev workflow (Aug 31, 2025)
 - ✅ **Depth Selector Component**: Modern rolling number controls with visual level indicators (Aug 30, 2025)
 - ✅ **Selected-Only Depth Control**: Canvas-selected nodes only + "Draw Items" button workflow (Aug 30, 2025)
 - ✅ **Topology Reduction Algorithm**: Proper cleanup when reducing depth levels (Aug 31, 2025)
 - ✅ **Incremental Device Addition**: Preserves individual settings when adding devices from chip area (Aug 31, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- ✅ **CURRENT BRANCH**: ui-modernization - Contains fully functional depth selector (commit dd3786d)
-- 🎯 **Status**: All depth selector functionality working and tested
+- ✅ **CURRENT BRANCH**: auth-system - Contains depth selector + dual-port authentication (commit 4d9a5a2)
+- 🎯 **Status**: All depth selector + authentication functionality working and tested
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -89,7 +90,8 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Real-time Data**: Connected to live Lambda API
 - ✅ **Modern UI**: Tailwind CSS responsive design
 - ✅ **Topology Controls**: Layout switching, zoom, center view
-- ⚠️ **Depth Selector**: Multi-level relationship traversal with selected-nodes workflow (**UNTESTED**)
+- ✅ **Depth Selector**: Multi-level relationship traversal with selected-nodes workflow (TESTED & WORKING)
+- ✅ **Dual-Port Authentication**: Simple login system for user access control
 
 ### **User Experience**
 - ✅ **Drag & Drop Workflow**: Select devices from inventory → drag to canvas
@@ -97,11 +99,12 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Performance**: Virtual scrolling for large device lists
 - ✅ **Resilience**: Fallback to mock data if API unavailable
 
-### **Live Production System**
+### **Live Production System - Dual Port Setup**
 - **API Endpoint**: `https://swmtadnpui.execute-api.us-east-1.amazonaws.com/prod/devices`
-- **Frontend URL**: `http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/`
+- **Development URL (No Auth)**: `http://ec2-52-23-186-235.compute-1.amazonaws.com:3000/`
+- **Production URL (With Auth)**: `http://ec2-52-23-186-235.compute-1.amazonaws.com:4000/`
 - **Real SL1 Data**: Authenticated with `admin` user on selab.sciencelogic.com
-- **Status**: Fully operational with real device data and proper UI
+- **Status**: Fully operational with dual-environment authentication system
 
 ---
 
@@ -275,6 +278,107 @@ for (const deviceId of deviceIds) {
 ✅ **Incremental Addition**: Individual device settings preserved when adding from chip area  
 ✅ **Edge Cases**: Proper handling of device removal, empty topology, mixed scenarios  
 ✅ **Performance**: No unnecessary API calls or complete topology rebuilds
+
+---
+
+## 🔐 **DUAL-PORT AUTHENTICATION SYSTEM** ✅ **FULLY WORKING**
+
+### **Implementation Complete (August 31, 2025)**
+**Branch**: `auth-system` | **Status**: Fully functional and tested | **Commit**: 4d9a5a2
+
+### **Purpose & Design Philosophy**
+The dual-port authentication system enables **two distinct environments**:
+- **Development Environment** (Port 3000): No authentication required - for continuous development
+- **Production Environment** (Port 4000): Simple login required - for user testing and demos
+
+This approach allows developers to continue building without login friction while providing secure access for stakeholders.
+
+### **Authentication Features**
+
+**1. HTTP-Compatible Security**
+- **Simple Hash Algorithm**: Works without HTTPS/crypto APIs
+- **Config-Based Credentials**: Encrypted storage in JSON configuration
+- **Session Management**: Browser localStorage with proper cleanup
+- **Port-Based Detection**: Automatically enables auth only on port 4000
+
+**2. Dual-Environment Build System**
+- **Separate Builds**: Clean development vs authenticated production builds
+- **Build Script**: `frontend/build-prod.js` handles dual-environment compilation
+- **Asset Management**: Automatic config copying and server management
+- **Size Optimization**: Development build excludes auth libraries
+
+**3. User-Friendly Interface**
+- **Modern Login Page**: Tailwind CSS with loading states and error handling
+- **Credential Validation**: Real-time feedback and secure authentication flow
+- **Theme Support**: Consistent with application's dark/light mode system
+- **Mobile Responsive**: Works on desktop, tablet, and mobile devices
+
+### **Current Configuration**
+
+**Live Credentials**:
+- **Username**: `sl1_topo`
+- **Password**: `sl1_t0p0log33`
+- **Hash**: `259fe5eb` (HTTP-compatible simple hash)
+
+**File Structure**:
+```
+/config/simple-auth-config.json     # Main credential storage
+/scripts/reset-simple-password.js   # Password reset utility
+/frontend/build-prod.js              # Dual-environment build script
+/frontend/src/services/simpleAuth.ts # Authentication service
+/frontend/src/components/Auth/       # Login UI components
+```
+
+**Deployment Commands**:
+```bash
+# Build and deploy production with authentication
+cd /home/ubuntu/SL1_TOPOLOGY/frontend
+node build-prod.js
+
+# Start servers
+serve -s dist -l 3000      # Development (no auth)
+serve -s dist-prod -l 4000  # Production (with auth)
+```
+
+**Password Reset**:
+```bash
+node /home/ubuntu/SL1_TOPOLOGY/scripts/reset-simple-password.js
+# Follow prompts to update username/password
+# Restart production server after changes
+```
+
+### **Technical Implementation**
+
+**Authentication Flow**:
+1. **Port Detection**: `window.location.port === '4000'` determines if auth is required
+2. **Config Loading**: Fetch `/config/simple-auth-config.json` from server
+3. **Hash Generation**: Simple iteration-based hashing compatible with HTTP
+4. **Credential Validation**: Compare generated hash with stored hash
+5. **Session Storage**: Store authentication state in localStorage
+6. **Route Protection**: Wrap application in authentication check
+
+**Build Process**:
+1. **Development Build**: Standard React build without authentication
+2. **Production Build**: Temporarily swap main.tsx to include authentication
+3. **Config Management**: Copy authentication config to build directories
+4. **Server Management**: Automatic restart with updated configurations
+
+### **Security Considerations**
+
+**HTTP Compatibility**:
+- Uses simple hash algorithm that works without HTTPS
+- No dependency on Web Crypto API or Node.js crypto modules
+- Suitable for internal/development environments
+
+**Credential Storage**:
+- Passwords stored as hashes, never in plaintext
+- Salt-based hashing for additional security
+- Configurable iteration count for hash strength
+
+**Session Management**:
+- localStorage-based sessions with proper cleanup
+- Port-specific authentication (development bypassed)
+- No sensitive data exposed in client-side code
 
 ---
 
