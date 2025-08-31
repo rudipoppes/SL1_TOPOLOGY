@@ -7,7 +7,7 @@ interface DeviceSearchProps {
 
 export const DeviceSearch: React.FC<DeviceSearchProps> = ({
   onSearch,
-  placeholder = 'Search by name or IP...',
+  placeholder = 'Search by name...',
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
 

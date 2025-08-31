@@ -4,14 +4,7 @@ import { Device, apiService } from '../../services/api';
 import { configService } from '../../services/config';
 import { DeviceItem } from './DeviceItem';
 import { DeviceSearch } from './DeviceSearch';
-import { DeviceFilters } from './DeviceFilters';
 
-const statusIcons = {
-  online: '🟢',
-  offline: '🔴', 
-  warning: '🟡',
-  unknown: '⚪',
-};
 
 interface DeviceListProps {
   onDeviceSelect: (devices: Device[]) => void;
@@ -40,9 +33,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   
   // Pagination - use config
   const devicesConfig = configService.getDevicesConfig();
@@ -62,8 +52,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       
       const response = await apiService.getDevices({
         search: searchTerm,
-        type: selectedType || undefined,
-        status: selectedStatus || undefined,
         limit,
         cursor: currentCursor || undefined,
       });
@@ -82,7 +70,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         });
       }
       
-      setAvailableTypes(response.filters.availableTypes);
       setHasMore(response.pagination.hasMore);
       setNextCursor(response.pagination.nextCursor || null);
       setTotal(response.pagination.total);
@@ -93,13 +80,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [searchTerm, selectedType, selectedStatus, limit, nextCursor]);
+  }, [searchTerm, limit, nextCursor]);
 
-  // Initial load and reset when filters change (but NOT search term)
-  useEffect(() => {
-    setNextCursor(null); // Reset cursor when filters change
-    fetchDevices(true);
-  }, [selectedType, selectedStatus]);
   
   // Separate effect for search term to maintain selection
   useEffect(() => {
@@ -136,10 +118,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     onDeviceSelect(updatedDeviceObjects);
   };
 
-  // Clear filters
-  const handleClearFilters = () => {
-    setSelectedType(null);
-    setSelectedStatus(null);
+  // Clear search
+  const handleClearSearch = () => {
     setSearchTerm('');
   };
 
@@ -230,7 +210,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                 "
                 style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' }}
               >
-                <span className="mr-2 text-sm">{statusIcons[device.status]}</span>
                 <span className="truncate max-w-28">{device.name}</span>
                 <button
                   onClick={() => {
@@ -308,14 +287,14 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         <div className="space-y-4">
           <DeviceSearch onSearch={setSearchTerm} />
           <div className="flex items-center justify-between">
-            <DeviceFilters
-              types={availableTypes}
-              selectedType={selectedType}
-              onTypeChange={setSelectedType}
-              selectedStatus={selectedStatus}
-              onStatusChange={setSelectedStatus}
-              onClearFilters={handleClearFilters}
-            />
+            {searchTerm && (
+              <button
+                onClick={handleClearSearch}
+                className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-300"
+              >
+                Clear Search
+              </button>
+            )}
             {hasMore && !loading && (
               <button
                 onClick={() => fetchDevices(false)}

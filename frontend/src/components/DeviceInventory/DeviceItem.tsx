@@ -6,12 +6,6 @@ interface DeviceItemProps {
   onSelect?: (device: Device) => void;
 }
 
-const statusIcons = {
-  online: '🟢',
-  offline: '🔴',
-  warning: '🟡',
-  unknown: '⚪',
-};
 
 export const DeviceItem: React.FC<DeviceItemProps> = ({
   device,
@@ -30,16 +24,9 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
     >
       {/* Status indicator and content */}
       <div className="flex items-center space-x-3 min-w-0 flex-1">
-        {/* Enhanced status indicator */}
-        <div className="relative flex-shrink-0 p-2 rounded-lg bg-white/40 backdrop-blur-sm border border-white/20">
-          <span className="text-lg filter drop-shadow-md">{statusIcons[device.status]}</span>
-          {device.status === 'online' && (
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-br from-green-400 to-green-500 rounded-full animate-pulse shadow-lg"></div>
-          )}
-        </div>
         
         {/* Compact device info */}
-        <div className="min-w-0 flex-1 ml-3">
+        <div className="min-w-0 flex-1">
           {/* Device name - more compact */}
           <div 
             className="font-medium text-sm text-emphasis truncate group-hover:text-gradient-primary transition-all duration-300"

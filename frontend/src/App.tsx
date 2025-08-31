@@ -668,7 +668,7 @@ function App() {
         ) : (
           <div className="relative h-full animate-scale-in" style={{ animationDelay: '200ms' }}>
             {loadingTopology && (
-              <div className="absolute top-6 left-6 z-10 glass-panel px-4 py-3 rounded-xl border border-blue-200/50 backdrop-blur-md animate-slide-in animate-glow">
+              <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-10 glass-panel px-4 py-3 rounded-xl border border-blue-200/50 backdrop-blur-md animate-slide-in animate-glow">
                 <div className="flex items-center space-x-3 text-blue-700">
                   <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                   <span className="font-medium">Loading topology...</span>
