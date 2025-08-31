@@ -411,6 +411,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   // Handle data updates with static positioning
   useEffect(() => {
     if (!networkRef.current || !nodesDataSetRef.current || !edgesDataSetRef.current) return;
+    
+    // Early safety check - if no topology data, just return
+    if (!topologyData) return;
 
     // If force redraw is requested (layout change), clear everything
     if (forceRedraw) {
@@ -424,7 +427,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // Transform new data to vis-network format with static positioning
     const themeColors = getThemeColors(theme);
-    const newVisNodes = topologyData?.nodes.map(node => {
+    const newVisNodes = (topologyData?.nodes || []).filter(node => node && node.id).map(node => {
       const status = getNodeStatus(node);
       const icon = getDeviceIcon(node.type || '');
       const statusColor = getStatusColor(status);
@@ -504,7 +507,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       };
     }) || [];
 
-    const newVisEdges = topologyData?.edges.map((edge, index) => ({
+    const newVisEdges = (topologyData?.edges || []).filter(edge => edge && edge.source && edge.target).map((edge, index) => ({
       id: `edge-${edge.source}-${edge.target}-${index}`,
       from: edge.source,
       to: edge.target,

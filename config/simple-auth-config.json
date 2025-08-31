@@ -1,0 +1,10 @@
+{
+  "credentials": {
+    "username": "sl1_topo",
+    "passwordHash": "259fe5eb"
+  },
+  "config": {
+    "saltKey": "sl1_topology_secure_salt_2025",
+    "iterations": 1000
+  }
+}

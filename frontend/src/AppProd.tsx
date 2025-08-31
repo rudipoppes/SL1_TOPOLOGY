@@ -2,11 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Device, TopologyResponse, apiService } from './services/api';
 import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { VisControlledTopology } from './components/TopologyCanvas/VisControlledTopology';
+import { SimpleAuthProvider } from './contexts/SimpleAuthContext';
+import { SimpleProtectedRoute } from './components/Auth/SimpleProtectedRoute';
 import { configService } from './services/config';
 import { useTheme } from './hooks/useTheme';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
   const [topologyDevices, setTopologyDevices] = useState<Device[]>([]);
   const [topologyData, setTopologyData] = useState<TopologyResponse['topology'] | null>(null);
@@ -111,7 +113,6 @@ function App() {
     }
   };
 
-
   const handleClearAll = () => {
     console.log('Clearing all topology data');
     setTopologyDevices([]);
@@ -168,242 +169,6 @@ function App() {
     
     traverse(rootNodeId, 0);
     return reachableNodes;
-  };
-
-  const handleDepthChange = async (depth: number, deviceId?: string) => {
-    if (deviceId) {
-      // Change depth for specific device - UPDATE its portion of the topology
-      
-      // Update device depths Map synchronously
-      const updatedDeviceDepths = new Map(deviceDepths.set(deviceId, depth));
-      setDeviceDepths(updatedDeviceDepths);
-      
-      // Find the device in current topology data
-      const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
-      if (deviceInTopology) {
-        setLoadingTopology(true);
-        try {
-          const deviceDirection = deviceDirections.get(deviceId) || defaultDirection;
-          const response = await apiService.getTopology({
-            deviceIds: [deviceId],
-            deviceDirections: { [deviceId]: deviceDirection },
-            deviceDepths: { [deviceId]: depth }
-          });
-          
-          // PROPER topology reduction and merge logic
-          setTopologyData(prevTopology => {
-            if (!prevTopology) return response.topology;
-            
-            // Step 1: Find all nodes that were previously reachable from this device
-            const oldReachableNodes = findNodesWithinDepth(
-              deviceId,
-              10, // Use large depth to find all previously connected nodes
-              deviceDirection,
-              prevTopology.edges
-            );
-            
-            // Step 2: Find nodes that should remain after the depth change
-            const newReachableNodes = new Set(response.topology.nodes.map(n => n.id));
-            
-            // Step 3: Identify nodes to remove (previously reachable but not in new result)
-            const nodesToRemove = new Set<string>();
-            oldReachableNodes.forEach(nodeId => {
-              if (!newReachableNodes.has(nodeId) && nodeId !== deviceId) {
-                nodesToRemove.add(nodeId);
-              }
-            });
-            
-            // Step 4: Filter out nodes that should be removed
-            const keptNodes = prevTopology.nodes.filter(node => 
-              !nodesToRemove.has(node.id)
-            );
-            
-            // Step 5: Filter out edges that connect to removed nodes
-            const keptEdges = prevTopology.edges.filter(edge => 
-              !nodesToRemove.has(edge.source) && !nodesToRemove.has(edge.target)
-            );
-            
-            // Step 6: Add new nodes (that weren't already in the topology)
-            const existingNodeIds = new Set(keptNodes.map(n => n.id));
-            const newNodes = response.topology.nodes.filter(node => 
-              !existingNodeIds.has(node.id)
-            );
-            
-            // Step 7: Add new edges (that weren't already in the topology)
-            const existingEdgeKeys = new Set(keptEdges.map(edge => `${edge.source}-${edge.target}`));
-            const newEdges = response.topology.edges.filter(edge => 
-              !existingEdgeKeys.has(`${edge.source}-${edge.target}`)
-            );
-            
-            console.log(`🔧 Topology reduction: Removed ${nodesToRemove.size} nodes, added ${newNodes.length} nodes`);
-            
-            return {
-              nodes: [...keptNodes, ...newNodes],
-              edges: [...keptEdges, ...newEdges]
-            };
-          });
-        } catch (error) {
-          console.error('❌ Failed to fetch individual device topology:', error);
-        } finally {
-          setLoadingTopology(false);
-        }
-      } else {
-        console.warn('Device not found in topology:', deviceId);
-      }
-    } else {
-      // Global depth change with topology refresh (used for modal-based changes)
-      console.log('🔄 Changing global depth to:', depth);
-      setGlobalDepth(depth);
-      const newDepths = new Map<string, number>();
-      topologyDevices.forEach(device => {
-        newDepths.set(device.id, depth);
-      });
-      setDeviceDepths(newDepths);
-      
-      // Refresh topology with updated global depth
-      await fetchTopologyDataWithDeviceDirections(topologyDevices);
-    }
-  };
-
-  const handleDirectionChange = async (direction: 'parents' | 'children' | 'both', deviceId?: string) => {
-    if (deviceId) {
-      // Change direction for specific device - UPDATE its portion of the topology
-      console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
-      setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
-      
-      // Find the device in current topology data
-      const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
-      if (deviceInTopology) {
-        // DON'T add to chip area - device is already on canvas
-        // The chip area should only show devices dragged from inventory
-        // Devices on canvas being modified shouldn't be added to selection
-        
-        // IMPORTANT: Fetch the updated device topology and MERGE with existing
-        setLoadingTopology(true);
-        try {
-          const deviceDepth = deviceDepths.get(deviceId) || globalDepth;
-          const response = await apiService.getTopology({
-            deviceIds: [deviceId],
-            deviceDirections: { [deviceId]: direction },
-            deviceDepths: { [deviceId]: deviceDepth }
-          });
-          
-          // MERGE the new device topology with existing topology
-          setTopologyData(prevTopology => {
-            if (!prevTopology) return response.topology;
-            
-            // Keep nodes that are not in the new device's tree from previous topology
-            const keptNodes = prevTopology.nodes.filter(node => {
-              return !response.topology.nodes.some(newNode => newNode.id === node.id);
-            });
-            
-            // Keep edges that don't match new edges
-            const keptEdges = prevTopology.edges.filter(edge => {
-              return !response.topology.edges.some(newEdge => 
-                (newEdge.source === edge.source && newEdge.target === edge.target)
-              );
-            });
-            
-            // Combine kept nodes/edges with new ones
-            return {
-              nodes: [...keptNodes, ...response.topology.nodes],
-              edges: [...keptEdges, ...response.topology.edges]
-            };
-          });
-        } catch (error) {
-          console.error('❌ Failed to fetch individual device topology:', error);
-        } finally {
-          setLoadingTopology(false);
-        }
-      } else {
-        console.warn('Device not found in topology:', deviceId);
-      }
-    } else {
-      // Global direction change (fallback for compatibility)
-      console.log('🔄 Changing global direction to:', direction);
-      const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
-      topologyDevices.forEach(device => {
-        newDirections.set(device.id, direction);
-      });
-      setDeviceDirections(newDirections);
-      
-      // Refresh topology with updated global directions (no clearing needed with proper merge logic)
-      await fetchTopologyDataWithDeviceDirections(topologyDevices);
-    }
-  };
-
-
-
-  const fetchTopologyDataWithDeviceDirections = async (devices: Device[]) => {
-    if (devices.length === 0) {
-      setTopologyData(null);
-      return;
-    }
-
-    setLoadingTopology(true);
-    try {
-      // Create device directions and depths objects
-      const deviceDirectionsObj: { [deviceId: string]: 'parents' | 'children' | 'both' } = {};
-      const deviceDepthsObj: { [deviceId: string]: number } = {};
-      devices.forEach(device => {
-        deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
-        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || globalDepth;
-      });
-
-      
-      const response = await apiService.getTopology({
-        deviceIds: devices.map(d => d.id),
-        deviceDirections: deviceDirectionsObj,
-        deviceDepths: deviceDepthsObj
-      });
-      
-      console.log('📊 Topology data received:', response.topology);
-      
-      // Ensure ALL selected devices appear on canvas, even if they have no relationships
-      const deviceNodes = devices.map(device => ({
-        id: device.id,
-        label: device.name,
-        type: device.type,
-        status: device.status,
-        ip: device.ip
-      }));
-      
-      // Merge API nodes with selected device nodes (avoid duplicates)
-      const existingNodeIds = new Set(response.topology.nodes.map(n => n.id));
-      const missingDeviceNodes = deviceNodes.filter(node => !existingNodeIds.has(node.id));
-      
-      const completeTopology = {
-        nodes: [...response.topology.nodes, ...missingDeviceNodes],
-        edges: response.topology.edges
-      };
-      
-      
-      // Use merging logic to prevent canvas view resets and phantom edges
-      setTopologyData(prevTopology => {
-        if (!prevTopology) {
-          return completeTopology;
-        }
-        
-        // For direction changes, we want to REPLACE edges but preserve node positions
-        // The new completeTopology already contains all devices that should be visible
-        return completeTopology;
-      });
-    } catch (error) {
-      console.error('❌ Failed to fetch topology with device directions:', error);
-      // Create simple topology with just the devices (no relationships)
-      setTopologyData({
-        nodes: devices.map(device => ({
-          id: device.id,
-          label: device.name,
-          type: device.type,
-          status: device.status,
-          ip: device.ip
-        })),
-        edges: [] // No relationships when API fails
-      });
-    } finally {
-      setLoadingTopology(false);
-    }
   };
 
   const fetchIncrementalTopologyDataWithDirections = async (newDevices: Device[]) => {
@@ -480,25 +245,6 @@ function App() {
         
         const mergedEdges = [...validExistingEdges, ...validNewEdges];
         
-        console.log('🔍 PHANTOM PREVENTION in merge:', {
-          prevEdges: prevTopology.edges.length,
-          validExistingEdges: validExistingEdges.length,
-          newApiEdges: response.topology.edges.length,
-          validNewEdges: validNewEdges.length,
-          finalMergedEdges: mergedEdges.length,
-          removedInvalidEdges: prevTopology.edges.length - validExistingEdges.length
-        });
-        
-        console.log('🔄 Merged topology with per-device directions:', {
-          prevNodes: prevTopology.nodes.length,
-          newApiNodes: apiNodes.length,
-          newDeviceNodes: allNewNodes.length,
-          totalNodes: mergedNodes.length,
-          prevEdges: prevTopology.edges.length,
-          newEdges: validNewEdges.length,
-          totalEdges: mergedEdges.length
-        });
-        
         return {
           nodes: mergedNodes,
           edges: mergedEdges
@@ -534,36 +280,6 @@ function App() {
       setLoadingTopology(false);
     }
   };
-
-  // Legacy function - kept for potential future compatibility  
-  const fetchTopologyData = async (devices: Device[], direction?: 'parents' | 'children' | 'both') => {
-    // Legacy function - now redirects to per-device approach
-    const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
-    const newDepths = new Map<string, number>();
-    devices.forEach(device => {
-      newDirections.set(device.id, direction || defaultDirection);
-      newDepths.set(device.id, globalDepth);
-    });
-    setDeviceDirections(newDirections);
-    setDeviceDepths(newDepths);
-    return fetchTopologyDataWithDeviceDirections(devices);
-  };
-
-
-  // Legacy function - kept for potential future compatibility
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const fetchIncrementalTopologyData = async (newDevices: Device[], direction?: 'parents' | 'children' | 'both') => {
-    // Legacy function - now redirects to per-device approach
-    newDevices.forEach(device => {
-      setDeviceDirections(prev => new Map(prev.set(device.id, direction || defaultDirection)));
-      setDeviceDepths(prev => new Map(prev.set(device.id, globalDepth)));
-    });
-    return fetchIncrementalTopologyDataWithDirections(newDevices);
-  };
-
-  // Reference legacy functions to avoid TS unused variable errors
-  void fetchTopologyData;
-  void fetchIncrementalTopologyData;
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -618,6 +334,7 @@ function App() {
           globalDepth={globalDepth}
           onDepthChange={handleGlobalDepthChange}
         />
+        {/* Simple logout button will be added here */}
       </div>
 
       {/* Modern Resize Handle */}
@@ -682,8 +399,6 @@ function App() {
               deviceDirections={deviceDirections}
               deviceDepths={deviceDepths}
               globalDepth={globalDepth}
-              onDirectionChange={handleDirectionChange}
-              onDepthChange={handleDepthChange}
               onClearAll={handleClearAll}
               className="h-full"
               theme={theme}
@@ -695,5 +410,14 @@ function App() {
   );
 }
 
+function App() {
+  return (
+    <SimpleAuthProvider>
+      <SimpleProtectedRoute>
+        <AppContent />
+      </SimpleProtectedRoute>
+    </SimpleAuthProvider>
+  );
+}
 
 export default App;

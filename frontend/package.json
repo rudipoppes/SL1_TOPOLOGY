@@ -4,8 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3000",
+    "dev:auth": "VITE_AUTH_MODE=true vite --port 4000",
     "build": "tsc -b && vite build",
+    "build:dev": "vite build --mode development",
+    "build:prod": "VITE_AUTH_MODE=true vite build --mode production",
+    "serve:dev": "serve -s dist -l 3000",
+    "serve:prod": "serve -s dist -l 4000",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
@@ -13,24 +18,36 @@
     "@types/react-window": "^1.8.8",
     "autoprefixer": "^10.4.21",
     "axios": "^1.11.0",
+    "bcryptjs": "^3.0.2",
+    "crypto-js": "^4.2.0",
+    "js-cookie": "^3.0.5",
+    "jsonwebtoken": "^9.0.2",
     "postcss": "^8.5.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-window": "^1.8.11",
     "tailwindcss": "^3.4.17",
-    "vis-network": "^9.1.9",
-    "vis-data": "^7.1.9"
+    "vis-data": "^7.1.9",
+    "vis-network": "^9.1.9"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/crypto-js": "^4.2.2",
+    "@types/js-cookie": "^3.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.15.0",
     "@typescript-eslint/parser": "^7.15.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "stream-browserify": "^3.0.0",
     "typescript": "^5.9.2",
+    "util": "^0.12.5",
     "vite": "^5.3.4"
   }
 }
