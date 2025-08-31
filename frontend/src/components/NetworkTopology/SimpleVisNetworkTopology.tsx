@@ -166,6 +166,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         navigationButtons: false, // Disable built-in navigation buttons - we have custom ones
         keyboard: true, // Enable keyboard shortcuts
         selectConnectedEdges: false, // Don't select edges when selecting nodes
+        hideEdgesOnDrag: false, // Don't hide edges during drag
+        hideNodesOnDrag: false, // Don't hide nodes during drag
+      },
+      manipulation: {
+        enabled: false, // Completely disable manipulation mode
       },
       nodes: {
         chosen: true,
@@ -240,10 +245,13 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           // We don't need to do anything here, the 'select' event will update our state
         }
       } else {
-        // Click on empty canvas - clear selection
+        // Click on empty canvas - clear selection and prevent any visual indicators
         const emptySelection = new Set<string>();
         setSelectedNodeIds(emptySelection);
         syncSelectionWithNetwork(emptySelection);
+        
+        // Prevent vis-network from showing any selection indicator on empty clicks
+        network.unselectAll();
       }
     });
 

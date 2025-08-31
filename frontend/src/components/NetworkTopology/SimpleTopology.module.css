@@ -116,6 +116,65 @@
   display: none !important;
 }
 
+/* Hide ALL vis-network selection indicators, cursor dots, and manipulation elements */
+:global(.vis-network .vis-manipulation) {
+  display: none !important;
+}
+
+:global(.vis-network .vis-point) {
+  display: none !important;
+}
+
+:global(.vis-network .vis-selection-point) {
+  display: none !important;
+}
+
+:global(.vis-network .vis-cursor) {
+  display: none !important;
+}
+
+:global(.vis-network .vis-manipulation-overlay) {
+  display: none !important;
+}
+
+/* Hide selection box elements */
+:global(.vis-network .vis-select-box) {
+  display: none !important;
+}
+
+:global(.vis-network .vis-selection-box) {
+  display: none !important;
+}
+
+/* Hide any drag elements */
+:global(.vis-network .vis-drag-element) {
+  display: none !important;
+}
+
+/* Hide manipulation buttons and controls */
+:global(.vis-network .vis-manipulation-button) {
+  display: none !important;
+}
+
+/* Hide any canvas overlay elements that might show dots */
+:global(.vis-network canvas + div) {
+  display: none !important;
+}
+
+/* More aggressive hiding of any selection indicators */
+:global(.vis-network div[style*="position: absolute"]:not(.vis-tooltip):not(.vis-network-tooltip)) {
+  display: none !important;
+}
+
+/* Hide any circular selection indicators */
+:global(.vis-network circle) {
+  display: none !important;
+}
+
+:global(.vis-network ellipse) {
+  display: none !important;
+}
+
 /* Ensure vis-network canvas maintains theme-appropriate background */
 :global(.vis-network) {
   background-color: #ffffff !important;
