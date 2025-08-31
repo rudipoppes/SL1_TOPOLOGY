@@ -56,13 +56,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
   onClose,
 }) => {
   
-  // DIAGNOSTIC: Log what the modal receives
-  console.log('🔍 MODAL OPENED with props:', {
-    nodeName,
-    currentDirection,
-    currentDepth,
-    isOpen
-  });
   const modalRef = useRef<HTMLDivElement>(null);
   const [selectedDepth, setSelectedDepth] = useState(currentDepth);
 
@@ -130,17 +123,10 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
 
   const handleDirectionClick = (direction: 'parents' | 'children' | 'both') => {
     // Always apply the selected depth when direction is clicked
-    console.log('🎯 Modal direction click:', {
-      direction,
-      selectedDepth,
-      currentDepth,
-      willCallOnDepthChange: true // Always call depth change now
-    });
     
     // Always apply the depth, even if it matches current depth
     // This ensures the user's selected depth is properly applied
     if (onDepthChange) {
-      console.log('📞 Calling onDepthChange with depth:', selectedDepth);
       onDepthChange(selectedDepth);
     }
     onDirectionSelect(direction);
@@ -149,11 +135,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
 
   const handleDepthChange = (newDepth: number) => {
     if (newDepth >= 1 && newDepth <= maxDepth) {
-      console.log('🔄 Modal depth change:', {
-        from: selectedDepth,
-        to: newDepth,
-        currentDepth
-      });
       setSelectedDepth(newDepth);
       // Don't close the modal, just update the local state
     }

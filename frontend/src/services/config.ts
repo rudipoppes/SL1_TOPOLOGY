@@ -64,8 +64,6 @@ class ConfigService {
 
     // Handle placeholder API URL (before Lambda deployment)
     if (!baseConfig.api.baseUrl || baseConfig.api.baseUrl === 'PLACEHOLDER_LAMBDA_API_URL') {
-      console.warn('⚠️  Lambda API not deployed yet. Using fallback URL for development.');
-      console.log('📝 To deploy Lambda: run ./backend/deploy.sh -e development');
       baseConfig.api.baseUrl = (baseConfig.api as any).fallbackUrl || 'http://localhost:3000';
     }
 

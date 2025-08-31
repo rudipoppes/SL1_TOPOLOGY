@@ -48,7 +48,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     
     try {
       const currentCursor = reset ? null : nextCursor;
-      console.log('📡 Fetching devices with cursor:', currentCursor ? 'next page' : 'first page');
       
       const response = await apiService.getDevices({
         search: searchTerm,
@@ -56,7 +55,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         cursor: currentCursor || undefined,
       });
       
-      console.log('📊 Received devices:', response.devices.length);
       
       if (reset) {
         setDevices(response.devices);
@@ -65,7 +63,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         setDevices((prev) => {
           const existingIds = new Set(prev.map(d => d.id));
           const newDevices = response.devices.filter(d => !existingIds.has(d.id));
-          console.log('New unique devices:', newDevices.length);
           return [...prev, ...newDevices];
         });
       }
@@ -76,7 +73,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       
     } catch (err) {
       setError('Failed to fetch devices');
-      console.error('Error fetching devices:', err);
     } finally {
       setLoading(false);
     }
@@ -140,39 +136,64 @@ export const DeviceList: React.FC<DeviceListProps> = ({
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50/30 via-white/50 to-blue-50/20 dark:from-slate-800/30 dark:via-slate-700/50 dark:to-slate-800/20 transition-colors duration-300">
-      {/* Enhanced readable header */}
-      <div className="border-b border-white/20 dark:border-gray-700/30 bg-white/70 dark:bg-gray-800/70 backdrop-blur-sm text-gray-800 dark:text-gray-100 p-6 shadow-lg transition-colors duration-300">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold mb-1 text-gray-800 dark:text-gray-100">
-              Device Inventory
-            </h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm font-medium">
-              Click devices to add to topology
-            </p>
+      {/* Clean header with integrated controls */}
+      <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 transition-colors duration-300">
+        <div className="p-6 pb-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
+                Device Inventory
+              </h2>
+              <p className="text-slate-600 dark:text-slate-300 text-sm">
+                Click devices to add to topology
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Theme Toggle */}
+              {onThemeToggle && (
+                <button
+                  onClick={onThemeToggle}
+                  className="p-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 transition-all duration-200 hover:scale-105"
+                  title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+                >
+                  <span className="text-lg">
+                    {theme === 'light' ? '🌙' : '☀️'}
+                  </span>
+                </button>
+              )}
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            {/* Theme Toggle Button */}
-            {onThemeToggle && (
-              <button
-                onClick={onThemeToggle}
-                className="
-                  bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 
-                  rounded-xl p-3 transition-all duration-300 hover:bg-gray-200/70 dark:hover:bg-gray-600/70
-                  hover:shadow-lg
-                "
-                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              >
-                <span className="text-xl">
-                  {theme === 'light' ? '🌙' : '☀️'}
-                </span>
-              </button>
-            )}
-            
-            {/* Device Count */}
-            <div className="bg-gray-100/50 dark:bg-gray-700/50 backdrop-blur-sm border border-gray-300/50 dark:border-gray-600/50 rounded-xl p-4 transition-colors duration-300">
-              <div className="text-2xl font-bold text-gray-800 dark:text-gray-100">{devices.length}</div>
-              <div className="text-xs text-gray-600 dark:text-gray-400 font-medium uppercase tracking-wide">devices loaded</div>
+          
+          {/* Search and controls row */}
+          <div className="space-y-4">
+            <DeviceSearch onSearch={setSearchTerm} />
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
+                {total === -1 ? (
+                  <>Showing <span className="font-medium text-slate-800 dark:text-slate-200">{devices.length}</span> devices{hasMore ? ' (more available)' : ''}</>
+                ) : (
+                  <>Showing <span className="font-medium text-slate-800 dark:text-slate-200">{devices.length}</span> of <span className="font-medium text-slate-800 dark:text-slate-200">{total}</span> devices</>
+                )}
+                {searchTerm && (
+                  <button
+                    onClick={handleClearSearch}
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200"
+                  >
+                    Clear Search
+                  </button>
+                )}
+              </div>
+              {hasMore && !loading && (
+                <button
+                  onClick={() => fetchDevices(false)}
+                  className="group flex items-center justify-center px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-300 font-medium text-sm rounded-lg border border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 transition-all duration-200"
+                >
+                  <svg className="w-4 h-4 mr-2 group-hover:rotate-180 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  <span>Load More</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -282,62 +303,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         </div>
       )}
 
-      {/* Enhanced Search and filters */}
-      <div className="p-4 glass-panel bg-white/70 border-b border-gray-100/50 backdrop-blur-sm">
-        <div className="space-y-4">
-          <DeviceSearch onSearch={setSearchTerm} />
-          <div className="flex items-center justify-between">
-            {searchTerm && (
-              <button
-                onClick={handleClearSearch}
-                className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 transition-colors duration-300"
-              >
-                Clear Search
-              </button>
-            )}
-            {hasMore && !loading && (
-              <button
-                onClick={() => fetchDevices(false)}
-                style={{
-                  padding: '8px 16px',
-                  background: 'linear-gradient(to right, #3b82f6, #2563eb)',
-                  color: '#ffffff',
-                  fontWeight: 600,
-                  fontSize: '14px',
-                  borderRadius: '8px',
-                  border: '1px solid #2563eb',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(to right, #2563eb, #1d4ed8)';
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'linear-gradient(to right, #3b82f6, #2563eb)';
-                  e.currentTarget.style.transform = 'scale(1)';
-                  e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
-                }}
-              >
-                Load More
-              </button>
-            )}
-          </div>
-        </div>
-        
-        {/* Enhanced Status bar */}
-        <div className="mt-4 flex items-center justify-between" style={{ fontSize: 'var(--text-sm)' }}>
-          <div className="text-muted">
-            {total === -1 ? (
-              <>Showing <span className="text-emphasis">{devices.length}</span> devices{hasMore ? ' (more available)' : ''}</>
-            ) : (
-              <>Showing <span className="text-emphasis">{devices.length}</span> of <span className="text-emphasis">{total}</span> devices</>
-            )}
-          </div>
-        </div>
-      </div>
 
       <div className="flex-1 overflow-hidden">
         {loading && devices.length === 0 ? (

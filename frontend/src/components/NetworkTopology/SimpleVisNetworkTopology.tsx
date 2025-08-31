@@ -200,7 +200,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       // Only update if the selection actually changed
       if (selectedNodes.size !== selectedNodeIds.size || 
           !Array.from(selectedNodes).every(id => selectedNodeIds.has(id))) {
-        console.log(`🔄 Vis-network selection changed: ${selectedNodes.size} nodes`);
         setSelectedNodeIds(selectedNodes);
       }
     });
@@ -225,12 +224,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
               y: containerRect.top + canvasPosition.y,
             };
 
-            // DIAGNOSTIC: Log depth lookup before opening modal
-            const nodeDepth = deviceDepths?.get(nodeId);
-            console.log('🔍 SHIFT-CLICK: Opening modal for node:', nodeId);
-            console.log('🔍 SHIFT-CLICK: deviceDepths Map lookup for', nodeId, ':', nodeDepth);
-            console.log('🔍 SHIFT-CLICK: Full deviceDepths Map:', Object.fromEntries(deviceDepths || new Map()));
-            console.log('🔍 SHIFT-CLICK: Will pass currentDepth:', nodeDepth || 1);
             
             setModalState({
               isOpen: true,
@@ -267,7 +260,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           selectedNodes.forEach(nodeId => {
             toggleNodeLock(nodeId as string);
           });
-          console.log(`🔒 Toggled lock for ${selectedNodes.length} node(s)`);
         }
       }
       
@@ -285,7 +277,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       // Delete to clear selected nodes (demonstration - just clears selection in this case)
       if (event.key === 'Delete' && selectedNodeIds.size > 0) {
         event.preventDefault();
-        console.log(`⚠️ Delete pressed with ${selectedNodeIds.size} nodes selected (no action taken)`);
         // Could implement node deletion here if needed
       }
     };
@@ -417,7 +408,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // If force redraw is requested (layout change), clear everything
     if (forceRedraw) {
-      console.log('Force redraw requested - clearing canvas');
       nodesDataSetRef.current.clear();
       edgesDataSetRef.current.clear();
       setForceRedraw(false);
@@ -554,9 +544,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     // Remove nodes that are no longer present (simple removal)
     const nodesToRemove = Array.from(currentNodeIds).filter(id => !newNodeIds.has(id as string));
     if (nodesToRemove.length > 0) {
-      console.log('🧹 CLEANUP: Removing nodes:', nodesToRemove);
-      console.log('🧹 CLEANUP: Current nodes:', Array.from(currentNodeIds));
-      console.log('🧹 CLEANUP: New nodes:', Array.from(newNodeIds));
       nodesDataSetRef.current.remove(nodesToRemove);
     }
 
@@ -613,7 +600,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   useEffect(() => {
     if (!networkRef.current || !forceRedraw) return;
 
-    console.log(`Applying layout: ${layout}`);
     
     if (layout === 'hierarchical') {
       // Apply proper hierarchical layout using Sugiyama-style layered approach
@@ -821,8 +807,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         // Apply the calculated positions
         if (hierarchyNodes.length > 0) {
           nodesDataSetRef.current?.update(hierarchyNodes);
-          console.log('Advanced hierarchical layout applied with proper parent centering');
-          console.log(`Processed ${hierarchyNodes.length} nodes across ${sortedLevels.length} levels`);
         }
       }
     } else if (layout === 'physics') {
@@ -846,7 +830,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       setTimeout(() => {
         if (networkRef.current) {
           networkRef.current.setOptions({ physics: { enabled: false } });
-          console.log('Physics layout applied - physics disabled for static positioning');
         }
       }, 3000);
     } else {
@@ -863,13 +846,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }));
         
         nodesDataSetRef.current?.update(gridNodes);
-        console.log('Grid layout applied with static positions');
       }
     }
   }, [layout, forceRedraw]);
 
   const handleLayoutChange = (newLayout: typeof layout, selectedOnly: boolean = false) => {
-    console.log(`STATIC: Layout change requested: ${newLayout}${selectedOnly ? ' (selected nodes only)' : ''}`);
     setLayout(newLayout);
     
     // Store selective layout preference for the effect
@@ -892,7 +873,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     if (!selectedNodesData || selectedNodesData.length === 0) return;
 
-    console.log(`Applying ${layoutType} layout to ${selectedNodesData.length} selected nodes`);
 
     if (layoutType === 'hierarchical') {
       // Apply hierarchical layout to selected nodes only
@@ -954,7 +934,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       }));
 
       nodesDataSetRef.current?.update(updatedNodes);
-      console.log(`Applied horizontal layout to ${selectedNodes.length} nodes (no hierarchy detected)`);
       return;
     }
     
@@ -1016,7 +995,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     });
     
     nodesDataSetRef.current?.update(updatedNodes);
-    console.log(`Applied hierarchical layout to ${selectedNodes.length} nodes across ${levelGroups.size} levels`);
   };
 
   const applySelectivePhysicsLayout = (selectedNodeIds: string[]) => {
@@ -1078,7 +1056,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
             nodesDataSetRef.current?.update(restoredNodes);
           }
           
-          console.log(`Applied selective physics layout to ${selectedNodeIds.length} nodes`);
         }
       }, 2000);
     }
@@ -1105,7 +1082,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }));
 
     nodesDataSetRef.current?.update(updatedNodes);
-    console.log(`Applied selective grid layout to ${selectedNodes.length} nodes`);
   };
 
   // Lock/unlock canvas functions
@@ -1120,7 +1096,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       });
       setIsLocked(true);
-      console.log('Canvas locked - all interactions disabled');
     }
   };
 
@@ -1135,7 +1110,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       });
       setIsLocked(false);
-      console.log('Canvas unlocked - all interactions enabled');
     }
   };
 
@@ -1169,7 +1143,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         });
       }
       setLockedNodes(prev => new Set(prev.add(nodeId)));
-      console.log(`🔒 Node ${nodeId} locked`);
     }
   };
 
@@ -1203,7 +1176,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         newSet.delete(nodeId);
         return newSet;
       });
-      console.log(`🔓 Node ${nodeId} unlocked`);
     }
   };
 
@@ -1216,9 +1188,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   };
 
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
-    console.log('🔄 DIRECTION SELECT: Called with direction:', direction, 'for node:', modalState.nodeId);
     if (onDirectionChange && modalState.nodeId) {
-      console.log('🔄 DIRECTION SELECT: Calling onDirectionChange');
       onDirectionChange(direction, modalState.nodeId);
     }
   };
@@ -1252,7 +1222,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         nodes: idsArray,
         edges: []
       });
-      console.log(`🔄 Synced selection with vis-network: ${idsArray.length} nodes`);
     }
   };
 
@@ -1263,7 +1232,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const newSelection = new Set(allNodeIds);
       setSelectedNodeIds(newSelection);
       syncSelectionWithNetwork(newSelection);
-      console.log(`✅ Selected all ${allNodeIds.length} nodes`);
     }
   };
 
@@ -1271,7 +1239,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     const emptySelection = new Set<string>();
     setSelectedNodeIds(emptySelection);
     syncSelectionWithNetwork(emptySelection);
-    console.log('🗑️ Cleared node selection');
   };
 
   const getSelectedNodesCount = () => {

@@ -187,7 +187,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         URL.revokeObjectURL(link.href);
         
       } catch (error) {
-        console.error('SVG export error:', error);
         alert('SVG export failed. Try PNG or JPEG export instead.');
       }
     }

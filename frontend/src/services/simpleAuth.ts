@@ -16,7 +16,6 @@ class SimpleAuthService {
       this.authConfig = await response.json();
       return this.authConfig;
     } catch (error) {
-      console.error('Failed to load auth config:', error);
       // Fallback to hardcoded values
       this.authConfig = {
         credentials: {
@@ -64,14 +63,6 @@ class SimpleAuthService {
     );
     
     // Debug logging
-    console.log('=== LOGIN DEBUG ===');
-    console.log('Input username:', username);
-    console.log('Config username:', config.credentials.username);
-    console.log('Username match:', username === config.credentials.username);
-    console.log('Generated hash:', expectedHash);
-    console.log('Config hash:', config.credentials.passwordHash);
-    console.log('Hash match:', expectedHash === config.credentials.passwordHash);
-    console.log('==================');
     
     if (username === config.credentials.username && expectedHash === config.credentials.passwordHash) {
       this.user = {

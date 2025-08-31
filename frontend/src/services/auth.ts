@@ -138,7 +138,6 @@ class AuthService {
         };
       }
     } catch (error) {
-      console.error('Login error:', error);
       return {
         success: false,
         error: 'Authentication service error'
@@ -231,7 +230,6 @@ class AuthService {
       this.setAuthToken(newToken);
       return true;
     } catch (error) {
-      console.error('Token refresh error:', error);
       return false;
     }
   }

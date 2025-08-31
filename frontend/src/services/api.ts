@@ -74,11 +74,9 @@ export const apiService = {
     cursor?: string;
   }): Promise<DevicesResponse> {
     try {
-      console.log('🚀 Calling real Lambda API:', apiConfig.baseUrl);
       const response = await api.get<DevicesResponse>('/devices', { params });
       return response.data;
     } catch (error) {
-      console.error('❌ Device API failed:', error);
       // Return empty but valid response instead of crashing
       return {
         devices: [],
@@ -111,7 +109,6 @@ export const apiService = {
     deviceDirections?: { [deviceId: string]: 'parents' | 'children' | 'both' };
     deviceDepths?: { [deviceId: string]: number };
   }): Promise<TopologyResponse> {
-    console.log('🚀 Calling real topology API for devices:', params.deviceIds);
     const response = await api.post<TopologyResponse>('/topology', params);
     return response.data;
   },

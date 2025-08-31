@@ -15,22 +15,12 @@ export const SimpleLoginPage: React.FC<SimpleLoginPageProps> = ({ onLogin }) => 
     setError('');
     setIsLoading(true);
 
-    console.log('=== LOGIN PAGE DEBUG ===');
-    console.log('Attempting login with:', username);
-    console.log('Password length:', password.length);
-    
     try {
-      console.log('Calling onLogin function...');
       const success = await onLogin(username, password);
-      console.log('Login result:', success);
       if (!success) {
-        console.log('Login failed - setting error message');
         setError('Invalid username or password');
-      } else {
-        console.log('Login succeeded!');
       }
     } catch (err) {
-      console.error('Login error:', err);
       setError('Login failed. Please try again.');
     } finally {
       setIsLoading(false);
