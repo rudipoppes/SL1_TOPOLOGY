@@ -4,9 +4,11 @@ import { DeviceList } from './components/DeviceInventory/DeviceList';
 import { VisControlledTopology } from './components/TopologyCanvas/VisControlledTopology';
 import { configService } from './services/config';
 import { useTheme } from './hooks/useTheme';
+import { SimpleAuthProvider } from './contexts/SimpleAuthContext';
+import { SimpleProtectedRoute } from './components/Auth/SimpleProtectedRoute';
 import './App.css';
 
-function App() {
+function AppContent() {
   const [selectedDevices, setSelectedDevices] = useState<Device[]>([]);
   const [topologyDevices, setTopologyDevices] = useState<Device[]>([]);
   const [topologyData, setTopologyData] = useState<TopologyResponse['topology'] | null>(null);
@@ -695,5 +697,22 @@ function App() {
   );
 }
 
+function App() {
+  // Port-based authentication detection
+  const isProductionPort = window.location.port === '4000';
+  
+  if (isProductionPort) {
+    return (
+      <SimpleAuthProvider>
+        <SimpleProtectedRoute>
+          <AppContent />
+        </SimpleProtectedRoute>
+      </SimpleAuthProvider>
+    );
+  }
+  
+  // Development port 3000 - no authentication
+  return <AppContent />;
+}
 
 export default App;

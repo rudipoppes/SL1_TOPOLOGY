@@ -1,0 +1,26 @@
+{
+  "name": "sl1-topology-system",
+  "version": "1.0.0",
+  "description": "SL1 Topology Visualization System with Authentication",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "reset-password": "node scripts/reset-password.js",
+    "dev": "cd frontend && npm run dev",
+    "dev:auth": "cd frontend && npm run dev:auth",
+    "build": "cd frontend && npm run build",
+    "build:dev": "cd frontend && npm run build:dev",
+    "build:prod": "cd frontend && npm run build:prod",
+    "serve:dev": "cd frontend && npm run serve:dev",
+    "serve:prod": "cd frontend && npm run serve:prod",
+    "install:frontend": "cd frontend && npm install",
+    "deploy:backend": "cd backend && sam build && sam deploy --stack-name sl1-topology-backend-development --capabilities CAPABILITY_IAM --no-confirm-changeset --region us-east-1 --resolve-s3"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.2"
+  },
+  "devDependencies": {},
+  "keywords": ["sl1", "topology", "visualization", "network", "authentication"],
+  "author": "SL1 Topology Development Team",
+  "license": "UNLICENSED"
+}

@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 5 - DUAL-PORT AUTHENTICATION SYSTEM COMPLETE** ✅ 
+### Current Status: **Phase 6 - SINGLE-BUILD ARCHITECTURE COMPLETE** ✅ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -48,14 +48,14 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Selection & Pan Behavior**: Fixed interaction conflicts between selection and canvas panning (Aug 30, 2025)
 - ✅ **Canvas Pan Reversion**: Normal drag now pans canvas, removed shift+drag requirement (Aug 30, 2025)
 - ✅ **Multi-Level Depth Traversal**: Backend Lambda enhanced with recursive relationship traversal & cycle detection (Aug 30, 2025)
-- ✅ **Dual-Port Authentication**: Simple login system for user access while maintaining dev workflow (Aug 31, 2025)
+- ✅ **Single-Build Architecture**: Port-based authentication eliminates duplicate code (Aug 31, 2025)
 - ✅ **Depth Selector Component**: Modern rolling number controls with visual level indicators (Aug 30, 2025)
 - ✅ **Selected-Only Depth Control**: Canvas-selected nodes only + "Draw Items" button workflow (Aug 30, 2025)
 - ✅ **Topology Reduction Algorithm**: Proper cleanup when reducing depth levels (Aug 31, 2025)
 - ✅ **Incremental Device Addition**: Preserves individual settings when adding devices from chip area (Aug 31, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- ✅ **CURRENT BRANCH**: auth-system - Contains depth selector + dual-port authentication (commit 4d9a5a2)
-- 🎯 **Status**: All depth selector + authentication functionality working and tested
+- ✅ **CURRENT BRANCH**: ui-modernization - Contains FINAL single-build architecture
+- 🎯 **Status**: All functionality working with single source of truth - READY FOR MAIN
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -281,17 +281,17 @@ for (const deviceId of deviceIds) {
 
 ---
 
-## 🔐 **DUAL-PORT AUTHENTICATION SYSTEM** ✅ **FULLY WORKING**
+## 🔐 **SINGLE-BUILD PORT-BASED AUTHENTICATION** ✅ **FULLY WORKING**
 
 ### **Implementation Complete (August 31, 2025)**
-**Branch**: `auth-system` | **Status**: Fully functional and tested | **Commit**: 4d9a5a2
+**Branch**: `ui-modernization` | **Status**: Single source of truth architecture | **Commit**: TBD
 
 ### **Purpose & Design Philosophy**
-The dual-port authentication system enables **two distinct environments**:
+The single-build port-based authentication system enables **two distinct environments from one build**:
 - **Development Environment** (Port 3000): No authentication required - for continuous development
 - **Production Environment** (Port 4000): Simple login required - for user testing and demos
 
-This approach allows developers to continue building without login friction while providing secure access for stakeholders.
+This approach eliminates duplicate code maintenance while allowing both environments to run simultaneously from a single build.
 
 ### **Authentication Features**
 
@@ -301,11 +301,11 @@ This approach allows developers to continue building without login friction whil
 - **Session Management**: Browser localStorage with proper cleanup
 - **Port-Based Detection**: Automatically enables auth only on port 4000
 
-**2. Dual-Environment Build System**
-- **Separate Builds**: Clean development vs authenticated production builds
-- **Build Script**: `frontend/build-prod.js` handles dual-environment compilation
-- **Asset Management**: Automatic config copying and server management
-- **Size Optimization**: Development build excludes auth libraries
+**2. Single-Build Architecture**
+- **Port Detection**: `window.location.port === '4000'` determines authentication requirement
+- **Conditional Rendering**: Authentication wrapper applied only on production port
+- **Zero Duplication**: Single App.tsx file serves both environments
+- **Maintenance Efficiency**: No duplicate code to maintain
 
 **3. User-Friendly Interface**
 - **Modern Login Page**: Tailwind CSS with loading states and error handling
@@ -324,20 +324,20 @@ This approach allows developers to continue building without login friction whil
 ```
 /config/simple-auth-config.json     # Main credential storage
 /scripts/reset-simple-password.js   # Password reset utility
-/frontend/build-prod.js              # Dual-environment build script
+/frontend/src/App.tsx                # Single app file with port-based auth
 /frontend/src/services/simpleAuth.ts # Authentication service
 /frontend/src/components/Auth/       # Login UI components
 ```
 
 **Deployment Commands**:
 ```bash
-# Build and deploy production with authentication
+# Build single application
 cd /home/ubuntu/SL1_TOPOLOGY/frontend
-node build-prod.js
+npm run build
 
-# Start servers
+# Start both servers from same build
 serve -s dist -l 3000      # Development (no auth)
-serve -s dist-prod -l 4000  # Production (with auth)
+serve -s dist -l 4000      # Production (with auth)
 ```
 
 **Password Reset**:
@@ -358,10 +358,10 @@ node /home/ubuntu/SL1_TOPOLOGY/scripts/reset-simple-password.js
 6. **Route Protection**: Wrap application in authentication check
 
 **Build Process**:
-1. **Development Build**: Standard React build without authentication
-2. **Production Build**: Temporarily swap main.tsx to include authentication
-3. **Config Management**: Copy authentication config to build directories
-4. **Server Management**: Automatic restart with updated configurations
+1. **Single Build**: Standard React build with port-based authentication detection
+2. **Runtime Detection**: Authentication determined by `window.location.port` at runtime
+3. **Config Management**: Authentication config served from `/config/` endpoint
+4. **Server Management**: Same build serves both environments on different ports
 
 ### **Security Considerations**
 

@@ -1,0 +1,26 @@
+{
+  "credentials": {
+    "username": "$2a$12$K0Hgb.4wD.zJhRnSP7tHUe8.jOyRLm9m8BqF6ZlB5kD8xVsJKZf/K",
+    "password": "$2a$12$M2N9b3Qz2aG5Ux8Vh7mK4eTrYw1Pj9L6Q4R5xA7F9bC8dV3nH5mE2",
+    "note": "Hashed using bcrypt with 12 salt rounds - sl1_topo:sl1_t0p0log33"
+  },
+  "session": {
+    "timeout": 3600000,
+    "secret": "sl1_topo_jwt_secret_key_2025_secure_random_string_auth",
+    "algorithm": "HS256"
+  },
+  "security": {
+    "maxLoginAttempts": 3,
+    "lockoutDuration": 300000,
+    "sessionRefreshThreshold": 300000
+  },
+  "admin": {
+    "resetCode": "RESET_SL1_TOPO_2025_SECURE",
+    "note": "Use this code with password reset utility"
+  },
+  "environment": {
+    "authMode": true,
+    "productionPort": 4000,
+    "developmentPort": 3000
+  }
+}
