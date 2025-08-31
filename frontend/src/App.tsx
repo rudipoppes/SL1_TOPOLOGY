@@ -17,7 +17,6 @@ function App() {
   const [deviceDepths, setDeviceDepths] = useState<Map<string, number>>(new Map());
   const [globalDepth, setGlobalDepth] = useState<number>(configService.getTopologyConfig().controls.defaultDepth);
   const defaultDirection = configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both';
-  const defaultDepth = configService.getTopologyConfig().controls.defaultDepth;
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
 
@@ -28,22 +27,88 @@ function App() {
     // Update topology to match chip area (selected devices)
     setTopologyDevices(devices);
     
-    // Set default directions and depths for all new devices
-    const newDirections = new Map(deviceDirections);
-    const newDepths = new Map(deviceDepths);
+    // Clean up settings for devices that are no longer selected
+    const selectedDeviceIds = new Set(devices.map(d => d.id));
+    const newDirections = new Map<string, 'parents' | 'children' | 'both'>();
+    const newDepths = new Map<string, number>();
+    
+    // Only keep settings for devices that are still selected, and add new devices
+    deviceDirections.forEach((direction, deviceId) => {
+      if (selectedDeviceIds.has(deviceId)) {
+        newDirections.set(deviceId, direction);
+      }
+    });
+    deviceDepths.forEach((depth, deviceId) => {
+      if (selectedDeviceIds.has(deviceId)) {
+        newDepths.set(deviceId, depth);
+      }
+    });
+    
+    // Add new devices with default settings
     devices.forEach(device => {
       if (!newDirections.has(device.id)) {
         newDirections.set(device.id, defaultDirection);
       }
       if (!newDepths.has(device.id)) {
         newDepths.set(device.id, globalDepth);
+        console.log('🆕 Adding new device to depth map:', device.id, 'with depth:', globalDepth);
       }
     });
+    
     setDeviceDirections(newDirections);
     setDeviceDepths(newDepths);
     
-    // Fetch topology data with per-device directions
-    await fetchTopologyDataWithDeviceDirections(devices);
+    // Handle topology updates intelligently - DON'T rebuild everything
+    // Identify new devices vs existing devices
+    const currentTopologyDeviceIds = new Set(topologyDevices.map(d => d.id));
+    const newDevices = devices.filter(device => !currentTopologyDeviceIds.has(device.id));
+    const removedDeviceIds = topologyDevices
+      .filter(device => !devices.some(d => d.id === device.id))
+      .map(device => device.id);
+    
+    if (removedDeviceIds.length > 0) {
+      // Remove devices and their relationships from topology
+      setTopologyData(prevTopology => {
+        if (!prevTopology) return null;
+        
+        // Remove nodes that belong to removed devices and their relationships
+        const nodesToRemove = new Set<string>();
+        
+        // Find all nodes connected to removed devices
+        removedDeviceIds.forEach(removedDeviceId => {
+          const reachableNodes = findNodesWithinDepth(
+            removedDeviceId,
+            10, // Large depth to find all connected nodes
+            'both',
+            prevTopology.edges
+          );
+          reachableNodes.forEach(nodeId => nodesToRemove.add(nodeId));
+        });
+        
+        const keptNodes = prevTopology.nodes.filter(node => 
+          !nodesToRemove.has(node.id)
+        );
+        const keptEdges = prevTopology.edges.filter(edge => 
+          !nodesToRemove.has(edge.source) && !nodesToRemove.has(edge.target)
+        );
+        
+        console.log(`🗑️ Removed ${nodesToRemove.size} nodes for ${removedDeviceIds.length} devices`);
+        
+        return {
+          nodes: keptNodes,
+          edges: keptEdges
+        };
+      });
+    }
+    
+    if (newDevices.length > 0) {
+      // Only add new devices incrementally - PRESERVES existing topology
+      console.log('🆕 Adding new devices incrementally:', newDevices.map(d => d.name));
+      await fetchIncrementalTopologyDataWithDirections(newDevices);
+    } else if (removedDeviceIds.length === 0 && devices.length === 0) {
+      // Clear all topology if no devices selected
+      setTopologyData(null);
+    }
   };
 
 
@@ -52,41 +117,141 @@ function App() {
     setTopologyDevices([]);
     setTopologyData(null);
     setSelectedDevices([]);
+    // Clear device-specific settings so new placements use current global settings
+    setDeviceDirections(new Map());
+    setDeviceDepths(new Map());
+  };
+
+  // Handler for sidebar depth selector - only updates the default depth setting
+  const handleGlobalDepthChange = (depth: number) => {
+    console.log('🔄 Setting default depth to:', depth);
+    setGlobalDepth(depth);
+    // Do NOT refresh topology - only update the default for new device placements
+  };
+
+  // Helper function to find all nodes reachable from a root node within given depth
+  const findNodesWithinDepth = (
+    rootNodeId: string, 
+    maxDepth: number, 
+    direction: 'parents' | 'children' | 'both',
+    allEdges: any[]
+  ): Set<string> => {
+    const reachableNodes = new Set<string>();
+    const visited = new Set<string>();
+    
+    const traverse = (nodeId: string, currentDepth: number) => {
+      if (currentDepth > maxDepth || visited.has(nodeId)) {
+        return;
+      }
+      
+      visited.add(nodeId);
+      reachableNodes.add(nodeId);
+      
+      if (currentDepth < maxDepth) {
+        // Find connected nodes based on direction
+        allEdges.forEach(edge => {
+          if (direction === 'children' || direction === 'both') {
+            // Traverse children (outgoing edges)
+            if (edge.source === nodeId && !visited.has(edge.target)) {
+              traverse(edge.target, currentDepth + 1);
+            }
+          }
+          if (direction === 'parents' || direction === 'both') {
+            // Traverse parents (incoming edges)
+            if (edge.target === nodeId && !visited.has(edge.source)) {
+              traverse(edge.source, currentDepth + 1);
+            }
+          }
+        });
+      }
+    };
+    
+    traverse(rootNodeId, 0);
+    return reachableNodes;
   };
 
   const handleDepthChange = async (depth: number, deviceId?: string) => {
     if (deviceId) {
-      // Change depth for specific device
-      console.log('🔄 Changing depth for device:', deviceId, 'to:', depth);
-      setDeviceDepths(prev => new Map(prev.set(deviceId, depth)));
+      // Change depth for specific device - UPDATE its portion of the topology
+      
+      // Update device depths Map synchronously
+      const updatedDeviceDepths = new Map(deviceDepths.set(deviceId, depth));
+      setDeviceDepths(updatedDeviceDepths);
       
       // Find the device in current topology data
       const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
       if (deviceInTopology) {
-        // Create a Device object from the topology node
-        const deviceToAdd: Device = {
-          id: deviceInTopology.id,
-          name: deviceInTopology.label,
-          ip: deviceInTopology.ip || '',
-          type: deviceInTopology.type || 'Unknown',
-          status: deviceInTopology.status || 'unknown'
-        };
-        
-        // Add device to selected devices (chip area) if not already there
-        const isAlreadySelected = selectedDevices.some(d => d.id === deviceId);
-        if (!isAlreadySelected) {
-          console.log('➕ Adding device to selection:', deviceToAdd.name);
-          setSelectedDevices(prev => [...prev, deviceToAdd]);
-          setTopologyDevices(prev => [...prev, deviceToAdd]);
+        setLoadingTopology(true);
+        try {
+          const deviceDirection = deviceDirections.get(deviceId) || defaultDirection;
+          const response = await apiService.getTopology({
+            deviceIds: [deviceId],
+            deviceDirections: { [deviceId]: deviceDirection },
+            deviceDepths: { [deviceId]: depth }
+          });
+          
+          // PROPER topology reduction and merge logic
+          setTopologyData(prevTopology => {
+            if (!prevTopology) return response.topology;
+            
+            // Step 1: Find all nodes that were previously reachable from this device
+            const oldReachableNodes = findNodesWithinDepth(
+              deviceId,
+              10, // Use large depth to find all previously connected nodes
+              deviceDirection,
+              prevTopology.edges
+            );
+            
+            // Step 2: Find nodes that should remain after the depth change
+            const newReachableNodes = new Set(response.topology.nodes.map(n => n.id));
+            
+            // Step 3: Identify nodes to remove (previously reachable but not in new result)
+            const nodesToRemove = new Set<string>();
+            oldReachableNodes.forEach(nodeId => {
+              if (!newReachableNodes.has(nodeId) && nodeId !== deviceId) {
+                nodesToRemove.add(nodeId);
+              }
+            });
+            
+            // Step 4: Filter out nodes that should be removed
+            const keptNodes = prevTopology.nodes.filter(node => 
+              !nodesToRemove.has(node.id)
+            );
+            
+            // Step 5: Filter out edges that connect to removed nodes
+            const keptEdges = prevTopology.edges.filter(edge => 
+              !nodesToRemove.has(edge.source) && !nodesToRemove.has(edge.target)
+            );
+            
+            // Step 6: Add new nodes (that weren't already in the topology)
+            const existingNodeIds = new Set(keptNodes.map(n => n.id));
+            const newNodes = response.topology.nodes.filter(node => 
+              !existingNodeIds.has(node.id)
+            );
+            
+            // Step 7: Add new edges (that weren't already in the topology)
+            const existingEdgeKeys = new Set(keptEdges.map(edge => `${edge.source}-${edge.target}`));
+            const newEdges = response.topology.edges.filter(edge => 
+              !existingEdgeKeys.has(`${edge.source}-${edge.target}`)
+            );
+            
+            console.log(`🔧 Topology reduction: Removed ${nodesToRemove.size} nodes, added ${newNodes.length} nodes`);
+            
+            return {
+              nodes: [...keptNodes, ...newNodes],
+              edges: [...keptEdges, ...newEdges]
+            };
+          });
+        } catch (error) {
+          console.error('❌ Failed to fetch individual device topology:', error);
+        } finally {
+          setLoadingTopology(false);
         }
-        
-        // Use incremental fetch to get new relationships for this specific device
-        await fetchIncrementalTopologyDataWithDirections([deviceToAdd]);
       } else {
         console.warn('Device not found in topology:', deviceId);
       }
     } else {
-      // Global depth change
+      // Global depth change with topology refresh (used for modal-based changes)
       console.log('🔄 Changing global depth to:', depth);
       setGlobalDepth(depth);
       const newDepths = new Map<string, number>();
@@ -102,32 +267,54 @@ function App() {
 
   const handleDirectionChange = async (direction: 'parents' | 'children' | 'both', deviceId?: string) => {
     if (deviceId) {
-      // Change direction for specific device
+      // Change direction for specific device - UPDATE its portion of the topology
       console.log('🔄 Changing direction for device:', deviceId, 'to:', direction);
       setDeviceDirections(prev => new Map(prev.set(deviceId, direction)));
       
       // Find the device in current topology data
       const deviceInTopology = topologyData?.nodes.find(n => n.id === deviceId);
       if (deviceInTopology) {
-        // Create a Device object from the topology node
-        const deviceToAdd: Device = {
-          id: deviceInTopology.id,
-          name: deviceInTopology.label,
-          ip: deviceInTopology.ip || '',
-          type: deviceInTopology.type || 'Unknown',
-          status: deviceInTopology.status || 'unknown'
-        };
+        // DON'T add to chip area - device is already on canvas
+        // The chip area should only show devices dragged from inventory
+        // Devices on canvas being modified shouldn't be added to selection
         
-        // Add device to selected devices (chip area) if not already there
-        const isAlreadySelected = selectedDevices.some(d => d.id === deviceId);
-        if (!isAlreadySelected) {
-          console.log('➕ Adding device to selection:', deviceToAdd.name);
-          setSelectedDevices(prev => [...prev, deviceToAdd]);
-          setTopologyDevices(prev => [...prev, deviceToAdd]);
+        // IMPORTANT: Fetch the updated device topology and MERGE with existing
+        setLoadingTopology(true);
+        try {
+          const deviceDepth = deviceDepths.get(deviceId) || globalDepth;
+          const response = await apiService.getTopology({
+            deviceIds: [deviceId],
+            deviceDirections: { [deviceId]: direction },
+            deviceDepths: { [deviceId]: deviceDepth }
+          });
+          
+          // MERGE the new device topology with existing topology
+          setTopologyData(prevTopology => {
+            if (!prevTopology) return response.topology;
+            
+            // Keep nodes that are not in the new device's tree from previous topology
+            const keptNodes = prevTopology.nodes.filter(node => {
+              return !response.topology.nodes.some(newNode => newNode.id === node.id);
+            });
+            
+            // Keep edges that don't match new edges
+            const keptEdges = prevTopology.edges.filter(edge => {
+              return !response.topology.edges.some(newEdge => 
+                (newEdge.source === edge.source && newEdge.target === edge.target)
+              );
+            });
+            
+            // Combine kept nodes/edges with new ones
+            return {
+              nodes: [...keptNodes, ...response.topology.nodes],
+              edges: [...keptEdges, ...response.topology.edges]
+            };
+          });
+        } catch (error) {
+          console.error('❌ Failed to fetch individual device topology:', error);
+        } finally {
+          setLoadingTopology(false);
         }
-        
-        // Use incremental fetch to get new relationships for this specific device
-        await fetchIncrementalTopologyDataWithDirections([deviceToAdd]);
       } else {
         console.warn('Device not found in topology:', deviceId);
       }
@@ -146,6 +333,7 @@ function App() {
   };
 
 
+
   const fetchTopologyDataWithDeviceDirections = async (devices: Device[]) => {
     if (devices.length === 0) {
       setTopologyData(null);
@@ -159,17 +347,12 @@ function App() {
       const deviceDepthsObj: { [deviceId: string]: number } = {};
       devices.forEach(device => {
         deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
-        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || defaultDepth;
+        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || globalDepth;
       });
 
-      console.log('🔍 Fetching topology with per-device directions and depths:', {
-        directions: deviceDirectionsObj,
-        depths: deviceDepthsObj
-      });
       
       const response = await apiService.getTopology({
         deviceIds: devices.map(d => d.id),
-        depth: globalDepth,
         deviceDirections: deviceDirectionsObj,
         deviceDepths: deviceDepthsObj
       });
@@ -194,7 +377,6 @@ function App() {
         edges: response.topology.edges
       };
       
-      console.log('📊 Complete topology with per-device directions:', completeTopology);
       
       // Use merging logic to prevent canvas view resets and phantom edges
       setTopologyData(prevTopology => {
@@ -234,7 +416,7 @@ function App() {
       const deviceDepthsObj: { [deviceId: string]: number } = {};
       newDevices.forEach(device => {
         deviceDirectionsObj[device.id] = deviceDirections.get(device.id) || defaultDirection;
-        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || defaultDepth;
+        deviceDepthsObj[device.id] = deviceDepths.get(device.id) || globalDepth;
       });
 
       console.log('🔄 Fetching INCREMENTAL topology with per-device directions and depths:', {
@@ -434,7 +616,7 @@ function App() {
           theme={theme}
           onThemeToggle={toggleTheme}
           globalDepth={globalDepth}
-          onDepthChange={(depth: number) => handleDepthChange(depth)}
+          onDepthChange={handleGlobalDepthChange}
         />
       </div>
 

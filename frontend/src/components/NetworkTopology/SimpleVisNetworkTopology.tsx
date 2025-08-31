@@ -20,6 +20,7 @@ interface SimpleVisNetworkTopologyProps {
   deviceDepths?: Map<string, number>;
   globalDepth?: number;
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
+  onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
   className?: string;
@@ -89,8 +90,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   topologyData,
   deviceDirections,
   deviceDepths,
-  globalDepth = 2,
+  globalDepth: _globalDepth,
   onDirectionChange,
+  onDepthChange,
   onClearAll,
   className = '',
   theme = 'light',
@@ -218,6 +220,13 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
               y: containerRect.top + canvasPosition.y,
             };
 
+            // DIAGNOSTIC: Log depth lookup before opening modal
+            const nodeDepth = deviceDepths?.get(nodeId);
+            console.log('🔍 SHIFT-CLICK: Opening modal for node:', nodeId);
+            console.log('🔍 SHIFT-CLICK: deviceDepths Map lookup for', nodeId, ':', nodeDepth);
+            console.log('🔍 SHIFT-CLICK: Full deviceDepths Map:', Object.fromEntries(deviceDepths || new Map()));
+            console.log('🔍 SHIFT-CLICK: Will pass currentDepth:', nodeDepth || 1);
+            
             setModalState({
               isOpen: true,
               position: modalPosition,
@@ -522,29 +531,31 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       if (networkPositions) {
         Object.entries(networkPositions).forEach(([nodeId, position]) => {
           currentPositions.set(nodeId, { x: position.x, y: position.y });
-          console.log(`STATIC: Current position for ${nodeId}:`, position);
         });
       }
     }
 
     // Get current node and edge IDs
     const currentNodeIds = new Set(allCurrentNodeIds);
-    const currentEdgeIds = new Set(edgesDataSetRef.current.getIds());
     const newNodeIds = new Set(newVisNodes.map(n => n.id));
-    const newEdgeIds = new Set(newVisEdges.map(e => e.id));
+    
 
     // Remove nodes that are no longer present (simple removal)
     const nodesToRemove = Array.from(currentNodeIds).filter(id => !newNodeIds.has(id as string));
     if (nodesToRemove.length > 0) {
-      console.log('STATIC: Removing nodes without movement:', nodesToRemove);
+      console.log('🧹 CLEANUP: Removing nodes:', nodesToRemove);
+      console.log('🧹 CLEANUP: Current nodes:', Array.from(currentNodeIds));
+      console.log('🧹 CLEANUP: New nodes:', Array.from(newNodeIds));
       nodesDataSetRef.current.remove(nodesToRemove);
     }
 
-    // Remove edges that are no longer present
-    const edgesToRemove = Array.from(currentEdgeIds).filter(id => !newEdgeIds.has(id as string));
-    if (edgesToRemove.length > 0) {
-      console.log('STATIC: Removing edges without movement:', edgesToRemove);
-      edgesDataSetRef.current.remove(edgesToRemove);
+    // For edges, clear all and rebuild (simpler and more reliable than ID matching)
+    // Edge IDs can be inconsistent due to index-based generation
+    edgesDataSetRef.current.clear();
+    
+    // Add new edges
+    if (newVisEdges.length > 0) {
+      edgesDataSetRef.current.add(newVisEdges);
     }
 
     // Process nodes: preserve existing positions, assign new positions to new nodes
@@ -552,7 +563,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const existingPosition = currentPositions.get(node.id);
       if (existingPosition) {
         // Existing node - preserve exact position
-        console.log(`STATIC: Preserving position for existing node ${node.id}`);
         return {
           ...node,
           x: existingPosition.x,
@@ -571,7 +581,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           nodePositionCounter.current.y += 220;
         }
         
-        console.log(`STATIC: Assigning position to new node ${node.id}:`, newPosition);
         return {
           ...node,
           x: newPosition.x,
@@ -582,15 +591,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // Update nodes (existing keep position, new get static position)
     if (nodesToUpdate.length > 0) {
-      console.log('STATIC: Updating nodes with preserved/static positions');
       nodesDataSetRef.current.update(nodesToUpdate);
     }
 
-    // Update edges
-    if (newVisEdges.length > 0) {
-      console.log('STATIC: Updating edges');
-      edgesDataSetRef.current.update(newVisEdges);
-    }
+    // Edges already handled above (cleared and rebuilt)
 
   }, [topologyData, deviceDirections, forceRedraw, theme, selectedNodeIds, lockedNodes]);
 
@@ -1201,11 +1205,18 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   };
 
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
+    console.log('🔄 DIRECTION SELECT: Called with direction:', direction, 'for node:', modalState.nodeId);
     if (onDirectionChange && modalState.nodeId) {
+      console.log('🔄 DIRECTION SELECT: Calling onDirectionChange');
       onDirectionChange(direction, modalState.nodeId);
     }
   };
 
+  const handleDeviceDepthChange = (depth: number) => {
+    if (onDepthChange && modalState.nodeId) {
+      onDepthChange(depth, modalState.nodeId);
+    }
+  };
 
   // Removed: handleDrawSelectedItems function - no longer needed since draw button was removed
 
@@ -1306,11 +1317,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         nodeName={modalState.nodeName}
         nodeType={modalState.nodeType}
         currentDirection={deviceDirections?.get(modalState.nodeId) || 'children'}
-        currentDepth={deviceDepths?.get(modalState.nodeId) || globalDepth}
+        currentDepth={deviceDepths?.get(modalState.nodeId) || 1}
         maxDepth={configService.getTopologyConfig().controls.maxDepth}
         isNodeLocked={lockedNodes.has(modalState.nodeId)}
         onDirectionSelect={handleDirectionSelect}
-        onDepthChange={undefined}
+        onDepthChange={onDepthChange ? handleDeviceDepthChange : undefined}
         onLockToggle={handleNodeLockToggle}
         onClose={handleModalClose}
       />

@@ -102,9 +102,9 @@ exports.handler = async (event) => {
     }
 
     // Multi-level traversal with cycle detection
-    const visitedNodes = new Set();
-    const discoveredRelationships = [];
-    const nodeDepthMap = new Map(); // Track depth of each discovered node
+    const globalVisitedNodes = new Set();
+    const allDiscoveredRelationships = [];
+    const globalNodeDepthMap = new Map(); // Track depth of each discovered node
     
     // Traverse from each starting device with its specific depth/direction settings
     for (const deviceId of deviceIds) {
@@ -113,23 +113,49 @@ exports.handler = async (event) => {
       
       console.log(`Traversing from device ${deviceId} with depth ${deviceDepth} and direction ${deviceDirection}`);
       
-      // Recursive traversal
+      // Create per-device tracking to avoid cross-contamination
+      const deviceVisitedNodes = new Set();
+      const deviceDiscoveredRelationships = [];
+      const deviceNodeDepthMap = new Map();
+      
+      // Recursive traversal for this specific device
       traverseRelationships(
         deviceId,
         deviceDepth,
         deviceDirection,
         relationshipGraph,
         reverseGraph,
-        visitedNodes,
-        discoveredRelationships,
-        nodeDepthMap,
+        deviceVisitedNodes,
+        deviceDiscoveredRelationships,
+        deviceNodeDepthMap,
         new Set([deviceId]), // Current path for cycle detection
         0 // Current depth level
       );
+      
+      // Merge results into global collections (avoid duplicates)
+      deviceVisitedNodes.forEach(nodeId => globalVisitedNodes.add(nodeId));
+      deviceDiscoveredRelationships.forEach(rel => {
+        // Check for duplicate relationships by comparing parent-child pairs
+        const isDuplicate = allDiscoveredRelationships.some(existingRel => 
+          existingRel.node.parentDevice?.id === rel.node.parentDevice?.id &&
+          existingRel.node.childDevice?.id === rel.node.childDevice?.id
+        );
+        if (!isDuplicate) {
+          allDiscoveredRelationships.push(rel);
+        }
+      });
+      
+      // Merge depth maps (keep shallowest depth for each node)
+      deviceNodeDepthMap.forEach((nodeDepth, nodeId) => {
+        const existingDepth = globalNodeDepthMap.get(nodeId);
+        if (existingDepth === undefined || nodeDepth < existingDepth) {
+          globalNodeDepthMap.set(nodeId, nodeDepth);
+        }
+      });
     }
     
-    const allRelationships = discoveredRelationships;
-    console.log(`Multi-level traversal complete: Found ${allRelationships.length} relationships across ${visitedNodes.size} nodes`);
+    const allRelationships = allDiscoveredRelationships;
+    console.log(`Multi-level traversal complete: Found ${allRelationships.length} relationships across ${globalVisitedNodes.size} nodes`);
     
     console.log(`Total relationships found: ${allRelationships.length}`);
 

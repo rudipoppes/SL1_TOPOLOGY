@@ -254,9 +254,9 @@ export const DeviceList: React.FC<DeviceListProps> = ({
 
       {/* Default Depth Selector - placed between load and search */}
       {onDepthChange && (
-        <div className="px-4 py-3 glass-panel bg-white/70 border-b border-gray-100/50 backdrop-blur-sm">
+        <div className="px-4 py-3 glass-panel bg-white/70 dark:bg-slate-800/70 border-b border-gray-100/50 dark:border-slate-600/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-700">Default depth for initial placement</span>
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Default depth for initial placement</span>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onDepthChange(Math.max(1, globalDepth - 1))}
@@ -271,7 +271,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               >
                 -
               </button>
-              <span className="text-lg font-bold text-slate-800 min-w-[2rem] text-center">
+              <span className="text-lg font-bold text-slate-800 dark:text-slate-200 min-w-[2rem] text-center">
                 {globalDepth}
               </span>
               <button
