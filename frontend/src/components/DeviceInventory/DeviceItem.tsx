@@ -16,7 +16,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       onClick={() => onSelect?.(device)}
       className="
         group relative flex items-center justify-between cursor-pointer
-        mx-2 mb-2 p-3 rounded-lg transition-all duration-300 ease-out
+        mx-2 mb-2 p-3 rounded-xl transition-all duration-300 ease-out
         glass-panel border-white/30 hover:border-white/50
         transform hover:scale-[1.01] hover:shadow-lg
         backdrop-blur-md
@@ -46,7 +46,7 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       {/* Compact device type badge */}
       <div className="flex flex-col items-end space-y-1">
         <div className="
-          px-2 py-1 rounded-md backdrop-blur-sm border
+          px-2 py-1 rounded-lg backdrop-blur-sm border
           bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-900/60 dark:to-indigo-900/60
           border-blue-200/50 dark:border-blue-700/50 text-primary dark:text-blue-200
           text-xs font-medium transition-all duration-300

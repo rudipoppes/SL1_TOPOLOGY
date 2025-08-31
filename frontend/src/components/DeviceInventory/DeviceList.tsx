@@ -201,7 +201,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       
       {/* Enhanced Selected Devices Area */}
       {parentSelectedDevices.length > 0 && (
-        <div className="p-4 glass-panel bg-gradient-to-r from-blue-50/60 to-indigo-50/60 border-b border-blue-200/30 backdrop-blur-sm">
+        <div className="p-4 glass-panel bg-gradient-to-r from-blue-50/60 to-indigo-50/60 border-b border-blue-200/30 backdrop-blur-sm rounded-xl mx-2 my-2">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm font-semibold text-primary" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
               Selected for Topology ({parentSelectedDevices.length})
@@ -254,7 +254,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
 
       {/* Default Depth Selector - placed between load and search */}
       {onDepthChange && (
-        <div className="px-4 py-3 glass-panel bg-white/70 dark:bg-slate-800/70 border-b border-gray-100/50 dark:border-slate-600/50 backdrop-blur-sm">
+        <div className="px-4 py-3 glass-panel bg-white/70 dark:bg-slate-800/70 border-b border-gray-100/50 dark:border-slate-600/50 backdrop-blur-sm rounded-xl mx-2 my-2">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Default depth for initial placement</span>
             <div className="flex items-center space-x-2">

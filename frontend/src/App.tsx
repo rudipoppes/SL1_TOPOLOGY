@@ -568,18 +568,20 @@ function AppContent() {
     <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 transition-colors duration-300">
       {/* Resizable Left Panel - Device Inventory */}
       <div 
-        className="glass-panel flex-shrink-0 border-r border-white/20 animate-slide-in"
+        className="flex-shrink-0 p-6 animate-slide-in"
         style={{ width: `${leftPanelWidth}px` }}
       >
-        <DeviceList
-          onDeviceSelect={handleDeviceSelect}
-          onClearSelection={handleClearAll}
-          selectedDevices={selectedDevices}
-          theme={theme}
-          onThemeToggle={toggleTheme}
-          globalDepth={globalDepth}
-          onDepthChange={handleGlobalDepthChange}
-        />
+        <div className="h-full glass-panel rounded-xl overflow-hidden border border-white/20">
+            <DeviceList
+            onDeviceSelect={handleDeviceSelect}
+            onClearSelection={handleClearAll}
+            selectedDevices={selectedDevices}
+            theme={theme}
+            onThemeToggle={toggleTheme}
+            globalDepth={globalDepth}
+            onDepthChange={handleGlobalDepthChange}
+          />
+        </div>
       </div>
 
       {/* Modern Resize Handle */}

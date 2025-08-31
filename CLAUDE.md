@@ -1060,6 +1060,15 @@ Modern, responsive web application optimized for topology visualization and expl
 
 ---
 
+## 📋 **IMPORTANT DEVELOPMENT INSTRUCTIONS**
+
+### **Server Management**
+- **NEVER** check if development (port 3000) or production (port 4000) servers are running unless explicitly asked
+- **ASSUME** servers are always running when working on the project
+- **ONLY** check server status when specifically requested by the user
+
+---
+
 ## 🚫 **REJECTED FEATURES - DO NOT IMPLEMENT**
 
 **CRITICAL: Certain features have been explicitly rejected and must NEVER be re-implemented.**
