@@ -26,7 +26,6 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
   deviceDepths = new Map(),
   globalDepth = 2,
   onDirectionChange,
-  onDepthChange,
   onAddDeviceToSelection,
   onClearAll,
   className = '',
@@ -45,7 +44,6 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
         deviceDepths={deviceDepths}
         globalDepth={globalDepth}
         onDirectionChange={onDirectionChange}
-        onDepthChange={onDepthChange}
         onAddDeviceToSelection={onAddDeviceToSelection}
         onClearAll={onClearAll}
         className={styles.visNetworkWrapper}

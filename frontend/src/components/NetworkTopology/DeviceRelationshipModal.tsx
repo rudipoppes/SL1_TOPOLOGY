@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './DeviceRelationshipModal.module.css';
 
 interface DeviceRelationshipModalProps {
@@ -56,6 +56,14 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
   onClose,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
+  const [selectedDepth, setSelectedDepth] = useState(currentDepth);
+
+  // Reset selected depth when modal opens with new depth
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedDepth(currentDepth);
+    }
+  }, [isOpen, currentDepth]);
 
   // Handle click outside modal
   useEffect(() => {
@@ -113,14 +121,18 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
   const finalPosition = calculatePosition();
 
   const handleDirectionClick = (direction: 'parents' | 'children' | 'both') => {
+    // Apply the selected depth when direction is clicked
+    if (onDepthChange && selectedDepth !== currentDepth) {
+      onDepthChange(selectedDepth);
+    }
     onDirectionSelect(direction);
     onClose();
   };
 
   const handleDepthChange = (newDepth: number) => {
-    if (onDepthChange && newDepth >= 1 && newDepth <= maxDepth) {
-      onDepthChange(newDepth);
-      onClose();
+    if (newDepth >= 1 && newDepth <= maxDepth) {
+      setSelectedDepth(newDepth);
+      // Don't close the modal, just update the local state
     }
   };
 
@@ -177,10 +189,108 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
 
         {/* Content */}
         <div className={styles.content}>
-          <p className={styles.instruction}>
-            Choose which relationships to display:
-          </p>
-          
+          {/* Depth Controls Section - moved to top */}
+          {onDepthChange && (
+            <>
+              <div className={styles.depthControls} style={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px',
+                padding: '8px',
+                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                borderRadius: '6px',
+                border: '1px solid #e2e8f0'
+              }}>
+                <button
+                  className={styles.depthButton}
+                  onClick={() => handleDepthChange(selectedDepth - 1)}
+                  disabled={selectedDepth <= 1}
+                  style={{
+                    background: selectedDepth > 1 ? '#ef4444' : '#cbd5e1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: selectedDepth > 1 ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title={`Decrease to depth ${selectedDepth - 1}`}
+                >
+                  -
+                </button>
+                
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  flex: 1,
+                  justifyContent: 'center'
+                }}>
+                  <span style={{ fontSize: '16px', fontWeight: 'bold', color: selectedDepth !== currentDepth ? '#f97316' : '#1e293b' }}>
+                    {selectedDepth}
+                  </span>
+                  <div style={{ display: 'flex', gap: '2px' }}>
+                    {Array.from({ length: maxDepth }, (_, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          background: i < selectedDepth ? '#3b82f6' : '#cbd5e1',
+                          transition: 'all 0.2s ease'
+                        }}
+                        title={`Level ${i + 1}${i < selectedDepth ? ' (active)' : ''}`}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  className={styles.depthButton}
+                  onClick={() => handleDepthChange(selectedDepth + 1)}
+                  disabled={selectedDepth >= maxDepth}
+                  style={{
+                    background: selectedDepth < maxDepth ? '#10b981' : '#cbd5e1',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    width: '24px',
+                    height: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    cursor: selectedDepth < maxDepth ? 'pointer' : 'not-allowed',
+                    transition: 'all 0.2s ease'
+                  }}
+                  title={`Increase to depth ${selectedDepth + 1}`}
+                >
+                  +
+                </button>
+              </div>
+              <p style={{ 
+                fontSize: '10px', 
+                color: '#64748b', 
+                textAlign: 'center', 
+                marginTop: '4px',
+                marginBottom: '0',
+                fontStyle: 'italic'
+              }}>
+                {selectedDepth === 1 ? 'Direct connections only' : `${selectedDepth}-level deep relationships`}
+              </p>
+              <div className={styles.divider} style={{ margin: '8px 0', borderTop: '1px solid #e5e7eb' }} />
+            </>
+          )}
+
+          {/* Direction Options */}
           <div className={styles.options}>
             {directionOptions.map((option) => (
               <button
@@ -196,7 +306,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
                 <div className={styles.optionIcon}>{option.icon}</div>
                 <div className={styles.optionContent}>
                   <div className={styles.optionLabel}>{option.label}</div>
-                  <div className={styles.optionDescription}>{option.description}</div>
                 </div>
                 {currentDirection === option.value && (
                   <div className={styles.currentIndicator}>Current</div>
@@ -205,116 +314,10 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
             ))}
           </div>
 
-          {/* Depth Controls Section */}
-          {onDepthChange && (
-            <>
-              <div className={styles.divider} style={{ margin: '16px 0', borderTop: '1px solid #e5e7eb' }} />
-              <p className={styles.instruction}>
-                Relationship depth level:
-              </p>
-              <div className={styles.depthControls} style={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '12px',
-                padding: '12px',
-                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0'
-              }}>
-                <button
-                  className={styles.depthButton}
-                  onClick={() => handleDepthChange(currentDepth - 1)}
-                  disabled={currentDepth <= 1}
-                  style={{
-                    background: currentDepth > 1 ? '#ef4444' : '#cbd5e1',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: currentDepth > 1 ? 'pointer' : 'not-allowed',
-                    transition: 'all 0.2s ease'
-                  }}
-                  title={`Decrease to depth ${currentDepth - 1}`}
-                >
-                  -
-                </button>
-                
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  flex: 1,
-                  justifyContent: 'center'
-                }}>
-                  <span style={{ fontSize: '20px', fontWeight: 'bold', color: '#1e293b' }}>
-                    {currentDepth}
-                  </span>
-                  <div style={{ display: 'flex', gap: '2px' }}>
-                    {Array.from({ length: maxDepth }, (_, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          width: '8px',
-                          height: '8px',
-                          borderRadius: '50%',
-                          background: i < currentDepth ? '#3b82f6' : '#cbd5e1',
-                          transition: 'all 0.2s ease'
-                        }}
-                        title={`Level ${i + 1}${i < currentDepth ? ' (active)' : ''}`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <button
-                  className={styles.depthButton}
-                  onClick={() => handleDepthChange(currentDepth + 1)}
-                  disabled={currentDepth >= maxDepth}
-                  style={{
-                    background: currentDepth < maxDepth ? '#10b981' : '#cbd5e1',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    width: '32px',
-                    height: '32px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    cursor: currentDepth < maxDepth ? 'pointer' : 'not-allowed',
-                    transition: 'all 0.2s ease'
-                  }}
-                  title={`Increase to depth ${currentDepth + 1}`}
-                >
-                  +
-                </button>
-              </div>
-              <p style={{ 
-                fontSize: '12px', 
-                color: '#64748b', 
-                textAlign: 'center', 
-                marginTop: '8px',
-                fontStyle: 'italic'
-              }}>
-                {currentDepth === 1 ? 'Direct connections only' : `${currentDepth}-level deep relationships`}
-              </p>
-            </>
-          )}
-
           {/* Lock/Unlock Node Section */}
           {onLockToggle && (
             <>
-              <div className={styles.divider} style={{ margin: '16px 0', borderTop: '1px solid #e5e7eb' }} />
-              <p className={styles.instruction}>
-                Node position control:
-              </p>
+              <div className={styles.divider} style={{ margin: '8px 0', borderTop: '1px solid #e5e7eb' }} />
               <button
                 className={styles.option}
                 onClick={() => {
@@ -331,9 +334,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
                   <div className={styles.optionLabel}>
                     {isNodeLocked ? 'Unlock Node' : 'Lock Node'}
                   </div>
-                  <div className={styles.optionDescription}>
-                    {isNodeLocked ? 'Allow node to be dragged' : 'Fix node at current position'}
-                  </div>
                 </div>
                 {isNodeLocked && (
                   <div className={styles.currentIndicator} style={{ background: '#ef4444' }}>Locked</div>
@@ -343,12 +343,6 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
           )}
         </div>
 
-        {/* Footer */}
-        <div className={styles.footer}>
-          <p className={styles.hint}>
-            💡 Click outside to cancel • Press ESC to close
-          </p>
-        </div>
       </div>
     </>
   );

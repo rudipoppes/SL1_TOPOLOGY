@@ -433,6 +433,8 @@ function App() {
           selectedDevices={selectedDevices}
           theme={theme}
           onThemeToggle={toggleTheme}
+          globalDepth={globalDepth}
+          onDepthChange={(depth: number) => handleDepthChange(depth)}
         />
       </div>
 

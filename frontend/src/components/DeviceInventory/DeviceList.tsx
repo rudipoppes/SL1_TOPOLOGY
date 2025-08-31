@@ -19,6 +19,8 @@ interface DeviceListProps {
   selectedDevices: Device[];
   theme?: 'light' | 'dark';
   onThemeToggle?: () => void;
+  globalDepth?: number;
+  onDepthChange?: (depth: number) => void;
 }
 
 export const DeviceList: React.FC<DeviceListProps> = ({
@@ -27,6 +29,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   selectedDevices: parentSelectedDevices,
   theme = 'light',
   onThemeToggle,
+  globalDepth = 2,
+  onDepthChange,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
@@ -244,6 +248,57 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                 </button>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Default Depth Selector - placed between load and search */}
+      {onDepthChange && (
+        <div className="px-4 py-3 glass-panel bg-white/70 border-b border-gray-100/50 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium text-slate-700">Default depth for initial placement</span>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => onDepthChange(Math.max(1, globalDepth - 1))}
+                disabled={globalDepth <= 1}
+                className={`
+                  w-6 h-6 rounded border flex items-center justify-center text-xs font-bold transition-all duration-200
+                  ${globalDepth > 1 
+                    ? 'bg-red-500 hover:bg-red-600 text-white border-red-500 cursor-pointer' 
+                    : 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                  }
+                `}
+              >
+                -
+              </button>
+              <span className="text-lg font-bold text-slate-800 min-w-[2rem] text-center">
+                {globalDepth}
+              </span>
+              <button
+                onClick={() => onDepthChange(Math.min(5, globalDepth + 1))}
+                disabled={globalDepth >= 5}
+                className={`
+                  w-6 h-6 rounded border flex items-center justify-center text-xs font-bold transition-all duration-200
+                  ${globalDepth < 5 
+                    ? 'bg-green-500 hover:bg-green-600 text-white border-green-500 cursor-pointer' 
+                    : 'bg-gray-300 text-gray-500 border-gray-300 cursor-not-allowed'
+                  }
+                `}
+              >
+                +
+              </button>
+              <div className="flex items-center space-x-1 ml-2">
+                {Array.from({ length: 5 }, (_, i) => (
+                  <div
+                    key={i}
+                    className={`
+                      w-1.5 h-1.5 rounded-full transition-all duration-300
+                      ${i < globalDepth ? 'bg-blue-500' : 'bg-gray-300'}
+                    `}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
