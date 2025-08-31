@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 4 - DEPTH SELECTOR IMPLEMENTATION** ⚠️ 
+### Current Status: **Phase 4 - DEPTH SELECTOR FUNCTIONALITY COMPLETE** ✅ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -50,9 +50,11 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Multi-Level Depth Traversal**: Backend Lambda enhanced with recursive relationship traversal & cycle detection (Aug 30, 2025)
 - ✅ **Depth Selector Component**: Modern rolling number controls with visual level indicators (Aug 30, 2025)
 - ✅ **Selected-Only Depth Control**: Canvas-selected nodes only + "Draw Items" button workflow (Aug 30, 2025)
+- ✅ **Topology Reduction Algorithm**: Proper cleanup when reducing depth levels (Aug 31, 2025)
+- ✅ **Incremental Device Addition**: Preserves individual settings when adding devices from chip area (Aug 31, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- ⚠️ **CURRENT BRANCH**: ui-modernization - Contains depth selector functionality (**UNTESTED**)
-- 🔄 **Next**: Testing and validation of depth selector implementation
+- ✅ **CURRENT BRANCH**: ui-modernization - Contains fully functional depth selector (commit dd3786d)
+- 🎯 **Status**: All depth selector functionality working and tested
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -103,10 +105,10 @@ This project is being built using an **iterative, incremental approach**:
 
 ---
 
-## 🚀 **DEPTH SELECTOR FUNCTIONALITY** ⚠️ **UNTESTED**
+## 🚀 **DEPTH SELECTOR FUNCTIONALITY** ✅ **FULLY WORKING**
 
-### **Recent Implementation (August 30, 2025)**
-**Branch**: `ui-modernization` | **Status**: Built but not tested
+### **Implementation Complete (August 31, 2025)**
+**Branch**: `ui-modernization` | **Status**: Fully functional and tested | **Commit**: dd3786d
 
 ### **Core Features Implemented**
 
@@ -161,13 +163,118 @@ This project is being built using an **iterative, incremental approach**:
 - Cycle detection prevents infinite loops
 - Per-device direction and depth processing
 
-### **Critical Notes**
+---
 
-⚠️ **TESTING REQUIRED**: This functionality has been implemented but not tested with real data
+## 🔧 **TOPOLOGY REDUCTION & INCREMENTAL ADDITION ALGORITHMS**
 
-⚠️ **BRANCH STATUS**: All changes are on `ui-modernization` branch - not merged to main
+### **Critical Fixes Implemented (August 31, 2025)**
 
-⚠️ **ROLLBACK**: Can easily revert to main branch if issues found
+**These algorithms solve complex topology management issues that were causing user frustration:**
+
+### **Problem 1: Topology Reduction Failure**
+**Issue**: When reducing depth (e.g., from 3 to 1), deeper-level nodes weren't properly removed from canvas.
+**Root Cause**: Frontend merge logic couldn't identify which nodes belonged to deeper levels that should be removed.
+
+**Solution: `findNodesWithinDepth()` Algorithm**
+```javascript
+// Location: frontend/src/App.tsx lines 84-122
+const findNodesWithinDepth = (rootNodeId, maxDepth, direction, allEdges) => {
+  const reachableNodes = new Set();
+  const visited = new Set();
+  
+  const traverse = (nodeId, currentDepth) => {
+    if (currentDepth > maxDepth || visited.has(nodeId)) return;
+    
+    visited.add(nodeId);
+    reachableNodes.add(nodeId);
+    
+    if (currentDepth < maxDepth) {
+      // Traverse based on direction (children/parents/both)
+      allEdges.forEach(edge => {
+        // Direction-specific traversal logic
+      });
+    }
+  };
+  
+  traverse(rootNodeId, 0);
+  return reachableNodes;
+};
+```
+
+**How It Works**:
+1. **Find Old Reachable**: Identifies all nodes previously connected to the device (at any depth)
+2. **Compare with New**: Backend returns only nodes within new depth limit
+3. **Calculate Removal**: Nodes that were reachable but aren't in new response = remove
+4. **Clean Edges**: Remove edges connecting to removed nodes
+5. **Merge New**: Add any new nodes/edges from backend response
+
+### **Problem 2: Complete Topology Rebuild on Device Addition**
+**Issue**: Adding devices from chip area completely rebuilt topology, losing individual depth/direction settings.
+**Root Cause**: `handleDeviceSelect` called `fetchTopologyDataWithDeviceDirections(devices)` which rebuilds everything.
+
+**Solution: Intelligent Incremental Addition**
+```javascript
+// Location: frontend/src/App.tsx lines 61-111
+const handleDeviceSelect = async (devices) => {
+  // Identify what changed
+  const currentTopologyDeviceIds = new Set(topologyDevices.map(d => d.id));
+  const newDevices = devices.filter(device => !currentTopologyDeviceIds.has(device.id));
+  const removedDeviceIds = topologyDevices
+    .filter(device => !devices.some(d => d.id === device.id))
+    .map(device => device.id);
+  
+  // Handle changes incrementally
+  if (newDevices.length > 0) {
+    // INCREMENTAL addition - preserves existing topology
+    await fetchIncrementalTopologyDataWithDirections(newDevices);
+  }
+  
+  // NO MORE COMPLETE REBUILD
+};
+```
+
+**Key Benefits**:
+- ✅ **Preserves Individual Settings**: Modal-configured depths/directions maintained
+- ✅ **Performance**: Only processes new devices, not entire topology  
+- ✅ **User Experience**: No more losing carefully configured settings
+
+### **Backend Enhancements**
+**Per-Device Isolation** (`backend/lambda-functions/getTopology/index.js` lines 109-155):
+```javascript
+// Create per-device tracking to avoid cross-contamination
+for (const deviceId of deviceIds) {
+  const deviceVisitedNodes = new Set();
+  const deviceDiscoveredRelationships = [];
+  const deviceNodeDepthMap = new Map();
+  
+  // Traverse THIS device only with ITS specific settings
+  traverseRelationships(deviceId, deviceDepth, deviceDirection, ...);
+  
+  // Merge results without contamination
+}
+```
+
+**Prevents**: Device A's relationships affecting Device B's traversal results.
+
+### **User Workflow Examples**
+
+**Scenario 1: Depth Reduction**
+1. User has Device A at depth 3 (shows children's children)
+2. User changes Device A to depth 1 via modal
+3. **Algorithm**: Finds all nodes at depths 2-3, removes them and their edges
+4. **Result**: Only depth 1 relationships remain, other topology preserved
+
+**Scenario 2: Incremental Addition** 
+1. User configures Device A (depth 1), Device B (depth 3) via modals
+2. User drags Device C from inventory to chip area  
+3. **Old Behavior**: Complete rebuild → all devices reset to global depth
+4. **New Behavior**: Only Device C added → A stays depth 1, B stays depth 3
+
+### **Testing Validation**
+✅ **Depth Reduction**: Multi-level topologies correctly reduced without affecting unrelated parts  
+✅ **Incremental Addition**: Individual device settings preserved when adding from chip area  
+✅ **Edge Cases**: Proper handling of device removal, empty topology, mixed scenarios  
+✅ **Performance**: No unnecessary API calls or complete topology rebuilds
 
 ---
 
