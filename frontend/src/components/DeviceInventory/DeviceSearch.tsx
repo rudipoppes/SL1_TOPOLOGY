@@ -1,15 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
 
 interface DeviceSearchProps {
   onSearch: (searchTerm: string) => void;
   placeholder?: string;
 }
 
-export const DeviceSearch: React.FC<DeviceSearchProps> = ({
+export interface DeviceSearchRef {
+  clear: () => void;
+}
+
+export const DeviceSearch = forwardRef<DeviceSearchRef, DeviceSearchProps>(({
   onSearch,
   placeholder = 'Search by name...',
-}) => {
+}, ref) => {
   const [searchTerm, setSearchTerm] = useState('');
+
+  useImperativeHandle(ref, () => ({
+    clear: () => setSearchTerm('')
+  }));
 
   // Debounced search effect
   useEffect(() => {
@@ -64,4 +72,4 @@ export const DeviceSearch: React.FC<DeviceSearchProps> = ({
       )}
     </div>
   );
-};
+});

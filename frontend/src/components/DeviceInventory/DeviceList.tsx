@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import { Device, apiService } from '../../services/api';
 import { configService } from '../../services/config';
 import { DeviceItem } from './DeviceItem';
-import { DeviceSearch } from './DeviceSearch';
+import { DeviceSearch, DeviceSearchRef } from './DeviceSearch';
 import { LogoutButton } from '../Auth/LogoutButton';
 
 
@@ -34,6 +34,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
+  const searchRef = useRef<DeviceSearchRef>(null);
   
   // Pagination - use config
   const devicesConfig = configService.getDevicesConfig();
@@ -118,6 +119,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   // Clear search
   const handleClearSearch = () => {
     setSearchTerm('');
+    searchRef.current?.clear();
   };
 
   // Row renderer for virtual list
@@ -163,7 +165,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
           
           {/* Search and controls row */}
           <div className="space-y-4">
-            <DeviceSearch onSearch={setSearchTerm} />
+            <DeviceSearch ref={searchRef} onSearch={setSearchTerm} />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
                 {total === -1 ? (
