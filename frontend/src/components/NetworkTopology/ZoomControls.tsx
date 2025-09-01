@@ -343,7 +343,14 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             }`}
             title="Physics Layout (All)"
           >
-            <span className="text-base">⚛️</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+              <circle cx="12" cy="3" r="1"/>
+              <circle cx="12" cy="21" r="1"/>
+              <circle cx="21" cy="12" r="1"/>
+              <circle cx="3" cy="12" r="1"/>
+            </svg>
           </button>
 
           {/* Hierarchical Layout - All Nodes */}
@@ -354,7 +361,10 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             }`}
             title="Hierarchical Layout (All)"
           >
-            <span className="text-base">🌳</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+            </svg>
           </button>
 
           {/* Grid Layout - All Nodes */}
@@ -365,7 +375,10 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             }`}
             title="Grid Layout (All)"
           >
-            <span className="text-base">⚏</span>
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
           </button>
 
           {/* Clear Button */}
@@ -379,7 +392,10 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
                 className={`${uniformButtonClass} ${dangerClass}`}
                 title="Clear All"
               >
-                <span className="text-base">🗑️</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
               </button>
             </>
           )}
@@ -395,7 +411,17 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
               }`}
               title={isLocked ? "Unlock Canvas" : "Lock Canvas"}
             >
-              <span className="text-base">{isLocked ? '🔒' : '🔓'}</span>
+              {isLocked ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"/>
+                </svg>
+              )}
             </button>
           )}
         </div>
@@ -412,31 +438,47 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
           {/* Physics Layout - Selected Only */}
           <button
             onClick={() => onLayoutChange('physics', true)}
-            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs relative`}
             title="Physics Layout (Selected)"
             style={{ fontSize: '9px', padding: '6px' }}
           >
-            <span>⚛️✓</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1"/>
+              <circle cx="12" cy="3" r="1"/>
+              <circle cx="12" cy="21" r="1"/>
+              <circle cx="21" cy="12" r="1"/>
+              <circle cx="3" cy="12" r="1"/>
+            </svg>
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white text-[6px] flex items-center justify-center text-white font-bold">✓</div>
           </button>
 
           {/* Hierarchical Layout - Selected Only */}
           <button
             onClick={() => onLayoutChange('hierarchical', true)}
-            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs relative`}
             title="Hierarchical Layout (Selected)"
             style={{ fontSize: '9px', padding: '6px' }}
           >
-            <span>🌳✓</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/>
+            </svg>
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white text-[6px] flex items-center justify-center text-white font-bold">✓</div>
           </button>
 
           {/* Grid Layout - Selected Only */}
           <button
             onClick={() => onLayoutChange('grid', true)}
-            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs`}
+            className={`${uniformButtonClass} ${layoutThemeClasses} text-xs relative`}
             title="Grid Layout (Selected)"
             style={{ fontSize: '9px', padding: '6px' }}
           >
-            <span>⚏✓</span>
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+            </svg>
+            <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white text-[6px] flex items-center justify-center text-white font-bold">✓</div>
           </button>
         </div>
       )}
