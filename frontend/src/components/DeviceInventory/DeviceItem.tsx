@@ -4,23 +4,28 @@ import { Device } from '../../services/api';
 interface DeviceItemProps {
   device: Device;
   onSelect?: (device: Device) => void;
+  isSelected?: boolean;
 }
 
 
 export const DeviceItem: React.FC<DeviceItemProps> = ({
   device,
   onSelect,
+  isSelected = false,
 }) => {
   return (
     <div
       onClick={() => onSelect?.(device)}
-      className="
+      className={`
         group relative flex items-center justify-between cursor-pointer
         mx-2 mb-2 p-3 rounded-xl transition-all duration-300 ease-out
-        glass-panel border-white/30 hover:border-white/50
+        glass-panel backdrop-blur-md
         transform hover:scale-[1.01] hover:shadow-lg
-        backdrop-blur-md
-      "
+        ${isSelected 
+          ? 'border-green-400/60 bg-green-50/20 dark:bg-green-900/20 hover:border-green-400/80' 
+          : 'border-white/30 hover:border-white/50'
+        }
+      `}
     >
       {/* Status indicator and content */}
       <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -43,8 +48,8 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
         </div>
       </div>
       
-      {/* Compact device type badge */}
-      <div className="flex flex-col items-end space-y-1">
+      {/* Device type badge and selection indicator */}
+      <div className="flex items-center space-x-2">
         <div className="
           px-2 py-1 rounded-lg backdrop-blur-sm border
           bg-gradient-to-r from-slate-50/80 to-slate-100/80 dark:from-slate-900/60 dark:to-slate-800/60
@@ -55,9 +60,20 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
         ">
           {device.type}
         </div>
+        
+        {/* Selected indicator */}
+        {isSelected && (
+          <div className="
+            flex items-center justify-center w-4 h-4 rounded-full
+            bg-green-500 text-white shadow-sm
+            animate-in fade-in zoom-in duration-200
+          ">
+            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M5 13l4 4L19 7"/>
+            </svg>
+          </div>
+        )}
       </div>
-      
-      {/* No selection indicator - selection is invisible in main list */}
     </div>
   );
 };

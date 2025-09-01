@@ -94,26 +94,23 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     setAllSelectedDeviceObjects([...parentSelectedDevices]);
   }, [parentSelectedDevices]);
 
-  // Handle device selection - toggle add/remove from chip area
+  // Handle device selection - only add devices (no toggle removal)
   const handleDeviceSelect = (device: Device) => {
     const newSelected = new Set(selectedDevices);
     let updatedDeviceObjects = [...allSelectedDeviceObjects];
     
-    if (newSelected.has(device.id)) {
-      // Remove device
-      newSelected.delete(device.id);
-      updatedDeviceObjects = updatedDeviceObjects.filter(d => d.id !== device.id);
-    } else {
-      // Add device
+    if (!newSelected.has(device.id)) {
+      // Only add device if not already selected
       newSelected.add(device.id);
       updatedDeviceObjects.push(device);
+      
+      setSelectedDevices(newSelected);
+      setAllSelectedDeviceObjects(updatedDeviceObjects);
+      
+      // Send the complete list of selected devices to parent (not filtered by current search)
+      onDeviceSelect(updatedDeviceObjects);
     }
-    
-    setSelectedDevices(newSelected);
-    setAllSelectedDeviceObjects(updatedDeviceObjects);
-    
-    // Send the complete list of selected devices to parent (not filtered by current search)
-    onDeviceSelect(updatedDeviceObjects);
+    // If device already selected, do nothing (no removal)
   };
 
   // Clear search
@@ -132,6 +129,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         <DeviceItem
           device={device}
           onSelect={handleDeviceSelect}
+          isSelected={selectedDevices.has(device.id)}
         />
       </div>
     );
