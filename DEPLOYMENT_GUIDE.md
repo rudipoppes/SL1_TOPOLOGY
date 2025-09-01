@@ -26,7 +26,7 @@ Before deployment, verify your configuration:
 ### **1. Check SL1 Settings**
 ```bash
 # Verify SL1 endpoint is accessible
-curl -k https://52.3.210.190/gql
+curl -k https://selab.sciencelogic.com/gql
 
 # Should return GraphQL schema information
 ```
@@ -36,8 +36,9 @@ curl -k https://52.3.210.190/gql
 # Check main config
 cat config/sl1-config.json
 
-# Verify SL1 URL is: https://52.3.210.190/gql
-# Verify credentials are correct
+# Note: Config file shows old endpoint (52.3.210.190)
+# Current production uses: https://selab.sciencelogic.com/gql
+# Credentials are stored in AWS Parameter Store for Lambda functions
 ```
 
 ### **3. Validate AWS Setup**

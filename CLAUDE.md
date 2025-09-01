@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 6 - SINGLE-BUILD ARCHITECTURE COMPLETE** ✅ 
+### Current Status: **Phase 7 - UI STABILITY & BUG FIXES COMPLETE** ✅ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -53,9 +53,12 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Selected-Only Depth Control**: Canvas-selected nodes only + "Draw Items" button workflow (Aug 30, 2025)
 - ✅ **Topology Reduction Algorithm**: Proper cleanup when reducing depth levels (Aug 31, 2025)
 - ✅ **Incremental Device Addition**: Preserves individual settings when adding devices from chip area (Aug 31, 2025)
+- ✅ **Device Selection Bug Fix**: Resolved toggle removal behavior - devices now only add, never remove from inventory clicks (Sept 1, 2025)
+- ✅ **Visual Selection Indicators**: Green checkmarks show selected devices in inventory with proper clearing (Sept 1, 2025)
+- ✅ **UI Consolidation**: Removed redundant clear button from canvas, consolidated all clear functionality to chip area (Sept 1, 2025)
+- ✅ **Lock Confirmation Logic**: Canvas lock confirmation moved to chip area clear button for consistent UX (Sept 1, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- ✅ **CURRENT BRANCH**: ui-modernization - Contains FINAL single-build architecture
-- 🎯 **Status**: All functionality working with single source of truth - READY FOR MAIN
+- 🎯 **CURRENT STATUS**: Main branch - All features stable and production-ready
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -278,6 +281,73 @@ for (const deviceId of deviceIds) {
 ✅ **Incremental Addition**: Individual device settings preserved when adding from chip area  
 ✅ **Edge Cases**: Proper handling of device removal, empty topology, mixed scenarios  
 ✅ **Performance**: No unnecessary API calls or complete topology rebuilds
+
+---
+
+## 🔧 **DEVICE SELECTION & UI CONSOLIDATION FIXES** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 1, 2025)**
+**Branch**: `main` | **Status**: Production-ready bug fixes merged | **Commit**: Latest main
+
+### **Critical Bug Fixes Implemented**
+
+**1. Device Selection Toggle Bug**
+- **Issue**: Clicking same device twice in inventory removed it from chip area and cleared topology
+- **Root Cause**: `handleDeviceSelect` used toggle logic instead of add-only behavior
+- **Solution**: Changed to add-only logic - devices can only be added from inventory, never removed
+- **User Impact**: Prevents accidental topology clearing from inventory interactions
+
+**2. Visual Selection Indicators**
+- **Enhancement**: Added green checkmarks to show selected devices in inventory
+- **Smart Clearing**: Indicators properly clear when devices removed via chip area controls
+- **Responsive Design**: Properly sized and positioned icons that don't overlap content
+
+**3. UI Consolidation - Clear Button Removal**
+- **Issue**: Redundant "Clear All" button on canvas created confusion
+- **Solution**: Removed canvas clear button, consolidated all clear functionality to chip area
+- **Lock Confirmation**: Moved canvas lock confirmation logic to chip area clear button
+- **Consistency**: Single source of truth for clearing topology
+
+### **Technical Implementation Details**
+
+**Files Modified**:
+- `DeviceList.tsx` - Add-only selection logic and visual indicators
+- `DeviceItem.tsx` - Green checkmark rendering with proper positioning
+- `ZoomControls.tsx` - Removed redundant clear button and related logic
+- `App.tsx` - Lifted canvas lock state management for proper prop flow
+- `SimpleVisNetworkTopology.tsx` - Canvas lock change notifications
+- `VisControlledTopology.tsx` - Updated prop chain for lock state
+
+**Key Algorithm Changes**:
+```typescript
+// Old: Toggle behavior (problematic)
+if (selectedDevices.has(device.id)) {
+  selectedDevices.delete(device.id); // REMOVED
+} else {
+  selectedDevices.add(device.id);
+}
+
+// New: Add-only behavior (stable)
+if (!selectedDevices.has(device.id)) {
+  selectedDevices.add(device.id); // Only add, never remove
+}
+```
+
+**State Management Enhancement**:
+- Canvas lock state lifted to `App.tsx` for proper coordination
+- Lock confirmation integrated into chip area clear button
+- Visual indicators sync with device removal from other UI areas
+
+### **User Experience Improvements**
+
+**Before**: Users accidentally cleared topology by double-clicking devices in inventory
+**After**: Inventory only adds devices - topology can only be cleared via chip area controls
+
+**Before**: No visual feedback for which devices were selected in inventory
+**After**: Green checkmarks clearly show selected devices with proper clearing behavior
+
+**Before**: Confusing dual clear buttons (canvas + chip area)
+**After**: Single clear button in chip area with proper lock confirmation
 
 ---
 
