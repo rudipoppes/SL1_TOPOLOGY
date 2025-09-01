@@ -18,6 +18,7 @@ function AppContent() {
   const [deviceDirections, setDeviceDirections] = useState<Map<string, 'parents' | 'children' | 'both'>>(new Map());
   const [deviceDepths, setDeviceDepths] = useState<Map<string, number>>(new Map());
   const [globalDepth, setGlobalDepth] = useState<number>(configService.getTopologyConfig().controls.defaultDepth);
+  const [isCanvasLocked, setIsCanvasLocked] = useState(false); // Canvas lock state lifted from SimpleVisNetworkTopology
   const defaultDirection = configService.getTopologyConfig().controls.defaultDirection as 'parents' | 'children' | 'both';
   const containerRef = useRef<HTMLDivElement>(null);
   const { theme, toggleTheme } = useTheme();
@@ -191,6 +192,11 @@ function AppContent() {
   const handleGlobalDepthChange = (depth: number) => {
     setGlobalDepth(depth);
     // Do NOT refresh topology - only update the default for new device placements
+  };
+
+  // Handler for canvas lock state changes
+  const handleCanvasLockChange = (locked: boolean) => {
+    setIsCanvasLocked(locked);
   };
 
   // Helper function to find all nodes reachable from a root node within given depth
@@ -648,6 +654,7 @@ function AppContent() {
             onThemeToggle={toggleTheme}
             globalDepth={globalDepth}
             onDepthChange={handleGlobalDepthChange}
+            isLocked={isCanvasLocked}
           />
         </div>
       </div>
@@ -716,8 +723,8 @@ function AppContent() {
               globalDepth={globalDepth}
               onDirectionChange={handleDirectionChange}
               onDepthChange={handleDepthChange}
-              onClearAll={handleClearAll}
               onSelectedNodeRemoval={handleSelectedNodeRemoval}
+              onCanvasLockChange={handleCanvasLockChange}
               className="h-full"
               theme={theme}
             />

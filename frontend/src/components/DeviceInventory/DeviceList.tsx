@@ -15,6 +15,7 @@ interface DeviceListProps {
   onThemeToggle?: () => void;
   globalDepth?: number;
   onDepthChange?: (depth: number) => void;
+  isLocked?: boolean;
 }
 
 export const DeviceList: React.FC<DeviceListProps> = ({
@@ -25,6 +26,7 @@ export const DeviceList: React.FC<DeviceListProps> = ({
   onThemeToggle,
   globalDepth = 2,
   onDepthChange,
+  isLocked = false,
 }) => {
   const [devices, setDevices] = useState<Device[]>([]);
   const [selectedDevices, setSelectedDevices] = useState<Set<string>>(new Set());
@@ -119,6 +121,26 @@ export const DeviceList: React.FC<DeviceListProps> = ({
     searchRef.current?.clear();
   };
 
+  // Handle Clear All with lock confirmation
+  const handleClearAll = () => {
+    if (isLocked) {
+      const confirmed = window.confirm(
+        'Canvas is Locked\n\n' +
+        'The canvas is currently locked. Clearing all devices will remove all topology data.\n\n' +
+        'Are you sure you want to proceed?'
+      );
+      if (confirmed) {
+        setSelectedDevices(new Set());
+        setAllSelectedDeviceObjects([]);
+        onClearSelection();
+      }
+    } else {
+      setSelectedDevices(new Set());
+      setAllSelectedDeviceObjects([]);
+      onClearSelection();
+    }
+  };
+
   // Row renderer for virtual list
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     const device = devices[index];
@@ -204,13 +226,10 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               Selected for Topology ({parentSelectedDevices.length})
             </div>
             <button
-              onClick={() => {
-                setSelectedDevices(new Set());
-                setAllSelectedDeviceObjects([]);
-                onClearSelection();
-              }}
+              onClick={handleClearAll}
               className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 font-medium transition-all duration-300 px-2 py-1 rounded-md hover:bg-slate-200/30 dark:hover:bg-slate-600/30"
               style={{ fontSize: 'var(--text-xs)' }}
+              title={isLocked ? "Clear All (Canvas Locked - Confirmation Required)" : "Clear All"}
             >
               Clear All
             </button>

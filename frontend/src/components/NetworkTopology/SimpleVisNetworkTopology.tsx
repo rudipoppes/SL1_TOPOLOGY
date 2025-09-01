@@ -22,8 +22,8 @@ interface SimpleVisNetworkTopologyProps {
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
   onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
-  onClearAll?: () => void;
   onSelectedNodeRemoval?: (selectedNodeIds: string[]) => void;
+  onCanvasLockChange?: (locked: boolean) => void;
   className?: string;
   theme?: 'light' | 'dark';
 }
@@ -94,8 +94,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   globalDepth: _globalDepth,
   onDirectionChange,
   onDepthChange,
-  onClearAll,
   onSelectedNodeRemoval,
+  onCanvasLockChange,
   className = '',
   theme = 'light',
 }) => {
@@ -1098,6 +1098,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       });
       setIsLocked(true);
+      onCanvasLockChange?.(true);
     }
   };
 
@@ -1112,6 +1113,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       });
       setIsLocked(false);
+      onCanvasLockChange?.(false);
     }
   };
 
@@ -1310,7 +1312,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           theme={theme}
           layout={layout}
           onLayoutChange={handleLayoutChange}
-          onClearAll={onClearAll}
           isLocked={isLocked}
           onToggleLock={toggleCanvasLock}
           selectedCount={getSelectedNodesCount()}

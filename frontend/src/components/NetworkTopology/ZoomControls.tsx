@@ -7,7 +7,6 @@ interface ZoomControlsProps {
   // Layout controls
   layout?: 'hierarchical' | 'physics' | 'grid';
   onLayoutChange?: (layout: 'hierarchical' | 'physics' | 'grid', selectedOnly?: boolean) => void;
-  onClearAll?: () => void;
   // Lock controls
   isLocked?: boolean;
   onToggleLock?: () => void;
@@ -24,7 +23,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   theme = 'light',
   layout = 'physics',
   onLayoutChange,
-  onClearAll,
   isLocked = false,
   onToggleLock,
   selectedCount = 0,
@@ -33,20 +31,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   onLockAllSelected,
   selectedLockState = 'none'
 }) => {
-  const handleClearAll = () => {
-    if (isLocked && onClearAll) {
-      const confirmed = window.confirm(
-        'Canvas is Locked\n\n' +
-        'The canvas is currently locked. Clearing all nodes will remove all topology data.\n\n' +
-        'Are you sure you want to proceed?'
-      );
-      if (confirmed) {
-        onClearAll();
-      }
-    } else if (onClearAll) {
-      onClearAll();
-    }
-  };
 
   const handleZoomIn = () => {
     if (networkRef.current) {
@@ -293,7 +277,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
     ? 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/25'
     : 'bg-indigo-600 border-indigo-500 text-white shadow-indigo-500/25';
 
-  const dangerClass = 'bg-orange-500 border-orange-400 text-white hover:bg-orange-600 shadow-orange-500/25';
 
   return (
     <div className="absolute top-4 left-4 z-50 flex flex-col gap-2 backdrop-blur-sm">
@@ -400,24 +383,6 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
             </svg>
           </button>
 
-          {/* Clear Button */}
-          {onClearAll && (
-            <>
-              <div className={`h-px my-1 ${
-                theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
-              }`} />
-              <button
-                onClick={handleClearAll}
-                className={`${uniformButtonClass} ${dangerClass}`}
-                title={isLocked ? "Clear All (Canvas Locked - Confirmation Required)" : "Clear All"}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-              </button>
-            </>
-          )}
 
           {/* Lock/Unlock Button */}
           {onToggleLock && (
