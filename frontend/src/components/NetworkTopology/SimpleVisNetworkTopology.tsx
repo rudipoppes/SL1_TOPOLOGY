@@ -50,7 +50,7 @@ const getNodeStatus = (node: any): 'online' | 'offline' | 'warning' => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'online': return '#10b981';
+    case 'online': return '#6b7280';
     case 'offline': return '#ef4444';
     case 'warning': return '#f59e0b';
     default: return '#6b7280';
@@ -426,8 +426,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       const isSelected = selectedNodeIds.has(node.id);
       
       // Add direction indicator, lock indicator, and selection indicator to label
-      const directionIcon = direction === 'parents' ? '🔼' : 
-                           direction === 'both' ? '🔄' : '🔽';
+      const directionIcon = direction === 'parents' ? '↑' : 
+                           direction === 'both' ? '↕' : '↓';
       const lockIcon = isLocked ? '🔒' : '';
       const selectionIcon = isSelected ? '✓' : '';
       const directionLabel = `${icon}${lockIcon}${selectionIcon}\n${node.label || node.id}\n${directionIcon}`;

@@ -110,7 +110,7 @@
 .options {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .option {
@@ -154,6 +154,7 @@
 .optionContent {
   flex: 1;
   min-width: 0;
+  text-align: left;
 }
 
 .optionLabel {

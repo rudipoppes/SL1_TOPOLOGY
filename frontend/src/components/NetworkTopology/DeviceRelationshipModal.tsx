@@ -21,23 +21,29 @@ const directionOptions = [
   {
     value: 'parents' as const,
     label: 'Show Parents',
-    icon: '🔼',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+    </svg>,
     description: 'Display parent devices',
-    color: '#3b82f6', // Blue
+    color: '#64748b', // Slate
   },
   {
     value: 'children' as const,
     label: 'Show Children', 
-    icon: '🔽',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+    </svg>,
     description: 'Display child devices',
-    color: '#10b981', // Green
+    color: '#64748b', // Slate
   },
   {
     value: 'both' as const,
     label: 'Show Both',
-    icon: '🔄',
+    icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+    </svg>,
     description: 'Display parents and children',
-    color: '#8b5cf6', // Purple
+    color: '#64748b', // Slate
   },
 ];
 
@@ -210,7 +216,7 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
                   onClick={() => handleDepthChange(selectedDepth - 1)}
                   disabled={selectedDepth <= 1}
                   style={{
-                    background: selectedDepth > 1 ? '#ef4444' : '#cbd5e1',
+                    background: selectedDepth > 1 ? '#64748b' : '#cbd5e1',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
@@ -261,7 +267,7 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
                   onClick={() => handleDepthChange(selectedDepth + 1)}
                   disabled={selectedDepth >= maxDepth}
                   style={{
-                    background: selectedDepth < maxDepth ? '#10b981' : '#cbd5e1',
+                    background: selectedDepth < maxDepth ? '#64748b' : '#cbd5e1',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
@@ -329,11 +335,21 @@ export const DeviceRelationshipModal: React.FC<DeviceRelationshipModalProps> = (
                   onClose();
                 }}
                 style={{
-                  '--option-color': isNodeLocked ? '#ef4444' : '#22c55e',
+                  '--option-color': isNodeLocked ? '#ef4444' : '#64748b',
                   marginTop: '8px',
                 } as React.CSSProperties}
               >
-                <div className={styles.optionIcon}>{isNodeLocked ? '🔒' : '🔓'}</div>
+                <div className={styles.optionIcon}>
+                  {isNodeLocked ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
                 <div className={styles.optionContent}>
                   <div className={styles.optionLabel}>
                     {isNodeLocked ? 'Unlock Node' : 'Lock Node'}
