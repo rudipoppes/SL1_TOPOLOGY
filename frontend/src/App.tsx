@@ -119,6 +119,74 @@ function AppContent() {
     setDeviceDepths(new Map());
   };
 
+  const handleSelectedNodeRemoval = (selectedNodeIds: string[]) => {
+    if (!topologyData || selectedNodeIds.length === 0) return;
+    
+    // More precise removal: only remove selected nodes and their children (downstream only)
+    const nodesToRemove = new Set<string>();
+    
+    // First, add all selected nodes to removal set
+    selectedNodeIds.forEach(nodeId => nodesToRemove.add(nodeId));
+    
+    // Then find children of selected nodes (but NOT parents or siblings)
+    selectedNodeIds.forEach(nodeId => {
+      const childrenNodes = findNodesWithinDepth(
+        nodeId,
+        5, // Reasonable depth for children
+        'children', // Only children, not parents
+        topologyData.edges
+      );
+      // Remove the selected node itself from children (it's already added)
+      childrenNodes.delete(nodeId);
+      // Add children to removal set
+      childrenNodes.forEach(childNodeId => nodesToRemove.add(childNodeId));
+    });
+    
+    // Update topology data by removing only the identified nodes and their edges
+    setTopologyData(prevTopology => {
+      if (!prevTopology) return null;
+      
+      const keptNodes = prevTopology.nodes.filter(node => 
+        !nodesToRemove.has(node.id)
+      );
+      const keptEdges = prevTopology.edges.filter(edge => 
+        !nodesToRemove.has(edge.source) && !nodesToRemove.has(edge.target)
+      );
+      
+      return {
+        nodes: keptNodes,
+        edges: keptEdges
+      };
+    });
+    
+    // Only remove devices from topologyDevices if they were originally selected from inventory
+    // (devices that are in the chip area)
+    const removedChipDeviceIds = selectedNodeIds.filter(nodeId => 
+      selectedDevices.some(device => device.id === nodeId)
+    );
+    
+    const remainingDevices = topologyDevices.filter(device => 
+      !removedChipDeviceIds.includes(device.id)
+    );
+    setTopologyDevices(remainingDevices);
+    
+    // Update selected devices (chip area) - only remove if they were originally in chip area
+    const remainingSelectedDevices = selectedDevices.filter(device =>
+      !removedChipDeviceIds.includes(device.id)
+    );
+    setSelectedDevices(remainingSelectedDevices);
+    
+    // Clean up device-specific settings for removed devices
+    const newDirections = new Map(deviceDirections);
+    const newDepths = new Map(deviceDepths);
+    nodesToRemove.forEach(nodeId => {
+      newDirections.delete(nodeId);
+      newDepths.delete(nodeId);
+    });
+    setDeviceDirections(newDirections);
+    setDeviceDepths(newDepths);
+  };
+
   // Handler for sidebar depth selector - only updates the default depth setting
   const handleGlobalDepthChange = (depth: number) => {
     setGlobalDepth(depth);
@@ -649,6 +717,7 @@ function AppContent() {
               onDirectionChange={handleDirectionChange}
               onDepthChange={handleDepthChange}
               onClearAll={handleClearAll}
+              onSelectedNodeRemoval={handleSelectedNodeRemoval}
               className="h-full"
               theme={theme}
             />

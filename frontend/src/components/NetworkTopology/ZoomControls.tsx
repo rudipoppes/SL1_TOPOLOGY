@@ -15,6 +15,8 @@ interface ZoomControlsProps {
   selectedCount?: number;
   onSelectAll?: () => void;
   onClearSelection?: () => void;
+  onLockAllSelected?: () => void;
+  selectedLockState?: 'none' | 'partial' | 'all';
 }
 
 export const ZoomControls: React.FC<ZoomControlsProps> = ({ 
@@ -27,7 +29,9 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   onToggleLock,
   selectedCount = 0,
   onSelectAll,
-  onClearSelection
+  onClearSelection,
+  onLockAllSelected,
+  selectedLockState = 'none'
 }) => {
   const handleZoomIn = () => {
     if (networkRef.current) {
@@ -503,21 +507,42 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
       )}
 
       {/* Selection Management - Only show when nodes are selected */}
-      {selectedCount > 0 && onClearSelection && (
+      {selectedCount > 0 && (onClearSelection || onLockAllSelected) && (
         <div className={`flex flex-col gap-1 p-2 rounded-xl border ${
           theme === 'dark' 
             ? 'bg-gray-800/90 border-gray-600' 
             : 'bg-white/90 border-gray-200'
         } shadow-xl`}>
           
-          {/* Clear Selection */}
-          <button
-            onClick={onClearSelection}
-            className={`${uniformButtonClass} ${layoutThemeClasses}`}
-            title="Clear Selection"
-          >
-            <span className="text-xs font-bold">CLR</span>
-          </button>
+          {/* Lock/Unlock Selected Nodes */}
+          {onLockAllSelected && (
+            <button
+              onClick={onLockAllSelected}
+              className={`${uniformButtonClass} ${layoutThemeClasses}`}
+              title={
+                selectedLockState === 'all' 
+                  ? `Unlock ${selectedCount} selected node${selectedCount > 1 ? 's' : ''}` 
+                  : selectedLockState === 'partial'
+                  ? `Lock remaining ${selectedCount} selected node${selectedCount > 1 ? 's' : ''}`
+                  : `Lock ${selectedCount} selected node${selectedCount > 1 ? 's' : ''}`
+              }
+            >
+              <span className="text-xs font-bold">
+                {selectedLockState === 'all' ? 'UNLK' : 'LOCK'}
+              </span>
+            </button>
+          )}
+          
+          {/* Remove Selected Nodes */}
+          {onClearSelection && (
+            <button
+              onClick={onClearSelection}
+              className={`${uniformButtonClass} ${layoutThemeClasses}`}
+              title="Remove Selected Nodes and Their Topology"
+            >
+              <span className="text-xs font-bold">REM</span>
+            </button>
+          )}
         </div>
       )}
       

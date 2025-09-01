@@ -23,6 +23,7 @@ interface SimpleVisNetworkTopologyProps {
   onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
+  onSelectedNodeRemoval?: (selectedNodeIds: string[]) => void;
   className?: string;
   theme?: 'light' | 'dark';
 }
@@ -94,6 +95,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   onDirectionChange,
   onDepthChange,
   onClearAll,
+  onSelectedNodeRemoval,
   className = '',
   theme = 'light',
 }) => {
@@ -1187,6 +1189,50 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     }
   };
 
+  // Lock all selected nodes functionality
+  const lockAllSelectedNodes = () => {
+    const selectedNodesArray = Array.from(selectedNodeIds);
+    selectedNodesArray.forEach(nodeId => {
+      if (!lockedNodes.has(nodeId)) {
+        lockNode(nodeId);
+      }
+    });
+  };
+
+  const unlockAllSelectedNodes = () => {
+    const selectedNodesArray = Array.from(selectedNodeIds);
+    selectedNodesArray.forEach(nodeId => {
+      if (lockedNodes.has(nodeId)) {
+        unlockNode(nodeId);
+      }
+    });
+  };
+
+  const toggleAllSelectedLock = () => {
+    const selectedNodesArray = Array.from(selectedNodeIds);
+    const lockedSelectedNodes = selectedNodesArray.filter(nodeId => lockedNodes.has(nodeId));
+    
+    // If all selected nodes are locked, unlock them all
+    // Otherwise, lock all unselected nodes
+    if (lockedSelectedNodes.length === selectedNodesArray.length) {
+      unlockAllSelectedNodes();
+    } else {
+      lockAllSelectedNodes();
+    }
+  };
+
+  // Helper function to get lock state of selected nodes
+  const getSelectedLockState = () => {
+    const selectedNodesArray = Array.from(selectedNodeIds);
+    if (selectedNodesArray.length === 0) return 'none';
+    
+    const lockedSelectedNodes = selectedNodesArray.filter(nodeId => lockedNodes.has(nodeId));
+    
+    if (lockedSelectedNodes.length === 0) return 'none';
+    if (lockedSelectedNodes.length === selectedNodesArray.length) return 'all';
+    return 'partial';
+  };
+
   const handleDirectionSelect = (direction: 'parents' | 'children' | 'both') => {
     if (onDirectionChange && modalState.nodeId) {
       onDirectionChange(direction, modalState.nodeId);
@@ -1241,6 +1287,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     syncSelectionWithNetwork(emptySelection);
   };
 
+  const removeSelectedNodes = () => {
+    if (selectedNodeIds.size > 0 && onSelectedNodeRemoval) {
+      const selectedNodesArray = Array.from(selectedNodeIds);
+      onSelectedNodeRemoval(selectedNodesArray);
+      // Clear selection after removal
+      clearSelection();
+    }
+  };
+
   const getSelectedNodesCount = () => {
     return selectedNodeIds.size;
   };
@@ -1260,7 +1315,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           onToggleLock={toggleCanvasLock}
           selectedCount={getSelectedNodesCount()}
           onSelectAll={selectAllNodes}
-          onClearSelection={clearSelection}
+          onClearSelection={removeSelectedNodes}
+          onLockAllSelected={toggleAllSelectedLock}
+          selectedLockState={getSelectedLockState()}
         />
       </div>
       

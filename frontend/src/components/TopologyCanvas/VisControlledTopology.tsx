@@ -14,6 +14,7 @@ interface VisControlledTopologyProps {
   onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
   onClearAll?: () => void;
+  onSelectedNodeRemoval?: (selectedNodeIds: string[]) => void;
   className?: string;
   theme?: 'light' | 'dark';
 }
@@ -29,6 +30,7 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
   onDepthChange,
   onAddDeviceToSelection,
   onClearAll,
+  onSelectedNodeRemoval,
   className = '',
   theme = 'light',
 }) => {
@@ -48,6 +50,7 @@ export const VisControlledTopology: React.FC<VisControlledTopologyProps> = ({
         onDepthChange={onDepthChange}
         onAddDeviceToSelection={onAddDeviceToSelection}
         onClearAll={onClearAll}
+        onSelectedNodeRemoval={onSelectedNodeRemoval}
         className={styles.visNetworkWrapper}
         theme={theme}
       />
