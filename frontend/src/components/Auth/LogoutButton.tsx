@@ -1,5 +1,5 @@
 import React from 'react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useSimpleAuth } from '../../contexts/SimpleAuthContext';
 
 interface LogoutButtonProps {
   className?: string;
@@ -10,7 +10,25 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   className = '', 
   variant = 'button' 
 }) => {
-  const { logout, user, isAuthEnabled } = useAuth();
+  // Check if we're in an environment that supports auth
+  const isAuthPort = window.location.port === '4000';
+  
+  // Don't render anything if not on auth port
+  if (!isAuthPort) {
+    return null;
+  }
+
+  let logout, user, isAuthEnabled;
+  
+  try {
+    const authContext = useSimpleAuth();
+    logout = authContext.logout;
+    user = authContext.user;
+    isAuthEnabled = authContext.isAuthEnabled;
+  } catch (error) {
+    // If SimpleAuthProvider is not available, don't render
+    return null;
+  }
 
   // Don't show logout button if auth is disabled
   if (!isAuthEnabled) {
@@ -18,9 +36,9 @@ export const LogoutButton: React.FC<LogoutButtonProps> = ({
   }
 
   const handleLogout = () => {
-    if (confirm('Are you sure you want to sign out?')) {
-      logout();
-    }
+    logout();
+    // Force page reload to prevent back button access to cached content
+    window.location.reload();
   };
 
   if (variant === 'menu') {

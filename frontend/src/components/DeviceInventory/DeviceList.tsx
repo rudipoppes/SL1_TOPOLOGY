@@ -4,6 +4,7 @@ import { Device, apiService } from '../../services/api';
 import { configService } from '../../services/config';
 import { DeviceItem } from './DeviceItem';
 import { DeviceSearch } from './DeviceSearch';
+import { LogoutButton } from '../Auth/LogoutButton';
 
 
 interface DeviceListProps {
@@ -140,14 +141,6 @@ export const DeviceList: React.FC<DeviceListProps> = ({
       <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-b border-slate-200 dark:border-slate-700 transition-colors duration-300">
         <div className="p-6 pb-4">
           <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100">
-                Device Inventory
-              </h2>
-              <p className="text-slate-600 dark:text-slate-300 text-sm">
-                Click devices to add to topology
-              </p>
-            </div>
             <div className="flex items-center gap-3">
               {/* Theme Toggle */}
               {onThemeToggle && (
@@ -161,6 +154,10 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                   </span>
                 </button>
               )}
+            </div>
+            <div className="flex items-center gap-3">
+              {/* Logout Button - Only shows on port 4000 */}
+              <LogoutButton variant="menu" />
             </div>
           </div>
           
@@ -299,6 +296,11 @@ export const DeviceList: React.FC<DeviceListProps> = ({
                 ))}
               </div>
             </div>
+          </div>
+          <div className="mt-3 pt-3 border-t border-gray-200/30 dark:border-slate-600/30">
+            <p className="text-xs text-slate-600 dark:text-slate-400 text-center">
+              Click devices to add to topology
+            </p>
           </div>
         </div>
       )}

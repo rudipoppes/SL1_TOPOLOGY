@@ -47,11 +47,11 @@ export const DeviceItem: React.FC<DeviceItemProps> = ({
       <div className="flex flex-col items-end space-y-1">
         <div className="
           px-2 py-1 rounded-lg backdrop-blur-sm border
-          bg-gradient-to-r from-blue-50/80 to-indigo-50/80 dark:from-blue-900/60 dark:to-indigo-900/60
-          border-blue-200/50 dark:border-blue-700/50 text-primary dark:text-blue-200
+          bg-gradient-to-r from-slate-50/80 to-slate-100/80 dark:from-slate-900/60 dark:to-slate-800/60
+          border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-200
           text-xs font-medium transition-all duration-300
-          group-hover:from-blue-100/90 group-hover:to-indigo-100/90 dark:group-hover:from-blue-800/70 dark:group-hover:to-indigo-800/70
-          group-hover:border-blue-300/60 dark:group-hover:border-blue-600/60
+          group-hover:from-slate-100/90 group-hover:to-slate-200/90 dark:group-hover:from-slate-800/70 dark:group-hover:to-slate-700/70
+          group-hover:border-slate-300/60 dark:group-hover:border-slate-600/60
         ">
           {device.type}
         </div>

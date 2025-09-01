@@ -568,7 +568,7 @@ function AppContent() {
     <div ref={containerRef} className="flex h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-100/30 dark:from-slate-800 dark:via-slate-700 dark:to-slate-800 transition-colors duration-300">
       {/* Resizable Left Panel - Device Inventory */}
       <div 
-        className="flex-shrink-0 p-6 animate-slide-in"
+        className="flex-shrink-0 p-3 animate-slide-in"
         style={{ width: `${leftPanelWidth}px` }}
       >
         <div className="h-full glass-panel rounded-xl overflow-hidden border border-white/20">
@@ -588,7 +588,7 @@ function AppContent() {
       <div
         onMouseDown={handleMouseDown}
         className={`
-          w-1 hover:w-2 bg-gradient-to-b from-slate-200/60 to-slate-300/60 
+          w-1 hover:w-2 bg-gradient-to-b from-white/60 to-slate-300/60 dark:from-slate-200/60 dark:to-slate-300/60
           hover:from-blue-400/80 hover:to-blue-500/80 cursor-col-resize 
           transition-all duration-300 ease-out backdrop-blur-sm
           ${isResizing ? 'w-2 from-blue-500/90 to-blue-600/90 shadow-lg shadow-blue-500/20' : ''}
@@ -601,7 +601,7 @@ function AppContent() {
       />
 
       {/* Right Panel - Topology Canvas */}
-      <div className="flex-1 p-6 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 dark:from-slate-700/50 dark:via-slate-600/30 dark:to-slate-700/40 animate-slide-in transition-colors duration-300" style={{ animationDelay: '100ms' }}>
+      <div className="flex-1 p-3 bg-gradient-to-br from-slate-50/50 via-white/30 to-blue-50/40 dark:from-slate-700/50 dark:via-slate-600/30 dark:to-slate-700/40 animate-slide-in transition-colors duration-300" style={{ animationDelay: '100ms' }}>
         {topologyDevices.length === 0 ? (
           <div className="h-full glass-panel rounded-2xl flex items-center justify-center border border-white/30 animate-scale-in hover-lift" style={{ animationDelay: '200ms' }}>
             <div className="text-center text-slate-600">
