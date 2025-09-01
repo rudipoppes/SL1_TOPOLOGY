@@ -33,6 +33,21 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   onLockAllSelected,
   selectedLockState = 'none'
 }) => {
+  const handleClearAll = () => {
+    if (isLocked && onClearAll) {
+      const confirmed = window.confirm(
+        'Canvas is Locked\n\n' +
+        'The canvas is currently locked. Clearing all nodes will remove all topology data.\n\n' +
+        'Are you sure you want to proceed?'
+      );
+      if (confirmed) {
+        onClearAll();
+      }
+    } else if (onClearAll) {
+      onClearAll();
+    }
+  };
+
   const handleZoomIn = () => {
     if (networkRef.current) {
       const currentScale = networkRef.current.getScale();
@@ -392,9 +407,9 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
                 theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
               }`} />
               <button
-                onClick={onClearAll}
+                onClick={handleClearAll}
                 className={`${uniformButtonClass} ${dangerClass}`}
-                title="Clear All"
+                title={isLocked ? "Clear All (Canvas Locked - Confirmation Required)" : "Clear All"}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
