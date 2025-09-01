@@ -178,6 +178,19 @@ export const DeviceList: React.FC<DeviceListProps> = ({
               )}
             </div>
             <div className="flex items-center gap-3">
+              {/* Clear All Button - Shows when devices are selected */}
+              {parentSelectedDevices.length > 0 && (
+                <button
+                  onClick={handleClearAll}
+                  className="px-3 py-2 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/50 dark:hover:bg-red-800/50 text-red-700 dark:text-red-200 transition-all duration-200 hover:scale-105 flex items-center gap-2"
+                  title={isLocked ? "Clear All (Canvas Locked - Confirmation Required)" : "Clear All Devices from Topology"}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span className="text-sm font-medium">Clear All</span>
+                </button>
+              )}
               {/* Logout Button - Only shows on port 4000 */}
               <LogoutButton variant="menu" />
             </div>
@@ -218,55 +231,8 @@ export const DeviceList: React.FC<DeviceListProps> = ({
         </div>
       </div>
       
-      {/* Enhanced Selected Devices Area */}
-      {parentSelectedDevices.length > 0 && (
-        <div className="p-4 glass-panel bg-gradient-to-r from-slate-50/60 to-slate-100/60 dark:from-slate-800/60 dark:to-slate-700/60 border-b border-slate-200/30 dark:border-slate-600/30 backdrop-blur-sm rounded-xl mx-2 my-2">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200" style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' }}>
-              Selected for Topology ({parentSelectedDevices.length})
-            </div>
-            <button
-              onClick={handleClearAll}
-              className="text-xs text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-slate-100 font-medium transition-all duration-300 px-2 py-1 rounded-md hover:bg-slate-200/30 dark:hover:bg-slate-600/30"
-              style={{ fontSize: 'var(--text-xs)' }}
-              title={isLocked ? "Clear All (Canvas Locked - Confirmation Required)" : "Clear All"}
-            >
-              Clear All
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {parentSelectedDevices.map((device) => (
-              <div
-                key={device.id}
-                className="
-                  flex items-center glass-panel border-slate-300/40 dark:border-slate-600/40
-                  bg-gradient-to-r from-slate-100/80 to-slate-200/80 dark:from-slate-700/80 dark:to-slate-600/80
-                  text-slate-700 dark:text-slate-200 px-3 py-2 rounded-full
-                  font-medium shadow-sm transition-all duration-300
-                  hover:from-slate-200/90 hover:to-slate-300/90 dark:hover:from-slate-600/90 dark:hover:to-slate-500/90 hover:shadow-md
-                "
-                style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' }}
-              >
-                <span className="truncate max-w-28">{device.name}</span>
-                <button
-                  onClick={() => {
-                    const newSelected = new Set(selectedDevices);
-                    newSelected.delete(device.id);
-                    setSelectedDevices(newSelected);
-                    
-                    const updatedDeviceObjects = allSelectedDeviceObjects.filter(d => d.id !== device.id);
-                    setAllSelectedDeviceObjects(updatedDeviceObjects);
-                    onDeviceSelect(updatedDeviceObjects);
-                  }}
-                  className="ml-2 text-slate-500 dark:text-slate-400 hover:text-red-500 font-bold transition-colors duration-300 w-5 h-5 rounded-full hover:bg-red-100/50 dark:hover:bg-red-900/50 flex items-center justify-center"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Chip area hidden but functionality preserved - state management continues to work */}
+      {/* Original chip area code commented out for easy restoration if needed */}
 
       {/* Default Depth Selector - placed between load and search */}
       {onDepthChange && (
