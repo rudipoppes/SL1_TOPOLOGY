@@ -3,6 +3,7 @@ import { Network } from 'vis-network/standalone';
 import { DataSet } from 'vis-data/standalone';
 import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 import { DeviceRelationshipModal } from './DeviceRelationshipModal';
+import { DeletionConfirmationModal } from '../Modals/DeletionConfirmationModal';
 import { ZoomControls } from './ZoomControls';
 import { configService } from '../../services/config';
 import styles from './SimpleTopology.module.css';
@@ -22,7 +23,7 @@ interface SimpleVisNetworkTopologyProps {
   onDirectionChange?: (direction: 'parents' | 'children' | 'both', deviceId: string) => void;
   onDepthChange?: (depth: number, deviceId?: string) => void;
   onAddDeviceToSelection?: (device: Device) => void;
-  onSelectedNodeRemoval?: (selectedNodeIds: string[]) => void;
+  onSelectedNodeRemoval?: (selectedNodeIds: string[], confirmationChoice?: 'complete' | 'preserve' | 'cancel') => void | { needsConfirmation: true; affectedDevices: Device[] };
   onCanvasLockChange?: (locked: boolean) => void;
   className?: string;
   theme?: 'light' | 'dark';
@@ -137,6 +138,19 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     nodeId: '',
     nodeName: '',
     nodeType: undefined,
+  });
+
+  // Deletion confirmation modal state
+  const [deletionModalState, setDeletionModalState] = useState<{
+    isOpen: boolean;
+    selectedNodeIds: string[];
+    selectedNodeNames: string[];
+    affectedDevices: Device[];
+  }>({
+    isOpen: false,
+    selectedNodeIds: [],
+    selectedNodeNames: [],
+    affectedDevices: [],
   });
 
   // Initialize network once
@@ -1292,8 +1306,37 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   const removeSelectedNodes = () => {
     if (selectedNodeIds.size > 0 && onSelectedNodeRemoval) {
       const selectedNodesArray = Array.from(selectedNodeIds);
-      onSelectedNodeRemoval(selectedNodesArray);
-      // Clear selection after removal
+      
+      // Call onSelectedNodeRemoval to check if confirmation is needed
+      const result = onSelectedNodeRemoval(selectedNodesArray);
+      
+      // If confirmation is needed, show the modal
+      if (result && result.needsConfirmation) {
+        const selectedNodeNames = selectedNodesArray.map(nodeId => {
+          const node = nodesDataSetRef.current?.get(nodeId);
+          return node?.label || nodeId;
+        });
+        
+        setDeletionModalState({
+          isOpen: true,
+          selectedNodeIds: selectedNodesArray,
+          selectedNodeNames,
+          affectedDevices: result.affectedDevices,
+        });
+        return;
+      }
+      
+      // No confirmation needed, clear selection after removal
+      clearSelection();
+    }
+  };
+
+  const handleDeletionConfirmation = (option: 'complete' | 'preserve' | 'cancel') => {
+    setDeletionModalState(prev => ({ ...prev, isOpen: false }));
+    
+    if (option !== 'cancel' && onSelectedNodeRemoval) {
+      // Call the removal function with the user's choice
+      onSelectedNodeRemoval(deletionModalState.selectedNodeIds, option);
       clearSelection();
     }
   };
@@ -1360,6 +1403,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         onDepthChange={onDepthChange ? handleDeviceDepthChange : undefined}
         onLockToggle={handleNodeLockToggle}
         onClose={handleModalClose}
+      />
+
+      {/* Deletion Confirmation Modal */}
+      <DeletionConfirmationModal
+        isOpen={deletionModalState.isOpen}
+        selectedNodeNames={deletionModalState.selectedNodeNames}
+        affectedDevices={deletionModalState.affectedDevices}
+        onConfirm={handleDeletionConfirmation}
+        onClose={() => setDeletionModalState(prev => ({ ...prev, isOpen: false }))}
       />
     </div>
   );

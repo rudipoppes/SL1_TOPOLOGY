@@ -120,30 +120,114 @@ function AppContent() {
     setDeviceDepths(new Map());
   };
 
-  const handleSelectedNodeRemoval = (selectedNodeIds: string[]) => {
+  const handleSelectedNodeRemoval = (selectedNodeIds: string[], confirmationChoice?: 'complete' | 'preserve' | 'cancel') => {
     if (!topologyData || selectedNodeIds.length === 0) return;
-    
-    // More precise removal: only remove selected nodes and their children (downstream only)
-    const nodesToRemove = new Set<string>();
-    
-    // First, add all selected nodes to removal set
-    selectedNodeIds.forEach(nodeId => nodesToRemove.add(nodeId));
-    
-    // Then find children of selected nodes (but NOT parents or siblings)
-    selectedNodeIds.forEach(nodeId => {
-      const childrenNodes = findNodesWithinDepth(
-        nodeId,
-        5, // Reasonable depth for children
-        'children', // Only children, not parents
-        topologyData.edges
-      );
-      // Remove the selected node itself from children (it's already added)
-      childrenNodes.delete(nodeId);
-      // Add children to removal set
-      childrenNodes.forEach(childNodeId => nodesToRemove.add(childNodeId));
-    });
-    
-    // Update topology data by removing only the identified nodes and their edges
+
+    // If no confirmation choice provided, check if confirmation is needed
+    if (!confirmationChoice) {
+      // Detect downstream selected devices that would be affected
+      const affectedSelectedDevices = new Set<Device>();
+      
+      selectedNodeIds.forEach(nodeId => {
+        const downstreamNodes = findNodesWithinDepth(
+          nodeId,
+          10, // Deep search to find all downstream nodes
+          'children', // Only children/downstream
+          topologyData.edges
+        );
+        
+        // Check if any downstream nodes are in selectedDevices
+        downstreamNodes.forEach(downstreamNodeId => {
+          const selectedDevice = selectedDevices.find(device => device.id === downstreamNodeId);
+          if (selectedDevice && downstreamNodeId !== nodeId) {
+            affectedSelectedDevices.add(selectedDevice);
+          }
+        });
+      });
+
+      // If we found affected selected devices, we need confirmation - return early to trigger modal
+      if (affectedSelectedDevices.size > 0) {
+        // This will be handled by the SimpleVisNetworkTopology component showing the modal
+        return { needsConfirmation: true, affectedDevices: Array.from(affectedSelectedDevices) };
+      }
+      // No confirmation needed, proceed with normal deletion
+    }
+
+    // Handle confirmation choices
+    if (confirmationChoice === 'cancel') {
+      return; // Do nothing
+    }
+
+    // Determine what to remove based on confirmation choice
+    let nodesToRemove = new Set<string>();
+    let devicesToUnselect = new Set<string>();
+
+    if (confirmationChoice === 'complete') {
+      // Option 1: Remove everything including affected selected devices
+      selectedNodeIds.forEach(nodeId => {
+        nodesToRemove.add(nodeId);
+        // Add all downstream nodes
+        const downstreamNodes = findNodesWithinDepth(
+          nodeId,
+          10,
+          'children',
+          topologyData.edges
+        );
+        downstreamNodes.forEach(downstreamNodeId => {
+          nodesToRemove.add(downstreamNodeId);
+          // If downstream node is a selected device, mark for unselection
+          if (selectedDevices.some(device => device.id === downstreamNodeId)) {
+            devicesToUnselect.add(downstreamNodeId);
+          }
+        });
+      });
+    } else if (confirmationChoice === 'preserve') {
+      // Option 2: Remove only up to the first selected device in downstream
+      selectedNodeIds.forEach(nodeId => {
+        nodesToRemove.add(nodeId);
+        
+        // Find immediate children and check them recursively
+        const processNode = (currentNodeId: string, depth: number) => {
+          if (depth > 10) return; // Prevent infinite recursion
+          
+          const immediateChildren = new Set<string>();
+          topologyData.edges.forEach(edge => {
+            if (edge.source === currentNodeId) {
+              immediateChildren.add(edge.target);
+            }
+          });
+          
+          immediateChildren.forEach(childId => {
+            // If this child is a selected device, stop here (preserve it)
+            if (selectedDevices.some(device => device.id === childId)) {
+              return;
+            }
+            
+            // Otherwise, mark for removal and continue deeper
+            nodesToRemove.add(childId);
+            processNode(childId, depth + 1);
+          });
+        };
+        
+        processNode(nodeId, 0);
+      });
+    } else {
+      // Default behavior (no confirmation case)
+      selectedNodeIds.forEach(nodeId => nodesToRemove.add(nodeId));
+      
+      selectedNodeIds.forEach(nodeId => {
+        const childrenNodes = findNodesWithinDepth(
+          nodeId,
+          5,
+          'children',
+          topologyData.edges
+        );
+        childrenNodes.delete(nodeId);
+        childrenNodes.forEach(childNodeId => nodesToRemove.add(childNodeId));
+      });
+    }
+
+    // Update topology data
     setTopologyData(prevTopology => {
       if (!prevTopology) return null;
       
@@ -159,25 +243,30 @@ function AppContent() {
         edges: keptEdges
       };
     });
-    
-    // Only remove devices from topologyDevices if they were originally selected from inventory
-    // (devices that are in the chip area)
-    const removedChipDeviceIds = selectedNodeIds.filter(nodeId => 
+
+    // Update selected devices and topology devices based on what was removed
+    const removedChipDeviceIds = Array.from(nodesToRemove).filter(nodeId => 
       selectedDevices.some(device => device.id === nodeId)
     );
-    
+
+    // Add devices marked for unselection (from complete removal)
+    devicesToUnselect.forEach(deviceId => {
+      if (!removedChipDeviceIds.includes(deviceId)) {
+        removedChipDeviceIds.push(deviceId);
+      }
+    });
+
     const remainingDevices = topologyDevices.filter(device => 
       !removedChipDeviceIds.includes(device.id)
     );
     setTopologyDevices(remainingDevices);
-    
-    // Update selected devices (chip area) - only remove if they were originally in chip area
+
     const remainingSelectedDevices = selectedDevices.filter(device =>
       !removedChipDeviceIds.includes(device.id)
     );
     setSelectedDevices(remainingSelectedDevices);
-    
-    // Clean up device-specific settings for removed devices
+
+    // Clean up device-specific settings
     const newDirections = new Map(deviceDirections);
     const newDepths = new Map(deviceDepths);
     nodesToRemove.forEach(nodeId => {

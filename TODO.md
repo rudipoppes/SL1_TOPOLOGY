@@ -21,7 +21,8 @@
 - ✅ Full SL1 GraphQL integration with relationship filtering
 - ✅ AWS Lambda backend with caching and error handling
 
-### **UI Enhancements & Bug Fixes: Recently Completed (August 30, 2025)**
+### **UI Enhancements & Bug Fixes: Recently Completed (September 2, 2025)**
+- ✅ **Smart Deletion Confirmation**: Advanced deletion system with downstream detection and user choice options (Sept 2, 2025)
 - ✅ **Node Lock/Unlock Visual Feedback**: Fixed red outline visibility for locked individual nodes
 - ✅ **Canvas Lock Visual Feedback**: Added red outline with subtle heartbeat animation around entire canvas when locked
 - ✅ **Modal Size Optimization**: Reduced DeviceRelationshipModal size for better proportions (280px → 240px)
@@ -33,6 +34,113 @@
 - ✅ **Implementation Safeguards**: Added REJECTED_FEATURES.md and .gitignore blocks for floating panels
 - ✅ **Selection & Pan Behavior Fix**: Resolved interaction conflicts between selection and canvas panning
 - ✅ **Pan Canvas Behavior**: Reverted back to normal drag for canvas panning (removed shift+drag requirement)
+
+---
+
+## 🎯 **RECENTLY IMPLEMENTED: Smart Deletion Confirmation System** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 2, 2025)**
+**Branch**: `feature/smart-deletion-confirmation` | **Status**: Fully functional and tested
+
+### **Core Features Implemented**
+
+**1. Downstream Detection Algorithm**
+- **Smart Analysis**: When deleting canvas nodes, system automatically detects downstream topology
+- **Selected Device Detection**: Identifies if any downstream nodes have green checkmarks (in selectedDevices)
+- **Direction-Aware**: Uses `findNodesWithinDepth` with direction: 'children' for accurate detection
+- **Multi-Node Support**: Handles single and multiple node deletions with comprehensive analysis
+
+**2. Three-Option Confirmation Modal**
+- **Option 1 - Complete Removal**: Remove everything including affected selected devices
+  - Removes selected canvas nodes + full downstream topology
+  - Clears affected devices from selectedDevices Set and allSelectedDeviceObjects
+  - Automatically removes green checkmarks from inventory
+- **Option 2 - Preserve Selected Devices**: Keep selected devices and their topology
+  - Removes canvas nodes only up to first selected device
+  - Preserves selectedDevices state and green checkmarks
+  - Maintains topology for devices with green checkmarks
+- **Option 3 - Cancel**: No changes to topology or state
+
+**3. User Experience Flow**
+- **Seamless Integration**: Modal appears automatically when deletion would affect selected devices
+- **Visual Clarity**: Shows count of affected selected devices and their names
+- **Smart Defaults**: Normal deletion proceeds without modal when no selected devices affected
+- **Consistent State**: All UI elements (checkmarks, chip area) update automatically based on user choice
+
+### **Technical Implementation**
+
+**Files Created/Modified**:
+- **NEW**: `components/Modals/DeletionConfirmationModal.tsx` - Modern modal component
+- **ENHANCED**: `App.tsx` - Advanced deletion logic with downstream detection
+- **INTEGRATED**: `SimpleVisNetworkTopology.tsx` - Modal integration and user choice handling
+
+**Key Algorithms**:
+```typescript
+// Enhanced handleSelectedNodeRemoval with downstream detection
+const handleSelectedNodeRemoval = async (nodeIds: string[]) => {
+  // For each node to be deleted, check downstream topology
+  const affectedDevices = [];
+  
+  nodeIds.forEach(nodeId => {
+    const downstreamNodes = findNodesWithinDepth(nodeId, 10, 'children', topologyEdges);
+    const affectedSelected = downstreamNodes.filter(id => selectedDevices.has(id));
+    affectedDevices.push(...affectedSelected);
+  });
+  
+  // If selected devices affected → show confirmation modal
+  if (affectedDevices.length > 0) {
+    setDeletionModalState({ show: true, nodeIds, affectedDevices });
+  } else {
+    // Normal deletion without modal
+    proceedWithDeletion(nodeIds, 'complete');
+  }
+};
+```
+
+**User Choice Processing**:
+- **Complete Removal**: Removes all nodes and updates selectedDevices state
+- **Preserve Selected**: Uses graph traversal to preserve selected devices and their subtrees
+- **Cancel**: No state changes, modal closes
+
+### **Example Scenarios**
+
+**Scenario 1**: Canvas topology A→B→C→D→E (where D has green checkmark)
+1. User deletes node B
+2. System detects D (selected device) in downstream: B→C→D→E
+3. Modal shows: "1 selected device will be affected: Device-D"
+4. User choice determines outcome:
+   - Complete: Remove B→C→D→E, clear D's green checkmark
+   - Preserve: Remove B→C, keep D→E, maintain D's green checkmark
+   - Cancel: No changes
+
+**Scenario 2**: Delete node with no downstream selected devices
+1. User deletes isolated node or node with no selected downstream devices
+2. Normal deletion proceeds immediately without modal
+3. No interruption to user workflow
+
+### **Benefits Delivered**
+
+✅ **Prevents Accidental Loss**: Users can't accidentally delete carefully selected device topologies  
+✅ **Informed Decisions**: Clear visibility into what will be affected before deletion  
+✅ **Flexible Control**: Multiple options accommodate different user intentions  
+✅ **Seamless Experience**: Only appears when needed, invisible otherwise  
+✅ **State Consistency**: All UI elements stay synchronized regardless of user choice
+
+---
+
+## 🔧 **Next Priority: Device Selection Behavior**
+
+### **Work on: What to do when device (in device list) is selected but already in topology on canvas**
+- **Issue**: When a device is clicked in the device list that's already displayed in the topology canvas
+- **Current Behavior**: Device gets added to chip area (duplicate selection indication)
+- **Desired Behavior**: TBD - Need to define optimal UX for this scenario
+- **Options to Consider**:
+  - Highlight/flash the existing node in the topology
+  - Pan/zoom to center on the existing device
+  - Show a message indicating device is already in topology
+  - Update the device's relationships if depth/direction changed
+- **Priority**: High - Core UX improvement
+- **Files**: `DeviceList.tsx`, `SimpleVisNetworkTopology.tsx`, `App.tsx`
 
 ---
 
@@ -188,7 +296,7 @@
 
 ---
 
-**Last Updated**: August 30, 2025
+**Last Updated**: September 2, 2025
 **Current Focus**: Modern UI Enhancement Phase  
 **Status**: All critical bugs fixed - Ready for Visual Modernization
-**Recent Fixes**: Hierarchical layout bug resolved, floating panels implementation permanently blocked
+**Recent Fixes**: Smart deletion confirmation system implemented, hierarchical layout bug resolved, floating panels implementation permanently blocked

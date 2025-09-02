@@ -18,10 +18,11 @@
 ### Current Capabilities
 - 🔍 **Device Search & Filtering** - Real-time search through SL1 device inventory
 - 🎯 **Drag & Drop Interface** - Intuitive device selection and topology building
-- 📊 **Interactive Visualization** - React Flow powered topology canvas
+- 📊 **Interactive Visualization** - vis-network powered topology canvas with advanced layouts
 - 🔄 **Live SL1 Integration** - Direct connection to ScienceLogic GraphQL API
 - ⚡ **Performance Optimized** - Virtual scrolling, caching, responsive design
 - 🛡️ **Secure Authentication** - AWS Parameter Store credential management
+- 🗑️ **Smart Deletion System** - Intelligent confirmation when deletion affects selected devices
 
 ### User Workflow
 1. **Browse Devices** - Search and filter through SL1 device inventory
@@ -30,9 +31,7 @@
 4. **Explore** - Pan, zoom, and interact with the topology visualization
 
 ### Known Issues
-- ⚠️ Device removal from canvas not working
-- ⚠️ Canvas layout resets when adding new devices  
-- ⚠️ No interactive device selection on canvas
+- ⚠️ Device selection behavior when device already exists in topology needs refinement
 
 **See [TODO.md](TODO.md) for complete issue tracking and development status.**
 
@@ -170,6 +169,6 @@ See [CLAUDE.md](./CLAUDE.md) for comprehensive troubleshooting guide.
 
 ## 📄 Status
 
-**Version**: Phase 2 - Production Ready ✅  
-**Last Updated**: August 2025  
-**Live System**: Fully operational with real SL1 data
+**Version**: Phase 7+ - Advanced Features ✅  
+**Last Updated**: September 2025  
+**Live System**: Fully operational with smart deletion confirmation and real SL1 data

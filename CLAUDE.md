@@ -57,8 +57,9 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Visual Selection Indicators**: Green checkmarks show selected devices in inventory with proper clearing (Sept 1, 2025)
 - ✅ **UI Consolidation**: Removed redundant clear button from canvas, consolidated all clear functionality to chip area (Sept 1, 2025)
 - ✅ **Lock Confirmation Logic**: Canvas lock confirmation moved to chip area clear button for consistent UX (Sept 1, 2025)
+- ✅ **Smart Deletion Confirmation**: Advanced deletion system with downstream detection and user choice options (Sept 2, 2025)
 - 🎯 **BASE APPLICATION**: Commit a27fdb5 - All core features working perfectly with bug fixes
-- 🎯 **CURRENT STATUS**: Main branch - All features stable and production-ready
+- 🎯 **CURRENT STATUS**: Feature branch - Smart deletion confirmation system implemented and ready for merge
 
 ### **IMPORTANT: Visualization Library Status**
 - **Current Implementation**: vis-network v9.1.9 for topology visualization
@@ -449,6 +450,120 @@ node /home/ubuntu/SL1_TOPOLOGY/scripts/reset-simple-password.js
 - localStorage-based sessions with proper cleanup
 - Port-specific authentication (development bypassed)
 - No sensitive data exposed in client-side code
+
+---
+
+## 🎯 **SMART DELETION CONFIRMATION SYSTEM** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 2, 2025)**
+**Branch**: `feature/smart-deletion-confirmation` | **Status**: Production-ready advanced deletion system | **Commit**: TBD
+
+### **Purpose & Design Philosophy**
+The smart deletion confirmation system prevents users from accidentally deleting carefully selected device topologies by detecting when deletion would affect devices with green checkmarks (selectedDevices) and providing intelligent choices.
+
+### **Core Features**
+
+**1. Intelligent Downstream Detection**
+- **Automatic Analysis**: When user attempts to delete canvas nodes, system analyzes downstream topology
+- **Selected Device Detection**: Identifies if any downstream/children nodes exist in selectedDevices Set
+- **Algorithm Integration**: Uses existing `findNodesWithinDepth` with direction: 'children' for accuracy
+- **Multi-Node Support**: Handles single and multiple node deletion scenarios
+
+**2. Three-Option User Choice Modal**
+- **Complete Removal**: Remove everything including affected selected devices
+  - Clears selected canvas nodes + full downstream topology
+  - Updates selectedDevices Set and allSelectedDeviceObjects
+  - Automatically removes green checkmarks from inventory
+- **Preserve Selected**: Keep selected devices and their topology
+  - Removes canvas nodes only up to first selected device
+  - Preserves selectedDevices state and green checkmarks
+  - Maintains topology subtrees for devices with checkmarks
+- **Cancel**: No changes to topology or state
+
+**3. Seamless User Experience**
+- **Smart Triggering**: Modal only appears when deletion would affect selected devices
+- **Visual Clarity**: Shows count and names of affected selected devices
+- **Uninterrupted Workflow**: Normal deletions proceed without modal when no selected devices affected
+- **State Consistency**: All UI elements (checkmarks, chip area, canvas) stay synchronized
+
+### **Technical Implementation**
+
+**Files Created/Modified**:
+```
+frontend/src/components/Modals/DeletionConfirmationModal.tsx  # New modal component
+frontend/src/App.tsx                                          # Enhanced deletion logic
+frontend/src/components/NetworkTopology/SimpleVisNetworkTopology.tsx  # Modal integration
+```
+
+**Key Algorithm Enhancement**:
+```typescript
+const handleSelectedNodeRemoval = async (nodeIds: string[]) => {
+  const affectedDevices = [];
+  
+  // For each node to be deleted, analyze downstream topology
+  nodeIds.forEach(nodeId => {
+    const downstreamNodes = findNodesWithinDepth(nodeId, 10, 'children', topologyEdges);
+    const affectedSelected = downstreamNodes.filter(id => selectedDevices.has(id));
+    affectedDevices.push(...affectedSelected.map(id => 
+      allSelectedDeviceObjects.find(device => device.id === id)
+    ));
+  });
+  
+  // Trigger modal if selected devices would be affected
+  if (affectedDevices.length > 0) {
+    setDeletionModalState({
+      show: true,
+      nodeIds,
+      affectedDevices: affectedDevices.filter(Boolean)
+    });
+  } else {
+    proceedWithDeletion(nodeIds, 'complete');
+  }
+};
+```
+
+**State Management**:
+- `deletionModalState` - Controls modal visibility and passes affected device data
+- Integration with existing `selectedDevices` Set and `allSelectedDeviceObjects` array
+- Automatic green checkmark synchronization via existing state management
+
+### **User Workflow Examples**
+
+**Scenario 1: Deletion Affects Selected Devices**
+1. Canvas topology: Router-A → Switch-B → Switch-C → Server-D (where Server-D has green checkmark)
+2. User selects Switch-B for deletion
+3. System detects Server-D (selected device) in downstream: B→C→D
+4. Modal appears: "1 selected device will be affected: Server-D"
+5. User choices:
+   - **Complete**: Remove B→C→D, clear Server-D's green checkmark
+   - **Preserve**: Remove B→C, keep D on canvas, maintain green checkmark
+   - **Cancel**: No changes
+
+**Scenario 2: Normal Deletion (No Selected Devices Affected)**
+1. User deletes isolated node or node with no selected downstream devices
+2. Deletion proceeds immediately without modal
+3. Maintains smooth user experience for routine operations
+
+**Scenario 3: Multi-Node Deletion**
+1. User selects multiple nodes for deletion that collectively affect several selected devices
+2. Modal shows comprehensive list: "3 selected devices will be affected: Device-A, Device-B, Device-C"
+3. User choice applies to entire selection with consistent logic
+
+### **Benefits Delivered**
+
+✅ **Prevents Data Loss**: Users cannot accidentally delete carefully curated device selections  
+✅ **Informed Decision Making**: Clear visibility into deletion consequences before action  
+✅ **Flexible Control**: Multiple options accommodate different user intentions  
+✅ **Performance Optimized**: Zero overhead when no selected devices are affected  
+✅ **State Consistency**: Automatic synchronization of all UI elements  
+✅ **User Experience**: Invisible when not needed, helpful when required
+
+### **Integration with Existing Systems**
+
+**Topology Management**: Seamlessly integrates with existing topology reduction and incremental addition algorithms  
+**State Management**: Leverages current selectedDevices Set and device object management  
+**UI Consistency**: Uses established modal patterns and styling from DeviceRelationshipModal  
+**Error Handling**: Robust error handling and fallback to safe deletion modes
 
 ---
 
