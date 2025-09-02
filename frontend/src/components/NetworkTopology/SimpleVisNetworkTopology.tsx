@@ -274,12 +274,27 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // Add keyboard event handler for shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Skip all keyboard shortcuts when search is visible and active
-      if (isSearchVisible) {
-        // Only allow Escape to close search
-        if (event.key === 'Escape') {
+      // Handle Escape key first (works in both search and normal modes)
+      if (event.key === 'Escape') {
+        if (isSearchVisible) {
           handleCloseSearch();
+        } else {
+          clearSelection();
         }
+        return;
+      }
+      
+      // Handle Ctrl+K/Cmd+K to open search (works when search is closed)
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        if (!isSearchVisible) {
+          handleOpenSearch();
+        }
+        return;
+      }
+      
+      // Skip all other keyboard shortcuts when search is visible and active
+      if (isSearchVisible) {
         // Don't process any other shortcuts when search is open
         return;
       }
@@ -295,21 +310,10 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       }
       
-      // Ctrl+K or Cmd+K to open search (common search shortcut)
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        handleOpenSearch();
-      }
-      
       // Ctrl+A or Cmd+A to select all nodes
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         selectAllNodes();
-      }
-      
-      // Escape to clear selection
-      if (event.key === 'Escape') {
-        clearSelection();
       }
       
       // Delete to clear selected nodes (demonstration - just clears selection in this case)
