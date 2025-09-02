@@ -34,6 +34,7 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   selectedLockState = 'none',
   onOpenSearch
 }) => {
+  
 
   const handleZoomIn = () => {
     if (networkRef.current) {
