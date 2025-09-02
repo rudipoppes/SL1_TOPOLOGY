@@ -558,30 +558,102 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       };
     }) || [];
 
-    const newVisEdges = (topologyData?.edges || []).filter(edge => edge && edge.source && edge.target).map((edge, index) => ({
-      id: `edge-${edge.source}-${edge.target}-${index}`,
-      from: edge.source,
-      to: edge.target,
-      arrows: {
-        to: {
-          enabled: true,
-          type: 'arrow',
-          scaleFactor: 1.0,
+    // Detect circular relationships for curved edges (only in hierarchical layout)
+    const circularEdges = new Set<string>();
+    if (layout === 'hierarchical') {
+      const allNodeIds = (topologyData?.nodes || []).map(node => node.id);
+      const edgeList = topologyData?.edges || [];
+      
+      // Find strongly connected components to identify circular relationships
+      const findCircularEdges = (edges: any[], nodeIds: string[]) => {
+        const adjacencyMap = new Map<string, string[]>();
+        
+        // Build adjacency map
+        edges.forEach(edge => {
+          if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
+            if (!adjacencyMap.has(edge.source)) {
+              adjacencyMap.set(edge.source, []);
+            }
+            adjacencyMap.get(edge.source)!.push(edge.target);
+          }
+        });
+
+        const visited = new Set<string>();
+        const recStack = new Set<string>();
+        const circularEdgeSet = new Set<string>();
+
+        const dfs = (nodeId: string) => {
+          if (recStack.has(nodeId)) {
+            // Found a cycle - mark all edges in this cycle as circular
+            return true;
+          }
+          if (visited.has(nodeId)) {
+            return false;
+          }
+
+          visited.add(nodeId);
+          recStack.add(nodeId);
+
+          const neighbors = adjacencyMap.get(nodeId) || [];
+          for (const neighbor of neighbors) {
+            if (dfs(neighbor)) {
+              // This edge is part of a circular relationship
+              circularEdgeSet.add(`${nodeId}-${neighbor}`);
+              circularEdgeSet.add(`${neighbor}-${nodeId}`); // Both directions
+            }
+          }
+
+          recStack.delete(nodeId);
+          return false;
+        };
+
+        nodeIds.forEach(nodeId => {
+          if (!visited.has(nodeId)) {
+            dfs(nodeId);
+          }
+        });
+
+        return circularEdgeSet;
+      };
+
+      const detectedCircularEdges = findCircularEdges(edgeList, allNodeIds);
+      detectedCircularEdges.forEach(edgeKey => circularEdges.add(edgeKey));
+    }
+
+    const newVisEdges = (topologyData?.edges || []).filter(edge => edge && edge.source && edge.target).map((edge, index) => {
+      // Check if this edge is part of a circular relationship
+      const edgeKey = `${edge.source}-${edge.target}`;
+      const isCircular = circularEdges.has(edgeKey);
+      
+      return {
+        id: `edge-${edge.source}-${edge.target}-${index}`,
+        from: edge.source,
+        to: edge.target,
+        arrows: {
+          to: {
+            enabled: true,
+            type: 'arrow',
+            scaleFactor: 1.0,
+          },
         },
-      },
-      color: {
-        color: themeColors.edgeColor,
-        highlight: themeColors.edgeHighlight,
-        hover: themeColors.edgeHover,
-      },
-      width: 2,
-      length: 200, // Minimum edge length
-      smooth: {
-        enabled: true,
-        type: 'continuous',
-        roundness: 0.2,
-      },
-    })) || [];
+        color: {
+          color: themeColors.edgeColor,
+          highlight: themeColors.edgeHighlight,
+          hover: themeColors.edgeHover,
+        },
+        width: 2,
+        length: 200, // Minimum edge length
+        smooth: isCircular ? {
+          enabled: true,
+          type: 'curvedCW', // Use curved clockwise for circular relationships
+          roundness: 0.15,  // Subtle bow to separate circular relationships
+        } : {
+          enabled: true,
+          type: 'continuous',
+          roundness: 0.2,
+        },
+      };
+    }) || [];
 
     // Get current positions from the network (includes manual drag positions)
     const currentPositions = new Map();
@@ -1150,35 +1222,133 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     const edges = topologyData?.edges || [];
     
     // Build adjacency maps for selected nodes only
-    const childrenMap = new Map<string, string[]>();
-    const parentsMap = new Map<string, string[]>();
+    const adjacencyMap = new Map<string, string[]>();
+    const reverseAdjacencyMap = new Map<string, string[]>();
     
     edges.forEach(edge => {
       // Only consider edges between selected nodes
       if (selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)) {
-        // Build parent -> children mapping
-        if (!childrenMap.has(edge.source)) {
-          childrenMap.set(edge.source, []);
+        // Forward adjacency (parent -> child)
+        if (!adjacencyMap.has(edge.source)) {
+          adjacencyMap.set(edge.source, []);
         }
-        childrenMap.get(edge.source)!.push(edge.target);
+        adjacencyMap.get(edge.source)!.push(edge.target);
         
-        // Build child -> parents mapping  
-        if (!parentsMap.has(edge.target)) {
-          parentsMap.set(edge.target, []);
+        // Reverse adjacency (child -> parent)
+        if (!reverseAdjacencyMap.has(edge.target)) {
+          reverseAdjacencyMap.set(edge.target, []);
         }
-        parentsMap.get(edge.target)!.push(edge.source);
+        reverseAdjacencyMap.get(edge.target)!.push(edge.source);
       }
     });
+
+    // Enhanced Circular Relationship Detection: Find Strongly Connected Components
+    const findStronglyConnectedComponents = (edges: any[], nodeIds: string[]) => {
+      const adjacencyMap = new Map<string, string[]>();
+      
+      // Build adjacency map
+      edges.forEach(edge => {
+        if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
+          if (!adjacencyMap.has(edge.source)) {
+            adjacencyMap.set(edge.source, []);
+          }
+          adjacencyMap.get(edge.source)!.push(edge.target);
+        }
+      });
+
+      const index = new Map<string, number>();
+      const lowLink = new Map<string, number>();
+      const onStack = new Map<string, boolean>();
+      const stack: string[] = [];
+      const sccs: string[][] = [];
+      let currentIndex = 0;
+
+      const strongConnect = (nodeId: string) => {
+        index.set(nodeId, currentIndex);
+        lowLink.set(nodeId, currentIndex);
+        currentIndex++;
+        stack.push(nodeId);
+        onStack.set(nodeId, true);
+
+        const neighbors = adjacencyMap.get(nodeId) || [];
+        for (const neighbor of neighbors) {
+          if (!index.has(neighbor)) {
+            strongConnect(neighbor);
+            lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, lowLink.get(neighbor)!));
+          } else if (onStack.get(neighbor)) {
+            lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, index.get(neighbor)!));
+          }
+        }
+
+        if (lowLink.get(nodeId) === index.get(nodeId)) {
+          const component: string[] = [];
+          let w: string;
+          do {
+            w = stack.pop()!;
+            onStack.set(w, false);
+            component.push(w);
+          } while (w !== nodeId);
+          sccs.push(component);
+        }
+      };
+
+      nodeIds.forEach(nodeId => {
+        if (!index.has(nodeId)) {
+          strongConnect(nodeId);
+        }
+      });
+
+      return sccs;
+    };
+
+    const nodeIds = Array.from(selectedNodeIds);
+    const sccs = findStronglyConnectedComponents(edges, nodeIds);
+
+    // Create condensed graph: each SCC becomes a single node
+    const sccMap = new Map<string, number>(); // nodeId -> scc index
+    sccs.forEach((component, index) => {
+      component.forEach(nodeId => {
+        sccMap.set(nodeId, index);
+      });
+    });
+
+    const condensedAdjacency = new Map<number, Set<number>>();
     
-    // Determine hierarchical levels for selected nodes
-    const nodeLevels = new Map<string, number>();
-    const processedNodes = new Set<string>();
+    edges.forEach(edge => {
+      if (selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)) {
+        const sourceScc = sccMap.get(edge.source)!;
+        const targetScc = sccMap.get(edge.target)!;
+        
+        if (sourceScc !== targetScc) {
+          if (!condensedAdjacency.has(sourceScc)) {
+            condensedAdjacency.set(sourceScc, new Set());
+          }
+          condensedAdjacency.get(sourceScc)!.add(targetScc);
+        }
+      }
+    });
+
+    // Calculate levels for SCCs using topological sorting
+    const sccLevels = new Map<number, number>();
+    const processedSccs = new Set<number>();
     
-    // Find root nodes (nodes with no parents in selected set)
-    const rootNodes = selectedNodes.filter(node => !parentsMap.has(node.id));
-    
-    // If no clear hierarchy, arrange horizontally as before
-    if (rootNodes.length === selectedNodes.length) {
+    // Find root SCCs (no incoming edges in condensed graph)
+    const rootSccs: number[] = [];
+    for (let i = 0; i < sccs.length; i++) {
+      let hasIncomingEdge = false;
+      for (const [_, targets] of condensedAdjacency) {
+        if (targets.has(i)) {
+          hasIncomingEdge = true;
+          break;
+        }
+      }
+      if (!hasIncomingEdge) {
+        rootSccs.push(i);
+      }
+    }
+
+    // If no clear hierarchy, arrange all nodes horizontally
+    if (rootSccs.length === sccs.length) {
       const startX = selectedNodes[0].x || 0;
       const startY = selectedNodes[0].y || 0;
       const spacing = 400;
@@ -1192,64 +1362,98 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       nodesDataSetRef.current?.update(updatedNodes);
       return;
     }
+
+    // Assign levels to SCCs
+    const sccQueue: Array<{sccIndex: number, level: number}> = [];
     
-    // Assign levels using BFS approach
-    const queue: Array<{nodeId: string, level: number}> = [];
-    
-    // Start with root nodes at level 0
-    rootNodes.forEach(node => {
-      nodeLevels.set(node.id, 0);
-      processedNodes.add(node.id);
-      queue.push({ nodeId: node.id, level: 0 });
+    rootSccs.forEach(sccIndex => {
+      sccLevels.set(sccIndex, 0);
+      processedSccs.add(sccIndex);
+      sccQueue.push({ sccIndex, level: 0 });
     });
-    
-    // Process remaining nodes level by level
-    while (queue.length > 0) {
-      const { nodeId, level } = queue.shift()!;
-      const children = childrenMap.get(nodeId) || [];
+
+    while (sccQueue.length > 0) {
+      const { sccIndex, level } = sccQueue.shift()!;
+      const children = condensedAdjacency.get(sccIndex) || new Set();
       
-      children.forEach(childId => {
-        if (selectedNodeIds.has(childId) && !processedNodes.has(childId)) {
+      children.forEach(childScc => {
+        if (!processedSccs.has(childScc)) {
           const childLevel = level + 1;
-          nodeLevels.set(childId, childLevel);
-          processedNodes.add(childId);
-          queue.push({ nodeId: childId, level: childLevel });
+          sccLevels.set(childScc, childLevel);
+          processedSccs.add(childScc);
+          sccQueue.push({ sccIndex: childScc, level: childLevel });
         }
       });
     }
-    
-    // Group nodes by level
-    const levelGroups = new Map<number, string[]>();
-    nodeLevels.forEach((level, nodeId) => {
+
+    // Now position nodes: group SCCs by level, then arrange nodes within each SCC as siblings
+    const levelGroups = new Map<number, number[]>(); // level -> SCC indices
+    sccLevels.forEach((level, sccIndex) => {
       if (!levelGroups.has(level)) {
         levelGroups.set(level, []);
       }
-      levelGroups.get(level)!.push(nodeId);
+      levelGroups.get(level)!.push(sccIndex);
     });
-    
-    // Calculate positions
-    const levelSpacing = 300; // Vertical spacing between levels
-    const nodeSpacing = 400; // Horizontal spacing between nodes
+
+    const levelSpacing = 300;
+    const sccSpacing = 400; // Space between different SCCs on same level
+    const circularSpacing = 180; // Tighter spacing for circular siblings
     const startX = selectedNodes[0].x || 0;
     const startY = selectedNodes[0].y || 0;
     
     const updatedNodes: any[] = [];
-    
-    levelGroups.forEach((nodeIds, level) => {
+
+    levelGroups.forEach((sccIndices, level) => {
       const levelY = startY + (level * levelSpacing);
-      const totalWidth = (nodeIds.length - 1) * nodeSpacing;
-      const levelStartX = startX - (totalWidth / 2);
       
-      nodeIds.forEach((nodeId, index) => {
-        const x = levelStartX + (index * nodeSpacing);
-        updatedNodes.push({
-          id: nodeId,
-          x: x,
-          y: levelY,
-        });
+      // Calculate total width needed for this level
+      let totalWidth = 0;
+      sccIndices.forEach((sccIndex, i) => {
+        const sccSize = sccs[sccIndex].length;
+        if (sccSize > 1) {
+          // Circular group uses tighter spacing
+          totalWidth += (sccSize - 1) * circularSpacing;
+        }
+        if (i < sccIndices.length - 1) {
+          totalWidth += sccSpacing; // Space between SCCs
+        }
+      });
+      
+      let currentX = startX - (totalWidth / 2);
+      
+      sccIndices.forEach((sccIndex, sccIndexInLevel) => {
+        const sccNodes = sccs[sccIndex];
+        
+        if (sccNodes.length === 1) {
+          // Single node
+          updatedNodes.push({
+            id: sccNodes[0],
+            x: currentX,
+            y: levelY,
+          });
+        } else {
+          // Circular group: arrange as siblings with tighter spacing
+          const groupWidth = (sccNodes.length - 1) * circularSpacing;
+          const groupStartX = currentX - (groupWidth / 2);
+          
+          sccNodes.forEach((nodeId, nodeIndex) => {
+            updatedNodes.push({
+              id: nodeId,
+              x: groupStartX + (nodeIndex * circularSpacing),
+              y: levelY,
+            });
+          });
+          
+          currentX += groupWidth / 2;
+        }
+        
+        // Add spacing between SCCs (except for last one)
+        if (sccIndexInLevel < sccIndices.length - 1) {
+          currentX += sccSpacing;
+        }
       });
     });
-    
+
     nodesDataSetRef.current?.update(updatedNodes);
   };
 
