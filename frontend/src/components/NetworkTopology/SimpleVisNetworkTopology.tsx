@@ -669,7 +669,44 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
         const edges = topologyData?.edges || [];
         
-        // Phase 1: Build adjacency maps for DAG structure
+        // Cycle Detection: Check for circular relationships before hierarchical processing
+        const hasCycles = edges.some(edge => 
+          edges.some(otherEdge => 
+            edge.source === otherEdge.target && edge.target === otherEdge.source
+          )
+        );
+        
+        if (hasCycles) {
+          console.warn('Circular relationships detected in topology. Falling back to physics layout to prevent browser hanging.');
+          // Automatically use physics layout instead of hierarchical to prevent infinite loops
+          networkRef.current?.setOptions({
+            physics: {
+              enabled: true,
+              stabilization: { enabled: true, iterations: 100 },
+              barnesHut: {
+                gravitationalConstant: -2000,
+                centralGravity: 0.3,
+                springLength: 95,
+                springConstant: 0.03,
+                damping: 0.09,
+                avoidOverlap: 1,
+              },
+            },
+            layout: { hierarchical: { enabled: false } },
+          });
+          
+          // Disable physics after stabilization
+          setTimeout(() => {
+            if (networkRef.current) {
+              networkRef.current.setOptions({ physics: { enabled: false } });
+            }
+          }, 3000);
+          
+          setForceRedraw(false);
+          return; // Exit early to avoid hierarchical processing
+        }
+        
+        // Phase 1: Build adjacency maps for DAG structure (only if no cycles)
         const childrenMap = new Map<string, string[]>();
         const parentsMap = new Map<string, string[]>();
         
