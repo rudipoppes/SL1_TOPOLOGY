@@ -669,44 +669,79 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         const selectedNodeIds = new Set(selectedDevices?.map(d => d.id) || []);
         const edges = topologyData?.edges || [];
         
-        // Cycle Detection: Check for circular relationships before hierarchical processing
-        const hasCycles = edges.some(edge => 
-          edges.some(otherEdge => 
-            edge.source === otherEdge.target && edge.target === otherEdge.source
-          )
-        );
-        
-        if (hasCycles) {
-          console.warn('Circular relationships detected in topology. Falling back to physics layout to prevent browser hanging.');
-          // Automatically use physics layout instead of hierarchical to prevent infinite loops
-          networkRef.current?.setOptions({
-            physics: {
-              enabled: true,
-              stabilization: { enabled: true, iterations: 100 },
-              barnesHut: {
-                gravitationalConstant: -2000,
-                centralGravity: 0.3,
-                springLength: 95,
-                springConstant: 0.03,
-                damping: 0.09,
-                avoidOverlap: 1,
-              },
-            },
-            layout: { hierarchical: { enabled: false } },
+        // Enhanced Circular Relationship Detection: Find Strongly Connected Components
+        const findStronglyConnectedComponents = (edges: any[], nodeIds: string[]) => {
+          const graph = new Map<string, string[]>();
+          const reverseGraph = new Map<string, string[]>();
+          
+          // Build adjacency lists
+          nodeIds.forEach(id => {
+            graph.set(id, []);
+            reverseGraph.set(id, []);
           });
           
-          // Disable physics after stabilization
-          setTimeout(() => {
-            if (networkRef.current) {
-              networkRef.current.setOptions({ physics: { enabled: false } });
-            }
-          }, 3000);
+          edges.forEach(edge => {
+            graph.get(edge.source)?.push(edge.target);
+            reverseGraph.get(edge.target)?.push(edge.source);
+          });
           
-          setForceRedraw(false);
-          return; // Exit early to avoid hierarchical processing
+          // Tarjan's algorithm for SCC detection
+          const index = new Map<string, number>();
+          const lowLink = new Map<string, number>();
+          const onStack = new Set<string>();
+          const stack: string[] = [];
+          const sccs: string[][] = [];
+          let currentIndex = 0;
+          
+          const strongConnect = (nodeId: string) => {
+            index.set(nodeId, currentIndex);
+            lowLink.set(nodeId, currentIndex);
+            currentIndex++;
+            stack.push(nodeId);
+            onStack.add(nodeId);
+            
+            const neighbors = graph.get(nodeId) || [];
+            for (const neighbor of neighbors) {
+              if (!index.has(neighbor)) {
+                strongConnect(neighbor);
+                lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, lowLink.get(neighbor)!));
+              } else if (onStack.has(neighbor)) {
+                lowLink.set(nodeId, Math.min(lowLink.get(nodeId)!, index.get(neighbor)!));
+              }
+            }
+            
+            // If nodeId is a root node, pop the stack and create an SCC
+            if (lowLink.get(nodeId) === index.get(nodeId)) {
+              const component: string[] = [];
+              let node: string;
+              do {
+                node = stack.pop()!;
+                onStack.delete(node);
+                component.push(node);
+              } while (node !== nodeId);
+              sccs.push(component);
+            }
+          };
+          
+          nodeIds.forEach(nodeId => {
+            if (!index.has(nodeId)) {
+              strongConnect(nodeId);
+            }
+          });
+          
+          return sccs;
+        };
+        
+        const allNodeIds = nodes.map(node => node.id);
+        const stronglyConnectedComponents = findStronglyConnectedComponents(edges, allNodeIds);
+        const circularGroups = stronglyConnectedComponents.filter(scc => scc.length > 1);
+        
+        if (circularGroups.length > 0) {
+          console.info(`Detected ${circularGroups.length} circular relationship groups. Treating as siblings in hierarchical layout.`);
+          console.info('Circular groups:', circularGroups);
         }
         
-        // Phase 1: Build adjacency maps for DAG structure (only if no cycles)
+        // Phase 1: Build adjacency maps for DAG structure (handling circular groups as siblings)
         const childrenMap = new Map<string, string[]>();
         const parentsMap = new Map<string, string[]>();
         
@@ -724,48 +759,122 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           parentsMap.get(edge.target)!.push(edge.source);
         });
         
-        // Phase 2: Proper layer assignment using topological approach
+        // Phase 2: Enhanced layer assignment handling circular groups as siblings
         const nodeLevels = new Map<string, number>();
-        const inDegree = new Map<string, number>();
+        const circularGroupMap = new Map<string, string[]>(); // nodeId -> its circular group
+        const groupToLevel = new Map<string[], number>(); // circular group -> level
         
-        // Initialize in-degrees
-        nodes.forEach(node => {
-          inDegree.set(node.id, parentsMap.get(node.id)?.length || 0);
+        // Create mapping for circular groups
+        circularGroups.forEach(group => {
+          group.forEach(nodeId => {
+            circularGroupMap.set(nodeId, group);
+          });
         });
         
-        // Find nodes with no parents (top level)
-        const topLevelNodes: string[] = [];
+        // Create condensed graph treating circular groups as single nodes
+        const condensedGraph = new Map<string, string[]>();
+        const condensedParents = new Map<string, string[]>();
+        const condensedNodes = new Set<string>();
+        
+        // Add individual non-circular nodes
         nodes.forEach(node => {
-          if (inDegree.get(node.id) === 0) {
-            topLevelNodes.push(node.id);
+          if (!circularGroupMap.has(node.id)) {
+            condensedNodes.add(node.id);
+            condensedGraph.set(node.id, []);
+            condensedParents.set(node.id, []);
           }
         });
         
-        // If no natural top level exists, use selected nodes as roots
+        // Add circular groups as single "super nodes"
+        const groupRepresentatives = new Map<string[], string>();
+        circularGroups.forEach(group => {
+          const groupRep = `GROUP_${group.join('_')}`;
+          groupRepresentatives.set(group, groupRep);
+          condensedNodes.add(groupRep);
+          condensedGraph.set(groupRep, []);
+          condensedParents.set(groupRep, []);
+        });
+        
+        // Build condensed edges (between groups and individual nodes)
+        edges.forEach(edge => {
+          const sourceGroup = circularGroupMap.get(edge.source);
+          const targetGroup = circularGroupMap.get(edge.target);
+          
+          // Skip internal circular group edges
+          if (sourceGroup && targetGroup && sourceGroup === targetGroup) {
+            return;
+          }
+          
+          const sourceNode = sourceGroup ? groupRepresentatives.get(sourceGroup)! : edge.source;
+          const targetNode = targetGroup ? groupRepresentatives.get(targetGroup)! : edge.target;
+          
+          if (sourceNode !== targetNode) {
+            condensedGraph.get(sourceNode)?.push(targetNode);
+            condensedParents.get(targetNode)?.push(sourceNode);
+          }
+        });
+        
+        // Find root nodes in condensed graph
+        const topLevelNodes: string[] = [];
+        condensedNodes.forEach(node => {
+          if (condensedParents.get(node)?.length === 0) {
+            topLevelNodes.push(node);
+          }
+        });
+        
+        // If no natural top level, use selected devices/groups
         const rootNodes = topLevelNodes.length > 0 ? topLevelNodes : Array.from(selectedNodeIds);
         
-        // Assign levels using modified topological sort
+        // Assign levels using topological sort on condensed graph
         const queue: {id: string, level: number}[] = [];
+        const condensedLevels = new Map<string, number>();
+        
         rootNodes.forEach(id => {
-          queue.push({id, level: 0});
-          nodeLevels.set(id, 0);
+          const condensedId = circularGroupMap.has(id) ? 
+            groupRepresentatives.get(circularGroupMap.get(id)!)! : id;
+          queue.push({id: condensedId, level: 0});
+          condensedLevels.set(condensedId, 0);
         });
         
         while (queue.length > 0) {
           const {id, level} = queue.shift()!;
-          const children = childrenMap.get(id) || [];
+          const children = condensedGraph.get(id) || [];
           
           children.forEach(childId => {
-            const currentLevel = nodeLevels.get(childId);
+            const currentLevel = condensedLevels.get(childId);
             const newLevel = level + 1;
             
-            // Assign child to deepest level encountered (handles DAG structure)
             if (currentLevel === undefined || newLevel > currentLevel) {
-              nodeLevels.set(childId, newLevel);
+              condensedLevels.set(childId, newLevel);
               queue.push({id: childId, level: newLevel});
             }
           });
         }
+        
+        // Assign levels to actual nodes (circular group members get same level)
+        condensedLevels.forEach((level, condensedNodeId) => {
+          if (condensedNodeId.startsWith('GROUP_')) {
+            // This is a circular group - assign same level to all members
+            const group = Array.from(groupRepresentatives.entries())
+              .find(([_, rep]) => rep === condensedNodeId)?.[0];
+            if (group) {
+              group.forEach(nodeId => {
+                nodeLevels.set(nodeId, level);
+              });
+              groupToLevel.set(group, level);
+            }
+          } else {
+            // Individual node
+            nodeLevels.set(condensedNodeId, level);
+          }
+        });
+        
+        // Ensure all nodes have levels assigned
+        nodes.forEach(node => {
+          if (!nodeLevels.has(node.id)) {
+            nodeLevels.set(node.id, 0);
+          }
+        });
         
         // Phase 3: Group nodes by hierarchical level
         const levelGroups = new Map<number, string[]>();
@@ -776,38 +885,73 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           levelGroups.get(level)!.push(nodeId);
         });
         
-        // Phase 4: Calculate positions with proper parent centering
+        // Phase 4: Enhanced positioning with circular sibling handling
         const levelSpacing = 250;
-        const nodeSpacing = 400; // Increased from 300 to prevent overlap
-        const minNodeSpacing = 220; // Increased from 150 to ensure no overlap
+        const nodeSpacing = 400; // Regular spacing between nodes
+        const siblingSpacing = 180; // Tighter spacing for circular siblings
         const hierarchyNodes: any[] = [];
         const nodePositions = new Map<string, {x: number, y: number}>();
         
         // Sort levels from top to bottom
         const sortedLevels = Array.from(levelGroups.keys()).sort((a, b) => a - b);
         
-        // Process each level
+        // Process each level with enhanced circular group handling
         sortedLevels.forEach(level => {
           const nodesAtLevel = levelGroups.get(level)!;
           const levelY = level * levelSpacing + 100; // Y position for this level
           
+          // Separate circular groups from individual nodes at this level
+          const circularGroupsAtLevel: string[][] = [];
+          const individualNodesAtLevel: string[] = [];
+          const processedNodes = new Set<string>();
+          
+          nodesAtLevel.forEach(nodeId => {
+            if (processedNodes.has(nodeId)) return;
+            
+            const group = circularGroupMap.get(nodeId);
+            if (group && groupToLevel.get(group) === level) {
+              // This is a circular group member at this level
+              circularGroupsAtLevel.push(group);
+              group.forEach(id => processedNodes.add(id));
+            } else if (!group) {
+              // Individual non-circular node
+              individualNodesAtLevel.push(nodeId);
+              processedNodes.add(nodeId);
+            }
+          });
+          
           if (level === 0 || sortedLevels.indexOf(level) === 0) {
-            // Top level - distribute evenly
-            const totalWidth = (nodesAtLevel.length - 1) * nodeSpacing;
+            // Top level - distribute evenly, keeping circular groups together
+            const entities = [...circularGroupsAtLevel, ...individualNodesAtLevel.map(id => [id])];
+            const totalWidth = (entities.length - 1) * nodeSpacing;
             const startX = -totalWidth / 2;
             
-            nodesAtLevel.forEach((nodeId, index) => {
-              const x = startX + (index * nodeSpacing);
-              nodePositions.set(nodeId, {x, y: levelY});
+            entities.forEach((entity, entityIndex) => {
+              const entityCenterX = startX + (entityIndex * nodeSpacing);
+              
+              if (entity.length === 1) {
+                // Individual node
+                nodePositions.set(entity[0], {x: entityCenterX, y: levelY});
+              } else {
+                // Circular group - arrange siblings side by side
+                const groupWidth = (entity.length - 1) * siblingSpacing;
+                const groupStartX = entityCenterX - groupWidth / 2;
+                
+                entity.forEach((nodeId, siblingIndex) => {
+                  const x = groupStartX + (siblingIndex * siblingSpacing);
+                  nodePositions.set(nodeId, {x, y: levelY});
+                });
+              }
             });
           } else {
-            // Lower levels - position based on parent centering
-            const positionedNodes = new Set<string>();
-            const nodeXPositions = new Map<string, number>();
+            // Lower levels - position based on parent centering with group awareness
+            const positionedEntities = new Map<string, number>(); // entity representative -> x position
             
-            // First pass: position nodes based on their parents
-            nodesAtLevel.forEach(nodeId => {
-              const parents = parentsMap.get(nodeId) || [];
+            // First pass: position entities (groups/individuals) based on their parents
+            [...circularGroupsAtLevel, ...individualNodesAtLevel.map(id => [id])].forEach(entity => {
+              const entityRep = entity[0]; // Use first member as representative
+              const parents = parentsMap.get(entityRep) || [];
+              
               if (parents.length > 0) {
                 // Calculate center point of all parents
                 let parentXSum = 0;
@@ -823,36 +967,50 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
                 
                 if (validParents > 0) {
                   const centerX = parentXSum / validParents;
-                  nodeXPositions.set(nodeId, centerX);
-                  positionedNodes.add(nodeId);
+                  positionedEntities.set(entityRep, centerX);
                 }
               }
             });
             
-            // Second pass: position remaining nodes and resolve collisions
-            const unpositionedNodes = nodesAtLevel.filter(id => !positionedNodes.has(id));
-            
-            // Sort positioned nodes by X coordinate
-            const sortedPositioned = Array.from(positionedNodes).sort((a, b) => {
-              return nodeXPositions.get(a)! - nodeXPositions.get(b)!;
+            // Sort entities by their desired position
+            const allEntities = [...circularGroupsAtLevel, ...individualNodesAtLevel.map(id => [id])];
+            const sortedEntities = allEntities.sort((a, b) => {
+              const aPos = positionedEntities.get(a[0]) ?? 0;
+              const bPos = positionedEntities.get(b[0]) ?? 0;
+              return aPos - bPos;
             });
             
-            // Resolve collisions and set final positions
+            // Second pass: resolve collisions and set final positions
             let currentX = -1000; // Start from left
             
-            [...sortedPositioned, ...unpositionedNodes].forEach(nodeId => {
-              let desiredX = nodeXPositions.get(nodeId);
+            sortedEntities.forEach(entity => {
+              const entityRep = entity[0];
+              let desiredX = positionedEntities.get(entityRep);
               
               if (desiredX === undefined) {
-                // Unpositioned node - place after last positioned node
+                // Unpositioned entity - place after last positioned entity
                 desiredX = currentX + nodeSpacing;
               } else {
-                // Positioned node - ensure minimum spacing
-                desiredX = Math.max(desiredX, currentX + minNodeSpacing);
+                // Positioned entity - ensure minimum spacing
+                desiredX = Math.max(desiredX, currentX + nodeSpacing);
               }
               
-              nodePositions.set(nodeId, {x: desiredX, y: levelY});
-              currentX = desiredX;
+              if (entity.length === 1) {
+                // Individual node
+                nodePositions.set(entity[0], {x: desiredX, y: levelY});
+                currentX = desiredX;
+              } else {
+                // Circular group - arrange siblings around center
+                const groupWidth = (entity.length - 1) * siblingSpacing;
+                const groupStartX = desiredX - groupWidth / 2;
+                
+                entity.forEach((nodeId, siblingIndex) => {
+                  const x = groupStartX + (siblingIndex * siblingSpacing);
+                  nodePositions.set(nodeId, {x, y: levelY});
+                });
+                
+                currentX = desiredX + groupWidth / 2;
+              }
             });
           }
         });
