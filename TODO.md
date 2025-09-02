@@ -23,6 +23,9 @@
 
 ### **UI Enhancements & Bug Fixes: Recently Completed (September 2, 2025)**
 - ✅ **Smart Deletion Confirmation**: Advanced deletion system with downstream detection and user choice options (Sept 2, 2025)
+- ✅ **Canvas Search Functionality**: Full-featured search with keyboard shortcuts (Cmd+K/Ctrl+K) and theme-aware highlighting (Sept 2, 2025)
+- ✅ **Canvas Pan/Zoom Fixes**: Removed auto-snap behavior that interfered with manual zoom/pan operations (Sept 2, 2025)
+- ✅ **Tooltip Bug Resolution**: Disabled problematic vis-network tooltips that caused positioning issues (Sept 2, 2025)
 - ✅ **Node Lock/Unlock Visual Feedback**: Fixed red outline visibility for locked individual nodes
 - ✅ **Canvas Lock Visual Feedback**: Added red outline with subtle heartbeat animation around entire canvas when locked
 - ✅ **Modal Size Optimization**: Reduced DeviceRelationshipModal size for better proportions (280px → 240px)
@@ -125,6 +128,102 @@ const handleSelectedNodeRemoval = async (nodeIds: string[]) => {
 ✅ **Flexible Control**: Multiple options accommodate different user intentions  
 ✅ **Seamless Experience**: Only appears when needed, invisible otherwise  
 ✅ **State Consistency**: All UI elements stay synchronized regardless of user choice
+
+---
+
+## 🔍 **RECENTLY IMPLEMENTED: Canvas Search Functionality** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 2, 2025)**
+**Status**: Fully functional and tested | **Commits**: `4bd8f6f`, `b47f175`, `14180de`
+
+### **Core Features Implemented**
+
+**1. Keyboard-Activated Search**
+- **Cmd+K (Mac) / Ctrl+K (Windows/Linux)**: Opens search instantly
+- **Escape key**: Closes search and clears highlighting
+- **Fast activation**: 150ms delay for responsive experience
+- **Global shortcuts**: Work from anywhere in the application
+
+**2. Beautiful Theme-Aware Search UI**
+- **Floating search panel**: Appears in top-right corner with smooth fade-in animation
+- **Theme integration**: Adapts colors and styling to light/dark mode
+- **Modern styling**: Rounded corners, backdrop blur, subtle shadows
+- **Interactive elements**: Clear button, close button, search icon with visual feedback
+
+**3. Real-Time Search & Highlighting**
+- **Live filtering**: Search results appear as you type with 300ms debounce
+- **Name-only search**: Searches device names with case-insensitive matching
+- **Beautiful glow effects**: Matching nodes get theme-aware glow (blue for light, purple for dark)
+- **Non-matching dimming**: Non-matching nodes fade to 20% opacity for focus
+- **Instant clearing**: All highlighting removed when search is cleared
+
+**4. Improved Canvas Interaction**
+- **Fixed auto-snap issue**: Removed auto-zoom behavior that interfered with manual pan/zoom
+- **Keyboard conflict resolution**: Search input doesn't trigger canvas shortcuts
+- **Seamless integration**: Search works alongside all existing canvas features
+
+### **Technical Implementation**
+
+**Files Created/Modified**:
+- **NEW**: `CanvasSearch.tsx` - Modern floating search component with theme awareness
+- **ENHANCED**: `SimpleVisNetworkTopology.tsx` - Search integration, highlighting, and keyboard handling
+- **ENHANCED**: `ZoomControls.tsx` - Added search button with magnifying glass icon
+- **FIXED**: Canvas pan/zoom behavior by removing auto-fit interference
+
+**Key Features**:
+```typescript
+// Search highlighting with theme-aware glow effects
+const applySearchHighlight = (matchingIds: string[], isSearchActive: boolean) => {
+  if (isSearchActive) {
+    // Beautiful glow for matching nodes
+    color: {
+      background: theme === 'dark' ? '#312e81' : '#dbeafe',
+      border: theme === 'dark' ? '#8b5cf6' : '#3b82f6',
+    },
+    shadow: {
+      color: theme === 'dark' ? 'rgba(139, 92, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)',
+      size: 20,
+    }
+  }
+};
+
+// Keyboard shortcut handling
+document.addEventListener('keydown', (event) => {
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+    event.preventDefault();
+    handleOpenSearch();
+  }
+});
+```
+
+### **User Experience Flow**
+
+**Opening Search**:
+1. Press Cmd+K or Ctrl+K (or click search button in zoom controls)
+2. Floating search panel appears in top-right with smooth animation
+3. Input field auto-focuses for immediate typing
+4. Canvas shortcuts disabled to prevent conflicts
+
+**Searching**:
+1. Type device name - results appear in real-time
+2. Matching nodes get beautiful glow effects (theme-aware colors)
+3. Non-matching nodes fade to 20% opacity for focus
+4. Search works with partial matches (case-insensitive)
+
+**Closing Search**:
+1. Press Escape key or click close button
+2. All highlighting removed instantly
+3. Canvas returns to normal state
+4. Canvas shortcuts re-enabled
+
+### **Benefits Delivered**
+
+✅ **Fast Device Location**: Quickly find devices in complex topologies when zoomed out  
+✅ **Beautiful Visual Feedback**: Theme-aware glow effects that don't interfere with existing styling  
+✅ **Seamless Integration**: Works perfectly with all existing canvas features  
+✅ **Keyboard-Friendly**: Global shortcuts that don't conflict with browser or canvas controls  
+✅ **Performance Optimized**: Debounced search and efficient highlighting updates  
+✅ **Bug-Free Canvas**: Fixed pan/zoom auto-snap issue that was interfering with user control
 
 ---
 
