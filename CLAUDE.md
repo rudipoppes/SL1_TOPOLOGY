@@ -12,9 +12,9 @@ To get Claude up to speed with this project, tell Claude:
 This will load all project context including architecture, configuration formats, deployment setup, and current development status.
 
 ### 🎯 **BASE APPLICATION REFERENCE**
-- **Commit Hash**: `476e3f6`  
+- **Commit Hash**: `b47c084`  
 - **Date**: September 2, 2025
-- **Status**: Fully functional base application with canvas search, pan/zoom fixes, and tooltip bug resolution
+- **Status**: Fully functional base application with circular relationship handling, curved edges, and all UI enhancements
 - **Branch**: main
 - **Note**: Use this as reference point for all future development
 
@@ -30,7 +30,7 @@ This project is being built using an **iterative, incremental approach**:
 3. **Git-based version control** - All changes tracked and documented
 4. **Test-driven validation** - Each phase validated before moving to next
 
-### Current Status: **Phase 8 - CANVAS SEARCH & INTERACTION FIXES COMPLETE** ✅ 
+### Current Status: **Phase 9 - CIRCULAR RELATIONSHIP HANDLING COMPLETE** ✅ 
 - ✅ **Complete System Integration**: Frontend ↔ Lambda ↔ SL1 fully working
 - ✅ **Production Deployment**: Frontend on EC2, Lambda on AWS, real SL1 data
 - ✅ **Device Inventory Interface**: Search, filter, pagination with cursor-based pagination  
@@ -61,7 +61,10 @@ This project is being built using an **iterative, incremental approach**:
 - ✅ **Canvas Search Implementation**: Full-featured search with Cmd+K/Ctrl+K shortcuts and theme-aware highlighting (Sept 2, 2025)
 - ✅ **Canvas Pan/Zoom Fixes**: Removed auto-snap behavior that interfered with manual zoom/pan operations (Sept 2, 2025)
 - ✅ **Tooltip Bug Resolution**: Disabled problematic vis-network tooltips that caused positioning glitches (Sept 2, 2025)
-- 🎯 **BASE APPLICATION**: Commit 476e3f6 - All core features working perfectly with search and interaction fixes
+- ✅ **Circular Relationship Handling**: Complete SCC algorithm implementation for A↔B relationships in hierarchical layouts (Sept 2, 2025)
+- ✅ **Curved Edge Implementation**: Subtle curved edges (roundness: 0.15) for visual distinction of circular relationships (Sept 2, 2025)
+- ✅ **Browser Hang Fix**: Eliminated infinite loops in both main and selective hierarchical layout modes (Sept 2, 2025)
+- 🎯 **BASE APPLICATION**: Commit b47c084 - All core features working perfectly with circular relationship handling
 - 🎯 **CURRENT STATUS**: Main branch - All features stable and production-ready
 
 ### **IMPORTANT: Visualization Library Status**
@@ -567,6 +570,110 @@ const handleSelectedNodeRemoval = async (nodeIds: string[]) => {
 **State Management**: Leverages current selectedDevices Set and device object management  
 **UI Consistency**: Uses established modal patterns and styling from DeviceRelationshipModal  
 **Error Handling**: Robust error handling and fallback to safe deletion modes
+
+---
+
+## 🔄 **CIRCULAR RELATIONSHIP HANDLING** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 2, 2025)**
+**Branch**: `feature/hierarchical-circular-siblings` → `main` | **Status**: Production-ready | **Commit**: `b47c084`
+
+### **Problem Solved**
+**Critical Bug**: Browser hanging/freezing when hierarchical layout encountered circular relationships (Device A ↔ Device B)
+**Root Cause**: Infinite loops in hierarchical level assignment algorithms trying to process circular dependencies
+**Impact**: Users experienced complete browser freeze requiring page refresh when using hierarchical layout with bidirectional device relationships
+
+### **Complete Solution Implemented**
+
+**1. Enhanced Main Hierarchical Layout** (lines 672-1017):
+- **Tarjan's SCC Algorithm**: Replaced simple cycle detection with full Strongly Connected Components detection (O(V+E) complexity)
+- **Condensed Graph Theory**: Treats circular groups as single "super nodes" for hierarchy calculation
+- **Sibling Positioning**: Places circular relationship members side-by-side on same hierarchical level (180px spacing vs 400px normal)
+- **Topological Sorting**: Proper level assignment for DAG structures with circular handling
+
+**2. Enhanced Selective Hierarchical Layout** (lines 1146-1386):
+- **Same SCC Algorithm**: Applied identical Tarjan's algorithm to "Hierarchical Layout (Selected)" button functionality  
+- **Per-Device Processing**: Individual device traversal with contamination prevention
+- **Consistent Behavior**: Both layout modes now handle circular relationships identically
+- **No More Fallback**: Eliminated physics layout fallback - all circular relationships handled in hierarchical mode
+
+**3. Visual Distinction - Curved Edges** (lines 561-656):
+- **Circular Edge Detection**: DFS algorithm identifies edges that are part of circular relationships (hierarchical layout only)
+- **Curved Edge Styling**: Circular relationships display with `curvedCW` (curved clockwise) smoothing
+- **Subtle Curvature**: `roundness: 0.15` provides gentle bow to visually separate bidirectional connections
+- **Normal Edges**: Non-circular edges maintain `continuous` smoothing with `roundness: 0.2`
+
+### **Technical Implementation Details**
+
+**SCC Detection Algorithm**:
+```typescript
+// Tarjan's Strongly Connected Components Algorithm
+const findStronglyConnectedComponents = (edges: any[], nodeIds: string[]) => {
+  const index = new Map<string, number>();
+  const lowLink = new Map<string, number>();
+  const onStack = new Map<string, boolean>();
+  const stack: string[] = [];
+  const sccs: string[][] = [];
+  let currentIndex = 0;
+
+  const strongConnect = (nodeId: string) => {
+    // Recursive SCC detection with proper cycle handling
+  };
+  
+  return sccs; // Returns groups of circular nodes
+};
+```
+
+**Condensed Graph Processing**:
+- Each SCC becomes a single node for hierarchy calculation
+- Levels assigned to SCC groups, not individual nodes
+- Prevents infinite loops while preserving hierarchical structure
+
+**Edge Styling Logic**:
+```typescript
+smooth: isCircular ? {
+  enabled: true,
+  type: 'curvedCW',     // Curved clockwise for circular relationships
+  roundness: 0.15,      // Subtle bow for visual distinction
+} : {
+  enabled: true,
+  type: 'continuous',   // Normal edges
+  roundness: 0.2,
+}
+```
+
+### **User Experience Impact**
+
+**Before Enhancement**:
+- Browser freezing with circular relationships in hierarchical mode
+- Physics layout fallback lost hierarchical structure
+- No visual indication of bidirectional relationships
+
+**After Enhancement**:
+- Smooth hierarchical layout regardless of circular relationships
+- Visual distinction with subtle curved edges for A↔B connections
+- Both main and selective hierarchical modes work flawlessly
+- Maintains all existing functionality for non-circular topologies
+
+### **Files Modified**
+- **Primary**: `frontend/src/components/NetworkTopology/SimpleVisNetworkTopology.tsx`
+  - Lines 672-1017: Main hierarchical layout with SCC algorithm
+  - Lines 1146-1386: Selective hierarchical layout with SCC algorithm  
+  - Lines 561-656: Circular edge detection and curved styling
+- **Documentation**: `CLAUDE.md`, `TODO.md` updated with implementation details
+
+### **Testing & Validation**
+✅ **Browser Performance**: No more hanging/freezing with circular relationships  
+✅ **Layout Consistency**: Both hierarchical modes handle circles identically  
+✅ **Visual Clarity**: Curved edges clearly distinguish bidirectional connections  
+✅ **Backward Compatibility**: All existing functionality preserved for non-circular topologies  
+✅ **Algorithm Efficiency**: O(V+E) SCC detection with minimal performance impact
+
+### **Production Status**
+- **Live Environment**: Both development (3000) and production (4000) servers running enhanced version
+- **Git Status**: Committed to main branch and synced with GitHub repository  
+- **User Testing**: Ready for testing circular relationship scenarios in hierarchical layout modes
+- **Performance**: No degradation for normal topologies, significant improvement for circular cases
 
 ---
 

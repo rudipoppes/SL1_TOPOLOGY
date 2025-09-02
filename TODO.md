@@ -1,6 +1,6 @@
 # TODO - SL1 Topology System
 
-**Current Status & Next Phase** - Updated August 2025
+**Current Status & Next Phase** - Updated September 2025
 
 ---
 
@@ -26,6 +26,8 @@
 - ✅ **Canvas Search Functionality**: Full-featured search with keyboard shortcuts (Cmd+K/Ctrl+K) and theme-aware highlighting (Sept 2, 2025)
 - ✅ **Canvas Pan/Zoom Fixes**: Removed auto-snap behavior that interfered with manual zoom/pan operations (Sept 2, 2025)
 - ✅ **Tooltip Bug Resolution**: Disabled problematic vis-network tooltips that caused positioning issues (Sept 2, 2025)
+- ✅ **Circular Relationship Handling**: Complete SCC algorithm implementation prevents browser hangs with A↔B relationships (Sept 2, 2025)
+- ✅ **Curved Edge Implementation**: Subtle curved edges distinguish circular relationships in hierarchical layout (Sept 2, 2025)
 - ✅ **Node Lock/Unlock Visual Feedback**: Fixed red outline visibility for locked individual nodes
 - ✅ **Canvas Lock Visual Feedback**: Added red outline with subtle heartbeat animation around entire canvas when locked
 - ✅ **Modal Size Optimization**: Reduced DeviceRelationshipModal size for better proportions (280px → 240px)
@@ -40,7 +42,49 @@
 
 ---
 
-## 🎯 **RECENTLY IMPLEMENTED: Smart Deletion Confirmation System** ✅ **FULLY WORKING**
+## 🔄 **RECENTLY IMPLEMENTED: Circular Relationship Handling** ✅ **FULLY WORKING**
+
+### **Implementation Complete (September 2, 2025)**
+**Branch**: `feature/hierarchical-circular-siblings` → `main` | **Status**: Production-ready | **Commit**: `b47c084`
+
+### **Critical Problem Solved**
+**Browser Hanging Bug**: Hierarchical layout caused complete browser freeze when encountering circular relationships (Device A ↔ Device B). Users had to refresh page to recover, making hierarchical layout unusable for many real-world network topologies.
+
+### **Complete Solution Delivered**
+
+**1. Tarjan's SCC Algorithm Implementation**
+- **Enhanced Main Layout**: Replaced simple cycle detection with full Strongly Connected Components algorithm
+- **Enhanced Selected Layout**: Applied same SCC algorithm to "Hierarchical Layout (Selected)" button
+- **Performance**: O(V+E) complexity with no degradation for normal topologies
+- **Robustness**: Handles complex circular relationships including multi-node cycles
+
+**2. Sibling Positioning for Circular Groups**
+- **Smart Placement**: Circular relationship members positioned as siblings on same hierarchical level
+- **Visual Logic**: A↔B relationships display side-by-side rather than in parent-child hierarchy
+- **Spacing**: Tighter 180px spacing for circular groups vs 400px for normal nodes
+- **Hierarchy Preservation**: Non-circular portions maintain proper hierarchical structure
+
+**3. Visual Distinction with Curved Edges**
+- **Automatic Detection**: Identifies circular relationships and applies curved edge styling
+- **Subtle Curvature**: `roundness: 0.15` provides gentle bow for visual separation
+- **Mode-Specific**: Only applies curved edges in hierarchical layout mode
+- **Clear Distinction**: Normal edges remain straight, circular edges show gentle curve
+
+### **Technical Excellence**
+- **Algorithm Choice**: Tarjan's SCC algorithm - industry standard for cycle detection
+- **Code Quality**: Clean implementation in both main and selective layout functions
+- **Testing**: Validated against complex circular topologies without performance impact
+- **Documentation**: Comprehensive inline comments and architectural documentation
+
+### **User Impact**
+- **No More Browser Hangs**: Hierarchical layout works smoothly with any topology structure
+- **Visual Clarity**: Curved edges immediately identify bidirectional relationships
+- **Consistent Behavior**: Both hierarchical layout modes handle circular relationships identically
+- **Professional Grade**: Solution matches enterprise network visualization standards
+
+---
+
+## 🎯 **PREVIOUSLY IMPLEMENTED: Smart Deletion Confirmation System** ✅ **FULLY WORKING**
 
 ### **Implementation Complete (September 2, 2025)**
 **Branch**: `feature/smart-deletion-confirmation` | **Status**: Fully functional and tested
@@ -397,5 +441,5 @@ document.addEventListener('keydown', (event) => {
 
 **Last Updated**: September 2, 2025
 **Current Focus**: Modern UI Enhancement Phase  
-**Status**: All critical bugs fixed - Ready for Visual Modernization
-**Recent Fixes**: Smart deletion confirmation system implemented, hierarchical layout bug resolved, floating panels implementation permanently blocked
+**Status**: All critical bugs fixed - Circular relationship handling complete
+**Recent Fixes**: Circular relationship handling with SCC algorithm and curved edges, smart deletion confirmation system, hierarchical layout bugs resolved, floating panels implementation permanently blocked
