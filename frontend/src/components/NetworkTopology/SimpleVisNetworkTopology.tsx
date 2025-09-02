@@ -274,6 +274,16 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
 
     // Add keyboard event handler for shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Skip all keyboard shortcuts when search is visible and active
+      if (isSearchVisible) {
+        // Only allow Escape to close search
+        if (event.key === 'Escape') {
+          handleCloseSearch();
+        }
+        // Don't process any other shortcuts when search is open
+        return;
+      }
+      
       // Ctrl+L or Cmd+L to lock/unlock selected nodes
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'l') {
         event.preventDefault();
@@ -297,13 +307,9 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         selectAllNodes();
       }
       
-      // Escape to clear selection or close search
+      // Escape to clear selection
       if (event.key === 'Escape') {
-        if (isSearchVisible) {
-          handleCloseSearch();
-        } else {
-          clearSelection();
-        }
+        clearSelection();
       }
       
       // Delete to clear selected nodes (demonstration - just clears selection in this case)
@@ -1378,12 +1384,34 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       });
       setOriginalNodeStyles(stylesMap);
     }
+    
+    // Disable vis-network keyboard shortcuts when search is open
+    if (networkRef.current) {
+      networkRef.current.setOptions({
+        interaction: {
+          keyboard: {
+            enabled: false
+          }
+        }
+      });
+    }
   };
 
   const handleCloseSearch = () => {
     setIsSearchVisible(false);
     clearSearchHighlight();
     searchRef.current?.clear();
+    
+    // Re-enable vis-network keyboard shortcuts when search is closed
+    if (networkRef.current) {
+      networkRef.current.setOptions({
+        interaction: {
+          keyboard: {
+            enabled: true
+          }
+        }
+      });
+    }
   };
 
   const handleCanvasSearch = (searchTerm: string) => {
