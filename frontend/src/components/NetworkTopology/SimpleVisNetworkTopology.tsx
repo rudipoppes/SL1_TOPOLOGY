@@ -128,7 +128,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   
   // Search state
   const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [originalNodeStyles, setOriginalNodeStyles] = useState<Map<string, any>>(new Map());
   const searchRef = useRef<CanvasSearchRef>(null);
   
   // Modal state
@@ -416,7 +415,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     // Attach mouse event listeners
     const container = containerRef.current;
     if (container) {
-      container.addEventListener('keydown', handleKeyDown);
+      // Attach keyboard listener to document for global shortcuts like Cmd+K
+      document.addEventListener('keydown', handleKeyDown);
       container.addEventListener('mousedown', handleMouseDown);
       container.addEventListener('mousemove', handleMouseMove);
       container.addEventListener('mouseup', handleMouseUp);
@@ -432,14 +432,34 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         edgesDataSetRef.current = null;
       }
       // Clean up event listeners
+      document.removeEventListener('keydown', handleKeyDown);
       if (container) {
-        container.removeEventListener('keydown', handleKeyDown);
         container.removeEventListener('mousedown', handleMouseDown);
         container.removeEventListener('mousemove', handleMouseMove);
         container.removeEventListener('mouseup', handleMouseUp);
       }
     };
   }, []); // Initialize network only once - theme changes handled via CSS
+
+  // Handle theme changes during search - update search highlighting to new theme
+  useEffect(() => {
+    if (isSearchVisible && nodesDataSetRef.current) {
+      // Re-apply search highlighting with new theme colors
+      const allNodes = nodesDataSetRef.current.get();
+      const matchingNodeIds: string[] = [];
+      
+      // We need to determine which nodes were highlighted
+      // Since we don't store the current search term, we'll have to re-highlight all visible (non-dimmed) nodes
+      allNodes.forEach((node: any) => {
+        if (node.opacity !== 0.2) { // If not dimmed, it was a match
+          matchingNodeIds.push(node.id);
+        }
+      });
+      
+      // Re-apply highlighting with current theme
+      applySearchHighlight(matchingNodeIds, true);
+    }
+  }, [theme, isSearchVisible]);
 
   // Handle data updates with static positioning
   useEffect(() => {
@@ -1374,20 +1394,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
   // Search functionality
   const handleOpenSearch = () => {
     setIsSearchVisible(true);
-    // Store original node styles when opening search
-    if (nodesDataSetRef.current) {
-      const allNodes = nodesDataSetRef.current.get();
-      const stylesMap = new Map();
-      allNodes.forEach((node: any) => {
-        stylesMap.set(node.id, {
-          color: node.color,
-          borderWidth: node.borderWidth,
-          shadow: node.shadow,
-          opacity: node.opacity,
-        });
-      });
-      setOriginalNodeStyles(stylesMap);
-    }
     
     // Disable vis-network keyboard shortcuts when search is open
     if (networkRef.current) {
@@ -1515,20 +1521,47 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     if (!nodesDataSetRef.current) return;
     
     const allNodes = nodesDataSetRef.current.get();
+    const themeColors = getThemeColors(theme);
+    
     const updates = allNodes.map((node: any) => {
-      const originalStyle = originalNodeStyles.get(node.id);
-      if (originalStyle) {
-        return {
-          id: node.id,
-          color: originalStyle.color,
-          borderWidth: originalStyle.borderWidth,
-          shadow: originalStyle.shadow,
-          opacity: originalStyle.opacity !== undefined ? originalStyle.opacity : 1,
-        };
-      }
+      // Instead of using stored original styles, regenerate current theme styles
+      const isLocked = lockedNodes.has(node.id);
+      const isSelected = selectedNodeIds.has(node.id);
+      
       return {
         id: node.id,
+        color: {
+          background: isSelected 
+            ? (theme === 'dark' ? '#312e81' : '#e0e7ff') 
+            : themeColors.nodeBackground,
+          border: isLocked 
+            ? '#ef4444' 
+            : isSelected 
+              ? (theme === 'dark' ? '#6366f1' : '#3b82f6') 
+              : themeColors.nodeBorder,
+          highlight: {
+            background: isSelected 
+              ? (theme === 'dark' ? '#3730a3' : '#c7d2fe') 
+              : themeColors.highlightBackground,
+            border: isLocked 
+              ? '#dc2626' 
+              : isSelected 
+                ? (theme === 'dark' ? '#4f46e5' : '#2563eb') 
+                : themeColors.highlightBorder,
+          },
+        },
+        borderWidth: isLocked ? 3 : 2,
+        shadow: {
+          enabled: true,
+          color: theme === 'dark' ? 'rgba(0, 0, 0, 0.4)' : 'rgba(0, 0, 0, 0.2)',
+          size: 15,
+          x: 0,
+          y: 5,
+        },
         opacity: 1,
+        font: {
+          color: themeColors.nodeText,
+        }
       };
     });
     
