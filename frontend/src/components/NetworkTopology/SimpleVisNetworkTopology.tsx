@@ -5,6 +5,7 @@ import { Device, TopologyNode, TopologyEdge } from '../../services/api';
 import { DeviceRelationshipModal } from './DeviceRelationshipModal';
 import { DeletionConfirmationModal } from '../Modals/DeletionConfirmationModal';
 import { ZoomControls } from './ZoomControls';
+import { CanvasSearch, CanvasSearchRef } from './CanvasSearch';
 import { configService } from '../../services/config';
 import styles from './SimpleTopology.module.css';
 // Import vis-network CSS for navigation buttons
@@ -124,6 +125,11 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     isVisible: false
   });
   const nodePositionCounter = useRef({ x: 100, y: 100 });
+  
+  // Search state
+  const [isSearchVisible, setIsSearchVisible] = useState(false);
+  const [originalNodeStyles, setOriginalNodeStyles] = useState<Map<string, any>>(new Map());
+  const searchRef = useRef<CanvasSearchRef>(null);
   
   // Modal state
   const [modalState, setModalState] = useState<{
@@ -279,15 +285,25 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       }
       
+      // Ctrl+F or Cmd+F to open search
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+        event.preventDefault();
+        handleOpenSearch();
+      }
+      
       // Ctrl+A or Cmd+A to select all nodes
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault();
         selectAllNodes();
       }
       
-      // Escape to clear selection
+      // Escape to clear selection or close search
       if (event.key === 'Escape') {
-        clearSelection();
+        if (isSearchVisible) {
+          handleCloseSearch();
+        } else {
+          clearSelection();
+        }
       }
       
       // Delete to clear selected nodes (demonstration - just clears selection in this case)
@@ -1345,6 +1361,148 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     return selectedNodeIds.size;
   };
 
+  // Search functionality
+  const handleOpenSearch = () => {
+    setIsSearchVisible(true);
+    // Store original node styles when opening search
+    if (nodesDataSetRef.current) {
+      const allNodes = nodesDataSetRef.current.get();
+      const stylesMap = new Map();
+      allNodes.forEach((node: any) => {
+        stylesMap.set(node.id, {
+          color: node.color,
+          borderWidth: node.borderWidth,
+          shadow: node.shadow,
+          opacity: node.opacity,
+        });
+      });
+      setOriginalNodeStyles(stylesMap);
+    }
+  };
+
+  const handleCloseSearch = () => {
+    setIsSearchVisible(false);
+    clearSearchHighlight();
+    searchRef.current?.clear();
+  };
+
+  const handleCanvasSearch = (searchTerm: string) => {
+    
+    if (!nodesDataSetRef.current || !networkRef.current) return;
+    
+    const allNodes = nodesDataSetRef.current.get();
+    const matchingNodeIds: string[] = [];
+    
+    allNodes.forEach((node: any) => {
+      const nodeName = `${node.label || ''} ${node.nodeData?.name || ''}`.toLowerCase();
+      
+      if (searchTerm.toLowerCase() === '' || nodeName.includes(searchTerm.toLowerCase())) {
+        matchingNodeIds.push(node.id);
+      }
+    });
+    
+    applySearchHighlight(matchingNodeIds, searchTerm !== '');
+    
+    // Auto-zoom to fit matching nodes
+    if (matchingNodeIds.length > 0 && searchTerm !== '') {
+      networkRef.current.fit({
+        nodes: matchingNodeIds,
+        animation: { duration: 500, easingFunction: 'easeInOutQuad' }
+      });
+    } else if (searchTerm === '') {
+      // When search is cleared, fit all nodes
+      networkRef.current.fit({
+        animation: { duration: 500, easingFunction: 'easeInOutQuad' }
+      });
+    }
+  };
+
+  const applySearchHighlight = (matchingIds: string[], isSearchActive: boolean) => {
+    if (!nodesDataSetRef.current) return;
+    
+    if (!isSearchActive) {
+      clearSearchHighlight();
+      return;
+    }
+    
+    const allNodes = nodesDataSetRef.current.get();
+    const updates = allNodes.map((node: any) => {
+      const isMatch = matchingIds.includes(node.id);
+      
+      if (isMatch) {
+        // Beautiful glow for matching nodes
+        return {
+          id: node.id,
+          color: {
+            background: theme === 'dark' ? '#312e81' : '#dbeafe',
+            border: theme === 'dark' ? '#8b5cf6' : '#3b82f6',
+            highlight: {
+              background: theme === 'dark' ? '#3730a3' : '#bfdbfe',
+              border: theme === 'dark' ? '#7c3aed' : '#2563eb',
+            },
+          },
+          borderWidth: 4,
+          shadow: {
+            enabled: true,
+            color: theme === 'dark' ? 'rgba(139, 92, 246, 0.8)' : 'rgba(59, 130, 246, 0.6)',
+            size: 20,
+            x: 0,
+            y: 0,
+          },
+          font: {
+            ...node.font,
+            color: theme === 'dark' ? '#f1f5f9' : '#1e293b',
+            size: 16,
+          }
+        };
+      } else {
+        // Dim non-matching nodes
+        return {
+          id: node.id,
+          opacity: 0.2,
+          color: {
+            background: theme === 'dark' ? '#374151' : '#f3f4f6',
+            border: theme === 'dark' ? '#4b5563' : '#d1d5db',
+            highlight: {
+              background: theme === 'dark' ? '#4b5563' : '#e5e7eb',
+              border: theme === 'dark' ? '#6b7280' : '#9ca3af',
+            },
+          },
+          borderWidth: 1,
+          shadow: {
+            enabled: false,
+          }
+        };
+      }
+    });
+    
+    nodesDataSetRef.current.update(updates);
+  };
+
+  const clearSearchHighlight = () => {
+    if (!nodesDataSetRef.current) return;
+    
+    const allNodes = nodesDataSetRef.current.get();
+    const updates = allNodes.map((node: any) => {
+      const originalStyle = originalNodeStyles.get(node.id);
+      if (originalStyle) {
+        return {
+          id: node.id,
+          color: originalStyle.color,
+          borderWidth: originalStyle.borderWidth,
+          shadow: originalStyle.shadow,
+          opacity: originalStyle.opacity !== undefined ? originalStyle.opacity : 1,
+        };
+      }
+      return {
+        id: node.id,
+        opacity: 1,
+      };
+    });
+    
+    nodesDataSetRef.current.update(updates);
+  };
+
   return (
     <div className={`${styles.simpleVisNetworkTopology} ${className}`}>
       {/* Controls Header */}
@@ -1412,6 +1570,15 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         affectedDevices={deletionModalState.affectedDevices}
         onConfirm={handleDeletionConfirmation}
         onClose={() => setDeletionModalState(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Canvas Search */}
+      <CanvasSearch
+        ref={searchRef}
+        isVisible={isSearchVisible}
+        theme={theme}
+        onSearch={handleCanvasSearch}
+        onClose={handleCloseSearch}
       />
     </div>
   );
