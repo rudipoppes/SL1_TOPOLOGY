@@ -161,9 +161,18 @@
   display: none !important;
 }
 
-/* More aggressive hiding of any selection indicators */
-:global(.vis-network div[style*="position: absolute"]:not(.vis-tooltip):not(.vis-network-tooltip)) {
+/* More aggressive hiding of any selection indicators - but preserve tooltips */
+:global(.vis-network div[style*="position: absolute"]:not([class*="tooltip"]):not([id*="tooltip"])) {
   display: none !important;
+}
+
+/* Hide all vis-network tooltips to prevent positioning bugs */
+:global(.vis-network .vis-tooltip),
+:global(.vis-network .vis-network-tooltip),
+:global(.vis-network div[class*="tooltip"]),
+:global(.vis-network div[id*="tooltip"]) {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 /* Hide any circular selection indicators */

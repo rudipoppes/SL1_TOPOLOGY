@@ -179,7 +179,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       },
       interaction: {
         hover: true,
-        tooltipDelay: 200,
+        tooltipDelay: 150, // Faster tooltip display for better UX
         multiselect: true, // Enable multiselect for ctrl+click
         dragView: true, // Enable canvas panning with normal drag
         zoomView: true,
@@ -268,8 +268,6 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         network.unselectAll();
       }
     });
-
-
 
     // Add keyboard event handler for shortcuts
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -497,7 +495,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
       return {
         id: node.id,
         label: directionLabel,
-        title: `${node.label || node.id} (${node.type || 'Unknown'})\nDirection: ${direction}${isLocked ? '\nStatus: Locked' : ''}${isSelected ? '\nSelected' : ''}`,
+        // Tooltip disabled due to vis-network positioning bug - consider adding custom solution later
+        // title: `📡 ${node.label || node.id}\n🔧 Type: ${node.type || 'Unknown'}\n🌐 IP: ${node.ip || 'N/A'}\n📊 Status: ${node.status || (node as any).state || 'Unknown'}\n${directionIcon} Direction: ${direction}${isLocked ? '\n🔒 Status: Locked' : ''}${isSelected ? '\n✅ Selected' : ''}`,
         color: {
           background: isSelected 
             ? (theme === 'dark' ? '#312e81' : '#e0e7ff')  // Dark purple for dark theme, light blue for light theme
@@ -1441,18 +1440,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
     
     applySearchHighlight(matchingNodeIds, searchTerm !== '');
     
-    // Auto-zoom to fit matching nodes
-    if (matchingNodeIds.length > 0 && searchTerm !== '') {
-      networkRef.current.fit({
-        nodes: matchingNodeIds,
-        animation: { duration: 500, easingFunction: 'easeInOutQuad' }
-      });
-    } else if (searchTerm === '') {
-      // When search is cleared, fit all nodes
-      networkRef.current.fit({
-        animation: { duration: 500, easingFunction: 'easeInOutQuad' }
-      });
-    }
+    // Removed auto-fit behavior - users can manually zoom/pan as needed
+    // This allows normal canvas zoom/pan controls to work without interference
   };
 
   const applySearchHighlight = (matchingIds: string[], isSearchActive: boolean) => {
