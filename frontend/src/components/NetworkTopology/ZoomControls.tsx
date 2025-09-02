@@ -16,6 +16,8 @@ interface ZoomControlsProps {
   onClearSelection?: () => void;
   onLockAllSelected?: () => void;
   selectedLockState?: 'none' | 'partial' | 'all';
+  // Search controls
+  onOpenSearch?: () => void;
 }
 
 export const ZoomControls: React.FC<ZoomControlsProps> = ({ 
@@ -29,7 +31,8 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
   onSelectAll,
   onClearSelection,
   onLockAllSelected,
-  selectedLockState = 'none'
+  selectedLockState = 'none',
+  onOpenSearch
 }) => {
 
   const handleZoomIn = () => {
@@ -327,6 +330,31 @@ export const ZoomControls: React.FC<ZoomControlsProps> = ({
         >
           <span className="text-base">⌂</span>
         </button>
+
+        {/* Search Canvas */}
+        {onOpenSearch && (
+          <>
+            {/* Separator line */}
+            <div className={`h-px my-1 ${
+              theme === 'dark' ? 'bg-gray-600' : 'bg-gray-200'
+            }`} />
+            
+            <button
+              onClick={onOpenSearch}
+              className={`${uniformButtonClass} ${themeClasses}`}
+              title="Search Canvas (Ctrl+K)"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+              </svg>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Layout Controls - All Canvas */}

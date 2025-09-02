@@ -285,8 +285,8 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
         }
       }
       
-      // Ctrl+F or Cmd+F to open search
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f') {
+      // Ctrl+K or Cmd+K to open search (common search shortcut)
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         handleOpenSearch();
       }
@@ -1520,6 +1520,7 @@ export const SimpleVisNetworkTopology: React.FC<SimpleVisNetworkTopologyProps> =
           onClearSelection={removeSelectedNodes}
           onLockAllSelected={toggleAllSelectedLock}
           selectedLockState={getSelectedLockState()}
+          onOpenSearch={handleOpenSearch}
         />
       </div>
       
